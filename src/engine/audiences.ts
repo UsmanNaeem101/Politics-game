@@ -20,6 +20,7 @@ import {
   execute,
   exposeForgery,
   imprison,
+  officeEligible,
   rollJudgments,
 } from './court';
 import { chance, clamp } from './rng';
@@ -58,6 +59,7 @@ export function resolveAudience(s: GameState, audienceId: string, optionId: stri
     }
     case 'counsel': {
       const spouse = a.data.actor as CharId;
+      if (!isFree(s, spouse)) return { ok: false, text: 'She is not here to see whether you obey.', tone: 'neutral' };
       const d = a.data.directive as Parameters<typeof directiveIntent>[2];
       if (optionId === 'heed') {
         const it = directiveIntent(s, P, d);
@@ -83,6 +85,10 @@ export function resolveAudience(s: GameState, audienceId: string, optionId: stri
       return resolveAccused(s, a, optionId);
     case 'petition': {
       const it = a.data as unknown as Extract<Intent, { type: 'petition' }> & { actor: CharId };
+      if (!isFree(s, it.actor)) return { ok: false, text: `${nm(s, it.actor)} is no longer at court to receive an answer.`, tone: 'neutral' };
+      if (it.kind === 'office' && (!it.office || !officeEligible(s, it.actor, it.office))) {
+        return { ok: false, text: 'The office is no longer theirs to ask for.', tone: 'neutral' };
+      }
       return applyPetition(s, it.actor, it, optionId === 'grant');
     }
     case 'witan': {
@@ -204,7 +210,7 @@ function resolveAccused(s: GameState, a: Audience, optionId: string): Outcome {
 /** At dawn while the throne is empty, the player is asked for their voice. */
 export function witanAudience(s: GameState): Audience | null {
   const P = s.player;
-  if (!s.interregnum || !isFree(s, P)) return null;
+  if (!s.interregnum || !isFree(s, P) || s.witanVote) return null;
   if (s.audiences.some((a) => a.kind === 'witan')) return null;
   const cands = claimants(s);
   if (!cands.length) return null;

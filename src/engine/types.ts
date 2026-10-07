@@ -91,6 +91,8 @@ export interface Character {
   siblings: CharId[];
   /** The true motive. Hidden. */
   agenda: Agenda;
+  /** The motive they began the season with (agendas can change). */
+  firstAgenda?: Agenda;
   /** The face shown to the court. */
   facade: string;
   bio: string;

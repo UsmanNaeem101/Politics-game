@@ -9,5 +9,6 @@ export * from './audiences';
 export * from './objectives';
 export * from './turn';
 export { candidates, desire, npcTurn } from './ai';
-export { PLAYABLE } from './scenario';
-export { seedFrom } from './rng';
+export { PLAYABLE, createScenario } from './scenario';
+export { seedFrom, clamp, clampPct } from './rng';
+export * from './view';

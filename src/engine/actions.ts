@@ -919,7 +919,15 @@ export function petitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { 
   const charges = s.imprisoned[it.target!]?.charges ?? [];
   const belief = charges.reduce((m, c) => Math.max(m, credence(s, K, c)), 0);
   return clamp(
-    Math.round(15 + opinion(s, K, actor) * 0.4 + ch(s, actor).traits.charm * 0.2 + (officeOf(s, actor) === 'confessor' ? 15 : 0) - belief * 0.4 + (100 - king.traits.wrath) * 0.25),
+    Math.round(
+      15 +
+        opinion(s, K, actor) * 0.4 +
+        ch(s, actor).traits.charm * 0.2 +
+        (officeOf(s, actor) === 'confessor' ? 15 : 0) +
+        (ch(s, actor).spouse === it.target ? 15 : 0) -
+        belief * 0.4 +
+        (100 - king.traits.wrath) * 0.25,
+    ),
     3,
     85,
   );
@@ -986,7 +994,7 @@ export function influence(s: GameState, actor: CharId, target: CharId): number {
 }
 
 export function complianceOdds(s: GameState, actor: CharId, target: CharId): number {
-  return clamp(Math.round(30 + influence(s, actor, target) + ch(s, target).pressure * 0.3), 5, 95);
+  return clamp(Math.round(20 + influence(s, actor, target) * 0.8 + ch(s, target).pressure * 0.25), 5, 92);
 }
 
 export function directiveText(s: GameState, d: DirectiveSpec): string {

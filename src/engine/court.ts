@@ -93,10 +93,11 @@ function passOnLands(s: GameState, id: CharId, attainted: boolean): void {
   c.gold = 0;
 }
 
+/** Strip every office a character holds. Returns the first, for narration. */
 export function vacate(s: GameState, id: CharId): OfficeId | undefined {
-  const off = officeOf(s, id);
-  if (off) s.offices[off] = null;
-  return off;
+  const first = officeOf(s, id);
+  for (const o of Object.keys(s.offices) as OfficeId[]) if (s.offices[o] === id) s.offices[o] = null;
+  return first;
 }
 
 export function imprison(s: GameState, id: CharId, charges: SecretId[], accuser?: CharId): void {
@@ -241,6 +242,10 @@ export function readCase(s: GameState, accuser: CharId, secretId: SecretId, accu
   const defence = (A.traits.charm + A.traits.cunning) * 0.08;
   score -= defence;
   notes.push(`${first(s, accused)}'s defence: -${Math.round(defence)}`);
+  if (officeOf(s, accused) === 'marshal') {
+    score -= 8;
+    notes.push('The King is wary of striking at his own general: -8');
+  }
   // A guilty man sweats; an innocent one is indignant.
   score += sec.truth ? 4 : -4;
   return { accused, secretId, score: Math.round(score), notes, witnessesFor, witnessesAgainst };

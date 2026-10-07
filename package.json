@@ -2,12 +2,12 @@
   "name": "court-of-knives",
   "private": true,
   "version": "0.1.0",
-  "description": "A medieval court-intrigue game of plots, secrets, lies and betrayal. No armies, no running about — only motives.",
+  "description": "A medieval court-intrigue game of plots, secrets, lies and betrayal. No armies, no running about \u2014 only motives.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "build:single": "tsc --noEmit && vite build --mode single",
+    "build:single": "tsc --noEmit && vite build --mode single && node scripts/page.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,6 +18,7 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@types/node": "22.19.1",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",

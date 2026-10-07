@@ -367,6 +367,7 @@ export function createScenario(seed: number, player: CharId): GameState {
       ...c,
       traits: { ...c.traits },
       agenda: { ...c.agenda, targets: c.agenda.targets.slice() },
+      firstAgenda: { ...c.agenda, targets: c.agenda.targets.slice() },
       siblings: c.siblings.slice(),
       status: 'free',
       pressure: c.pressure ?? 0,

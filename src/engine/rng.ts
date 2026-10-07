@@ -58,3 +58,6 @@ export function seedFrom(text: string): number {
 }
 
 export const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+/** A percentage for display: never a promise of 0 or 100. */
+export const clampPct = (v: number): number => Math.round(clamp(v, 1, 99));
