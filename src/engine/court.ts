@@ -33,6 +33,7 @@ export function kill(s: GameState, id: CharId, fate: string, attainted: boolean)
   delete s.directives[id];
   vacate(s, id);
   passOnLands(s, id, attainted);
+  succeedHouse(s, id);
 
   for (const p of Object.values(s.plots)) {
     if (p.status !== 'active') continue;
@@ -58,6 +59,27 @@ export function kill(s: GameState, id: CharId, fate: string, attainted: boolean)
     s.king = null;
     s.interregnum = { since: s.turn };
   }
+}
+
+/** When a head of house dies or flees, the next of kin takes his place. */
+export function succeedHouse(s: GameState, id: CharId): void {
+  const c = ch(s, id);
+  const house = s.houses[c.householdId];
+  if (!house || house.head !== id) return;
+  const kin = [...c.siblings, ...(c.spouse ? [c.spouse] : [])].filter((k) => isFree(s, k) && ch(s, k).householdId === house.id);
+  const heir = kin.find((k) => ch(s, k).gender === 'm') ?? kin[0];
+  house.head = heir ?? null;
+  if (!heir || house.rank === 'royal' || house.rank === 'church') return;
+  const h = ch(s, heir);
+  const seat = house.seat ? s.lands[house.seat]?.name : undefined;
+  if (h.gender === 'm') {
+    h.rank = house.rank === 'great' ? 'great' : 'lord';
+    h.name = `Lord ${h.short} ${house.name}`;
+    h.title = `Lord of ${seat ?? house.name}`;
+    h.canClaim = true;
+  }
+  h.prestige += 10;
+  log(s, `${h.name} is now head of House ${house.name}.`, 'all', 'court', [heir]);
 }
 
 /** Lands pass by blood unless the dead man was attainted for treason. */
@@ -411,6 +433,8 @@ export function crimeName(sec: Secret): string {
       return 'conspiracy';
     case 'ruin':
       return 'malicious conspiracy';
+    case 'affair':
+      return 'adultery against the crown';
   }
 }
 
@@ -593,7 +617,7 @@ export function officeEligible(s: GameState, id: CharId, office: OfficeId): bool
   const c = ch(s, id);
   if (c.status !== 'free' || s.king === id || officeOf(s, id)) return false;
   if (office === 'confessor') return c.rank === 'clergy';
-  return c.rank !== 'lady' && c.rank !== 'clergy' && c.rank !== 'queen';
+  return !['lady', 'clergy', 'queen', 'servant'].includes(c.rank);
 }
 
 export function appoint(s: GameState, id: CharId, office: OfficeId): void {
@@ -643,7 +667,7 @@ export function claimants(s: GameState): CharId[] {
     if (c.status !== 'free' || !c.canClaim) return false;
     // A man the whole court believes to be the regicide cannot be acclaimed.
     const proven = Object.values(s.secrets).some(
-      (sec) => sec.exposed && sec.truth && (sec.kind === 'regicide' || sec.kind === 'murder') && sec.guilty.includes(id) && sec.victims.some((v) => ch(s, v).rank === 'king' || v === 'osric'),
+      (sec) => sec.exposed && sec.truth && (sec.kind === 'regicide' || sec.kind === 'murder') && sec.guilty.includes(id) && sec.victims.some((v) => ch(s, v).rank === 'king'),
     );
     return !proven;
   });
@@ -653,7 +677,7 @@ export function electorWeight(s: GameState, id: CharId): number {
   return Math.round((1 + ch(s, id).prestige / 25) * 10) / 10;
 }
 
-export function preferredCandidate(s: GameState, elector: CharId, cands: CharId[]): CharId {
+export function preferredCandidate(s: GameState, elector: CharId, cands: CharId[], noise = true): CharId {
   const e = ch(s, elector);
   const score = (cand: CharId) => {
     if (cand === elector) return 1000;
@@ -669,9 +693,23 @@ export function preferredCandidate(s: GameState, elector: CharId, cands: CharId[
       const sec = s.secrets[sid];
       if (!k.lie && k.credence >= 50 && sec?.guilty.includes(cand) && sec.treason) v -= 40;
     }
-    return v + rand(s) * 8;
+    return v + (noise ? rand(s) * 8 : 0);
   };
   return cands.slice().sort((a, b) => score(b) - score(a))[0];
+}
+
+/** How the Witan would vote if it met today. Pure: safe to call from the UI. */
+export function witanForecast(s: GameState): { id: CharId; votes: number }[] {
+  const cands = claimants(s);
+  if (!cands.length) return [];
+  const tally = new Map<CharId, number>(cands.map((c) => [c, 0]));
+  for (const id of s.order) {
+    if (!isFree(s, id) || ch(s, id).rank === 'servant') continue;
+    const vote = id === s.player ? s.player : preferredCandidate(s, id, cands, false);
+    if (!tally.has(vote)) continue;
+    tally.set(vote, (tally.get(vote) ?? 0) + electorWeight(s, id));
+  }
+  return [...tally.entries()].map(([id, votes]) => ({ id, votes: Math.round(votes * 10) / 10 })).sort((a, b) => b.votes - a.votes);
 }
 
 export interface WitanResult {
@@ -687,7 +725,7 @@ export function holdWitan(s: GameState, playerVote?: CharId): WitanResult {
   }
   const tally = new Map<CharId, number>(cands.map((c) => [c, 0]));
   for (const id of s.order) {
-    if (!isFree(s, id)) continue;
+    if (!isFree(s, id) || ch(s, id).rank === 'servant') continue;
     const vote = id === s.player && playerVote && cands.includes(playerVote) ? playerVote : preferredCandidate(s, id, cands);
     tally.set(vote, (tally.get(vote) ?? 0) + electorWeight(s, id));
   }

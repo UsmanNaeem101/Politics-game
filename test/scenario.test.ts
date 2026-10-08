@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { credence, newGame, plotsOwnedBy } from '../src/engine';
+import { credence, plotsOwnedBy } from '../src/engine';
+import { createScenario } from './fixtures/osric';
 
-// The opening position must say exactly what the story says.
-describe('the Season of Knives opening', () => {
-  const s = newGame(1, 'anselm');
+// The hand-written fixture court must say exactly what the original story says.
+describe('the Osric fixture court', () => {
+  const s = createScenario(1, 'anselm');
   const plot = (id: string) => s.plots[id];
 
   it('the first knight means to murder the King', () => {

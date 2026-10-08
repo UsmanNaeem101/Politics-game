@@ -3,7 +3,7 @@
 
 import type { GameState } from '../engine';
 
-const KEY = 'crown-of-whispers/save/v1';
+const KEY = 'crown-of-whispers/save/v2';
 const PREFS = 'crown-of-whispers/prefs/v1';
 
 export function saveGame(s: GameState | null): void {
@@ -20,7 +20,7 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s && s.version === 1 && s.phase === 'playing' ? s : null;
+    return s && s.version === 2 && s.phase === 'playing' ? s : null;
   } catch {
     return null;
   }

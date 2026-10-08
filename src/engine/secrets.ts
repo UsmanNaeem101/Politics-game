@@ -16,6 +16,7 @@ export const SECRET_KIND_LABEL: Record<SecretKind, string> = {
   betrayal: 'Betrayal',
   slander: 'False witness',
   ruin: 'Scheme of ruin',
+  affair: 'Secret love',
 };
 
 export function describe(s: GameState, kind: SecretKind, guilty: CharId[], victims: CharId[]): string {
@@ -41,6 +42,8 @@ export function describe(s: GameState, kind: SecretKind, guilty: CharId[], victi
       return `${g} bore false witness against ${v}.`;
     case 'ruin':
       return `${g} ${plural ? 'gather' : 'gathers'} charges to destroy ${v} before the King.`;
+    case 'affair':
+      return `${g} are lovers, behind the back of ${v}.`;
   }
 }
 

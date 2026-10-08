@@ -17,6 +17,8 @@ import {
   first,
   hearCredence,
   influence,
+  introductionOdds,
+  acquaintance,
   knownSecrets,
   landsOf,
   nm,
@@ -36,6 +38,7 @@ import {
   type Offer,
   type OfficeId,
   type Outcome,
+  type SpyFocus,
 } from '../../engine';
 import { useGame, type DeedSpec } from '../context';
 import { Icon } from './Icon';
@@ -48,11 +51,14 @@ interface Estimate {
 
 const OFFICES: OfficeId[] = ['marshal', 'chancellor', 'spymaster', 'captain', 'confessor'];
 
-function others(s: GameState, filter: (id: CharId) => boolean = () => true): CharId[] {
-  return s.order.filter((id) => id !== s.player && filter(id));
+/** People the player could name in a deed: never strangers. */
+function others(s: GameState, filter: (id: CharId) => boolean = () => true, minLevel = 1): CharId[] {
+  const P = s.player;
+  return s.order.filter((id) => id !== P && acquaintance(s, id) >= minLevel && filter(id));
 }
 
 const free = (s: GameState) => (id: CharId) => ch(s, id).status === 'free';
+const met = (s: GameState) => (id: CharId) => ch(s, id).status === 'free' && acquaintance(s, id) >= (ch(s, id).rank === 'servant' ? 2 : 3);
 
 export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => void }) {
   const { s, act } = useGame();
@@ -66,7 +72,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const [secretId, setSecretId] = useState<string>(spec.secretId ?? '');
   const [plotId, setPlotId] = useState<string>(spec.plotId ?? '');
   const [amount, setAmount] = useState<number>(Math.min(25, me.gold));
-  const [focus, setFocus] = useState<'motive' | 'secrets' | 'schemes'>('motive');
+  const [focus, setFocus] = useState<SpyFocus>('motive');
   const [fabKind, setFabKind] = useState<FabricateKind>('regicide');
   const [guilty, setGuilty] = useState<CharId[]>(spec.target ? [spec.target] : []);
   const [victim, setVictim] = useState<CharId>(s.king ?? '');
@@ -115,6 +121,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
     switch (type) {
       case 'spy':
         return target ? { type, target, focus } : null;
+      case 'introduce':
+        return target ? { type, target } : null;
       case 'converse':
         return target ? { type, target } : null;
       case 'arrest':
@@ -209,7 +217,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
     case 'converse':
     case 'question':
     case 'arrest':
-      fields = !spec.target && personPick('With whom', free(s));
+      fields = !spec.target && personPick('With whom', type === 'converse' ? met(s) : free(s));
       break;
     case 'execute':
     case 'release':
@@ -218,7 +226,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
     case 'gift':
       fields = (
         <>
-          {!spec.target && personPick('To whom', free(s))}
+          {!spec.target && personPick('To whom', met(s))}
           <label className="field">
             <span>Crowns ({me.gold} in your purse)</span>
             <input id="deed-amount" type="range" min={5} max={Math.max(5, me.gold)} step={5} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
@@ -231,7 +239,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       const listOk = secrets.filter((k) => !k.sec.guilty.includes(P));
       fields = (
         <>
-          {!spec.target && personPick('To whom', (id) => ch(s, id).status === 'free')}
+          {!spec.target && personPick('To whom', met(s))}
           <fieldset className="field">
             <legend>What will you tell them?</legend>
             {listOk.length === 0 && <p className="muted">You know nothing worth whispering.</p>}
@@ -299,6 +307,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
               {(
                 [
                   ['motive', 'Their true design'],
+                  ['household', 'Their household: who lives there, and what the servants say'],
                   ['schemes', 'The schemes they are part of (and whether they mean it)'],
                   ['secrets', 'A secret they carry'],
                 ] as const
@@ -314,7 +323,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       );
       break;
     case 'scheme': {
-      const cands = others(s, free(s)).filter((id) => id !== s.king || true);
+      const cands = others(s, free(s), schemeKind === 'murder' ? 2 : 1);
       const relevant = usable.filter((k) => k.sec.guilty.some((g) => targets.includes(g)) && !k.sec.guilty.includes(P));
       fields = (
         <>
@@ -379,7 +388,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       const rightful = myLands.filter((l) => l.rightful === target);
       fields = (
         <>
-          {!spec.target && personPick('Whom', free(s))}
+          {!spec.target && personPick('Whom', met(s))}
           {pick('Into which scheme', plotId, setPlotId, plots.map((x) => ({ value: x.id, label: `“${x.name}” — ${x.kind} of ${x.targets.map((t) => first(s, t)).join(', ')}` })), 'deed-plot')}
           <fieldset className="field">
             <legend>The carrot</legend>
@@ -478,7 +487,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       const owed = Object.values(s.lands).some((l) => l.holder === target && l.rightful === P);
       fields = (
         <>
-          {!spec.target && personPick('Whom', free(s))}
+          {!spec.target && personPick('Whom', met(s))}
           <fieldset className="field">
             <legend>What you hold over them</legend>
             <div className="secret-choices">
@@ -586,7 +595,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
     case 'grant':
       fields = (
         <>
-          {!spec.target && personPick('To whom', free(s))}
+          {!spec.target && personPick('To whom', met(s))}
           {pick('Which land', landId, setLandId, [...myLands, ...crownLands].map((l) => ({ value: l.id, label: `${l.name}${l.rightful === target ? ' — rightfully theirs' : ''}` })), 'deed-land')}
         </>
       );
@@ -689,6 +698,10 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       return { lines: [`Your forgery will carry proof of about ${fabricateEvidence(s, P)}–${fabricateEvidence(s, P) + 15}. Working on a ruin scheme that uses it makes it better.`] };
     case 'spy':
       return { pct: spyChance(s, P, it.target), lines: ['If your man is caught, they may learn you were prying.'] };
+    case 'introduce': {
+      const { pct, via } = introductionOdds(s, P, it.target);
+      return { pct, lines: [via ? `${nm(s, via)} could present you.` : 'No one you know can present you. You would have to present yourself, which is bolder and less likely to work.'] };
+    }
     case 'scheme':
       return { lines: [it.kind === 'murder' ? 'A murder scheme starts unprepared. Work on it before you strike.' : 'A ruin scheme bundles your charges. Work on it and draw in witnesses before denouncing.'] };
     case 'advance':

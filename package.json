@@ -2,7 +2,7 @@
   "name": "court-of-knives",
   "private": true,
   "version": "0.1.0",
-  "description": "A medieval court-intrigue game of plots, secrets, lies and betrayal. No armies, no running about \u2014 only motives.",
+  "description": "A medieval court-intrigue game of plots, secrets, lies and betrayal. No armies, no running about — only motives.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,10 +14,12 @@
     "simulate": "vite-node scripts/simulate.ts"
   },
   "dependencies": {
+    "@xyflow/react": "12.11.6",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@iconify-json/game-icons": "1.2.4",
     "@types/node": "22.19.1",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",

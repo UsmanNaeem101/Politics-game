@@ -1,44 +1,30 @@
-// Run whole seasons with the player character on autopilot (the same AI as
-// everyone else) and print what really happened. Useful for tuning.
-//   npx vite-node scripts/simulate.ts -- [seed] [player] [--quiet]
-import { endWeek, newGame, npcTurn, resolveAudience, evaluate } from '../src/engine';
-import type { GameState } from '../src/engine';
+// Run a generated court with the player on autopilot (the same AI as everyone
+// else) and print what really happened:
+//   npx vite-node scripts/simulate.ts -- [seed] [weeks] [--quiet]
+import { evaluate, weekLabel } from '../src/engine';
+import { autopilotSeason } from '../test/helpers';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const seed = Number(args[0] ?? 1);
-const player = args[1] ?? 'anselm';
+const weeks = Number(args[1] ?? 40);
 const quiet = args.includes('--quiet');
 
-export function autoplay(s: GameState): void {
-  let guard = 0;
-  while (s.phase === 'playing' && guard++ < 200) {
-    while (s.audiences.length) {
-      const a = s.audiences[0];
-      resolveAudience(s, a.id, a.options[0].id);
-    }
-    if (s.phase !== 'playing') break;
-    npcTurn(s, s.player);
-    s.ap = 0;
-    endWeek(s);
-  }
-}
-
-const s = newGame(seed, player);
-autoplay(s);
+const s = autopilotSeason(seed, weeks);
 if (!quiet) {
   let turn = 0;
   for (const ev of s.events) {
     if (ev.turn !== turn) {
       turn = ev.turn;
-      console.log(`\n── Week ${turn} ──`);
+      console.log(`\n── ${weekLabel(turn)} ──`);
     }
-    const vis = ev.visibleTo === 'all' ? 'ALL' : ev.visibleTo.join(',') || 'nobody';
+    const vis = ev.visibleTo === 'all' ? 'ALL' : ev.visibleTo.map((v) => s.chars[v]?.short ?? v).join(',') || 'nobody';
     console.log(`  [${ev.tone}] (${vis}) ${ev.text}`);
   }
 }
-console.log('\nFates:');
+console.log('\nCourt:');
 for (const id of s.order) {
   const c = s.chars[id];
-  console.log(`  ${c.name.padEnd(24)} ${c.status.padEnd(10)} ${c.rank.padEnd(7)} ${c.fate ?? ''}`);
+  const tag = id === s.player ? ' (PLAYER)' : '';
+  console.log(`  ${(c.name + tag).padEnd(34)} ${c.status.padEnd(10)} ${c.rank.padEnd(8)} ${(c.archetype ?? '').padEnd(13)} ${c.firstAgenda?.kind ?? ''} ${c.fate ?? ''}`);
 }
-console.log('King:', s.king, ' Ending:', s.ending?.reason, JSON.stringify(evaluate(s)));
+console.log('King:', s.king && s.chars[s.king].name, '| week', s.turn, '| ending', s.ending?.reason, JSON.stringify(evaluate(s)));

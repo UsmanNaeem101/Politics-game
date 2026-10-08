@@ -16,6 +16,16 @@ before changing anything substantial; it is the plan we are building toward.
 - **Spies are recruited characters** who must be offered something, and can be caught or turned.
 - **Money comes from a business or racket**, and its kind affects social standing.
 - **Icons over text** in the UI.
+- **Setting**: a made-up kingdom with an English feel (Wendmere).
+- **Open-ended**: the game runs until the player dies, flees or is crowned (they may then rule on).
+- **The player starts as a minor lord** new to court.
+- **Tone**: violence, torture and affairs are told as a brief, plain summary. Never graphic.
+
+## Where things are
+
+- `src/engine/generate.ts` builds courts; `tensions.ts` adds seasonal trouble; `turn.ts` is the week loop.
+- Fog of war: `GameState.known` (player's acquaintance 0–5), `hearOf()` in `world.ts`, `fogProblem()` in `actions.ts`.
+- `test/fixtures/osric.ts` is the original fixed court, kept only for mechanics tests.
 
 ## Engineering rules
 
@@ -30,8 +40,9 @@ before changing anything substantial; it is the plan we are building toward.
     npm install
     npm run dev                                  # play
     npx tsc --noEmit && npx vitest run           # typecheck + tests
-    npx vite-node scripts/fuzz.ts -- 30          # random legal play for every role, invariant checks
-    npx vite-node scripts/stats.ts -- 60 anselm  # outcome statistics across seeds
+    npx vite-node scripts/fuzz.ts -- 120 40      # random legal play over generated courts, invariant checks
+    npx vite-node scripts/stats.ts -- 40 104     # outcome statistics across seeds (courts × weeks)
+    npx vite-node scripts/pulse.ts -- 20 104     # is the court still lively in year two?
     npm run build:single                         # dist-single/crown-of-whispers.html, the published page
 
 The published page is https://claude.ai/artifact/KQZsENkaYDgd8Go729tuUj — republish from

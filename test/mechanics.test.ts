@@ -9,7 +9,6 @@ import {
   holdWitan,
   kill,
   learn,
-  newGame,
   perform,
   readCase,
   resolveAudience,
@@ -18,8 +17,9 @@ import {
   dawnEvents,
   type GameState,
 } from '../src/engine';
+import { createScenario } from './fixtures/osric';
 
-const fresh = (player = 'anselm', seed = 7): GameState => newGame(seed, player);
+const fresh = (player = 'anselm', seed = 7): GameState => createScenario(seed, player);
 
 describe('belief', () => {
   it('ratchets upward and never forgets a lie is a lie', () => {

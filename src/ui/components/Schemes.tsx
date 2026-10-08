@@ -8,6 +8,8 @@ import {
   plotViews,
   strikeChance,
   waitCleared,
+  conditionMet,
+  weekLabel,
   type PlotView,
 } from '../../engine';
 import { useGame } from '../context';
@@ -70,6 +72,22 @@ function PlotCard({ v }: { v: PlotView }) {
             </span>
           ))}
           {ready ? ' — the way is clear.' : ''}
+        </p>
+      )}
+      {plot.trigger && plot.trigger.length > 0 && role !== 'known' && (
+        <p className="small">
+          Waits for one of:{' '}
+          {plot.trigger.map((c, i) => (
+            <span key={i} className={conditionMet(s, c) ? 'good' : ''}>
+              {i > 0 && ' · '}
+              {c.kind === 'office'
+                ? `${c.who === P ? 'you hold' : `${first(s, c.who)} holds`} a great office`
+                : c.kind === 'favour'
+                  ? `${c.who === P ? 'you stand' : `${first(s, c.who)} stands`} high in the King's favour`
+                  : `after ${weekLabel(c.turn)}`}
+              {conditionMet(s, c) ? ' ✓' : ''}
+            </span>
+          ))}
         </p>
       )}
       {(role !== 'known' || plot.members.length > 0) && (

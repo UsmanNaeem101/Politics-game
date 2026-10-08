@@ -20,7 +20,7 @@ export interface Ctx {
   setTab(tab: TabId): void;
 }
 
-export type TabId = 'hall' | 'web' | 'secrets' | 'schemes' | 'chronicle' | 'court' | 'dossier';
+export type TabId = 'map' | 'briefing' | 'secrets' | 'schemes' | 'chronicle' | 'court' | 'dossier';
 
 export const GameCtx = createContext<Ctx | null>(null);
 

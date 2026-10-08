@@ -53,7 +53,7 @@ The **household** is the basic unit of the map and of politics. A household has 
 
 ### Time
 
-Proposed: one turn is a fortnight, with a **court calendar** of set pieces: feasts, hunts, tourneys, church festivals, Witan sittings and quarter days when rents fall due. Set pieces matter mechanically: they are where you get introduced to strangers, where poison goes in a cup, and where accidents happen on the hunt. A campaign runs a few years, and the old King's health is the clock everyone is watching.
+One turn is a week, grouped into seasons and years, with a **court calendar** of set pieces: feasts, hunts, tourneys, church festivals, Witan sittings and quarter days when rents fall due. Set pieces matter mechanically: they are where you get introduced to strangers, where poison goes in a cup, and where accidents happen on the hunt. A game is open-ended: it runs until you die or rule. The old King's health is the clock everyone is watching.
 
 ## 4. Minds
 
@@ -292,7 +292,7 @@ Each phase ends with something playable.
 | Phase | Build | Playable result |
 |---|---|---|
 | **0 — done** | Prototype: fixed opening, hidden agendas, secrets, plots with false members, spouse pressure, King's justice, Witan, end-screen reveal | Current game |
-| **1 — The living court map** | Court generator (houses, families, servants, offices, simple history); fog-of-war discovery and introductions; court-map node network with the King at the top and silhouettes for strangers; icon set; dossier cards | Every game a new court you uncover as you play |
+| **1 — The living court map** (done) | Court generator (houses, families, servants, offices, simple history); fog-of-war discovery and introductions; court-map node network with the King at the top and silhouettes for strangers; icon set; dossier cards | Every game a new court you uncover as you play |
 | **2 — Minds** | Emotions, memories, multi-dimensional ties, aspirations, real vs performed loyalty, belief-only AI, staged schemes with private stances and triggers | NPCs who hold grudges, panic, and double-cross on their own |
 | **3 — Households and women** | Wives as agents, the ladies' circle as a channel, household instructions (befriend, listen, carry), affairs and lovers, planted information through intimates | The "send your wife to befriend their wives" play, and its counters |
 | **4 — Spies** | Recruitable servants and townsfolk, placement, reports inbox, reliability, discovery, double agents | A spy network to build and protect |
@@ -300,9 +300,9 @@ Each phase ends with something playable.
 | **6 — Institutions and succession** | Standing Witan with sittings and votes, heirs, marriage alliances, Church courts, trials by peers | Long campaigns across a succession crisis |
 | **7 — Presentation** | Procedural portraits, event art, sound, onboarding | A finished-feeling game |
 
-## 14. Open questions for the owner
+## 14. Decisions from the owner
 
-1. **Setting**: a fictional kingdom with an English flavour (as now), or something closer to real history (Anglo-Saxon or Norman England)?
-2. **Shape of a game**: a fixed span with personal goals, as now, or an open-ended campaign where you play until you die or rule?
-3. **Starting role**: any member of the court, or always a minor lord climbing up?
-4. **Tone**: how explicit should affairs, torture and executions be?
+1. **Setting**: a made-up kingdom with an English feel (Wendmere). Not real history.
+2. **Shape of a game**: open-ended. You play until you die, flee, or take the crown. Taking the crown is a triumph, and you may choose to rule on.
+3. **Starting role**: a minor lord new to court, for now. Other starting roles can come later.
+4. **Tone**: say what happened, briefly, without graphic detail. Murders, executions, torture and affairs are summarised in a line ("was found dead at the foot of the stair", "confessed under questioning", "has taken a lover"), never described.

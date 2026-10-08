@@ -5,16 +5,29 @@ import { kill, imprison } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { describe, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
-import { OFFICE_NAMES, addMod, ch, credence, isAlive, isFree, isRemoved, knows, learn, log, officeOf, uid } from './world';
-import type { CharId, GameState, Offer, Plot, PlotKind, SecretId } from './types';
+import { OFFICE_NAMES, addMod, ch, credence, isAlive, isFree, isRemoved, knows, learn, log, officeOf, opinion, uid } from './world';
+import type { CharId, GameState, Offer, Plot, PlotCondition, PlotKind, SecretId } from './types';
 
 const ADJ = ['Silent', 'Red', 'Long', 'Crooked', 'Hollow', 'Winter', 'Last', 'Gilded', 'Black', 'Quiet'];
 const NOUN = ['Cup', 'Feast', 'Stair', 'Glove', 'Bell', 'Hunt', 'Letter', 'Candle', 'Ledger', 'Bargain'];
 
 export const isMember = (p: Plot, id: CharId) => p.owner === id || p.members.some((m) => m.id === id);
 
+export function conditionMet(s: GameState, c: PlotCondition): boolean {
+  switch (c.kind) {
+    case 'office':
+      return !!officeOf(s, c.who) || s.king === c.who;
+    case 'favour':
+      return !!s.king && opinion(s, s.king, c.who) >= c.min;
+    case 'after':
+      return s.turn >= c.turn;
+  }
+}
+
+/** Ready to strike: everyone waited on is gone, and (if set) one trigger holds. */
 export function waitCleared(s: GameState, p: Plot): boolean {
-  return p.waitFor.every((w) => isRemoved(s, w));
+  if (!p.waitFor.every((w) => isRemoved(s, w))) return false;
+  return !p.trigger?.length || p.trigger.some((c) => conditionMet(s, c));
 }
 
 /** Protection around the King: his guard, and its captain if he is loyal. */

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   afterPlayerAction,
+  continueReign,
   endWeek as engineEndWeek,
   newGame,
   perform,
   resolveAudience,
-  type CharId,
   type GameState,
   type Intent,
   type Outcome,
@@ -26,9 +26,9 @@ export function App({ initial }: { initial?: GameState | null }) {
   const gameRef = useRef<GameState | null>(initial ?? null);
   const [tick, setTick] = useState(0);
   const [screen, setScreen] = useState<'title' | 'game'>(initial ? 'game' : 'title');
-  const [selected, setSelected] = useState<CharId | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [deed, setDeed] = useState<DeedSpec | null>(null);
-  const [tab, setTab] = useState<TabId>('hall');
+  const [tab, setTab] = useState<TabId>('map');
   const [help, setHelp] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const [hasSave, setHasSave] = useState(() => !!loadGame());
@@ -46,10 +46,10 @@ export function App({ initial }: { initial?: GameState | null }) {
     saveGame(gameRef.current);
   }, []);
 
-  const start = (player: CharId, seed: number) => {
-    gameRef.current = newGame(seed, player);
+  const start = (seed: number, name: string) => {
+    gameRef.current = newGame(seed, { playerName: name });
     setSelected(null);
-    setTab('hall');
+    setTab('map');
     setScreen('game');
     setDawn(false);
     bump();
@@ -134,7 +134,11 @@ export function App({ initial }: { initial?: GameState | null }) {
               setHasSave(!!loadGame());
               setScreen('title');
             }}
-            onRestart={(player, seed) => start(player, seed)}
+            onRestart={(seed, name) => start(seed, name)}
+            onRuleOn={() => {
+              if (gameRef.current) continueReign(gameRef.current);
+              bump();
+            }}
           />
         </GameCtx.Provider>
       )}

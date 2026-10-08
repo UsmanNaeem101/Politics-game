@@ -2,6 +2,7 @@
 
 import { clamp } from './rng';
 import type {
+  Acquaintance,
   Character,
   CharId,
   EventTone,
@@ -73,7 +74,8 @@ export function incomeOf(s: GameState, id: CharId): number {
 /** The title a character currently holds, reflecting offices gained and lost. */
 export function styleOf(s: GameState, id: CharId): string {
   const c = ch(s, id);
-  if (c.rank === 'king') return 'King of Wendmere';
+  if (c.rank === 'king' && s.king === id) return 'King of Wendmere';
+  if (c.rank === 'king') return 'The late King';
   if (c.rank === 'queen') return 'Queen of Wendmere';
   const off = officeOf(s, id);
   if (off) return OFFICE_NAMES[off];
@@ -203,8 +205,32 @@ export function learn(
     return false;
   }
   row[secret] = { credence: c, source, turn: s.turn, lie };
+  if (who === s.player) {
+    const sec = s.secrets[secret];
+    if (sec) for (const id of [...sec.guilty, ...sec.victims]) hearOf(s, id, 1);
+  }
   return true;
 }
+
+// ── Acquaintance (the player's fog of war) ──────────────────────────────────
+
+export const ACQUAINTANCE = ['Unknown', 'Heard of', 'Seen', 'Introduced', 'Familiar', 'Unmasked'] as const;
+
+export function acquaintance(s: GameState, id: CharId): Acquaintance {
+  if (id === s.player) return 5;
+  return s.known[id] ?? 0;
+}
+
+/** Raise the player's acquaintance with someone. Never lowers it. */
+export function hearOf(s: GameState, id: CharId, lvl: Acquaintance): boolean {
+  if (!s.chars[id] || id === s.player) return false;
+  if ((s.known[id] ?? 0) >= lvl) return false;
+  s.known[id] = lvl;
+  return true;
+}
+
+export const isServant = (s: GameState, id: CharId) => s.chars[id]?.rank === 'servant';
+export const isNoble = (s: GameState, id: CharId) => !!s.chars[id] && s.chars[id].rank !== 'servant';
 
 export function knowers(s: GameState, secret: SecretId, minCred = 1): CharId[] {
   return s.order.filter((id) => {
@@ -241,6 +267,15 @@ export function log(
     tone,
   };
   s.events.push(ev);
+  // What reaches the player's ears puts names and faces on the map.
+  const P = s.player;
+  if (P && (visibleTo === 'all' || visibleTo.includes(P))) {
+    const met = actors.includes(P);
+    for (const a of actors) {
+      if (a === P) continue;
+      hearOf(s, a, met ? 2 : visibleTo === 'all' && (tone === 'court' || tone === 'dire') ? 2 : 1);
+    }
+  }
   return ev;
 }
 
@@ -257,8 +292,22 @@ export function courtiers(s: GameState, except?: CharId): CharId[] {
   return s.order.filter((id) => id !== except && s.chars[id].status === 'free');
 }
 
-export const SEASONS = ['Lambing', 'Sowing', 'Midsummer', 'Harvest'];
+export const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'] as const;
+export const WEEKS_PER_SEASON = 13;
+export const WEEKS_PER_YEAR = 52;
+
+export interface CalendarDate {
+  year: number;
+  season: (typeof SEASONS)[number];
+  week: number;
+}
+
+export function calendar(turn: number): CalendarDate {
+  const t = turn - 1;
+  return { year: Math.floor(t / WEEKS_PER_YEAR) + 1, season: SEASONS[Math.floor(t / WEEKS_PER_SEASON) % 4], week: (t % WEEKS_PER_SEASON) + 1 };
+}
 
 export function weekLabel(turn: number): string {
-  return `Week ${turn}`;
+  const d = calendar(turn);
+  return `${d.season} of Year ${d.year}, week ${d.week}`;
 }

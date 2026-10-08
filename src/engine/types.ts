@@ -7,7 +7,8 @@ export type PlotId = string;
 export type LandId = string;
 
 export type OfficeId = 'marshal' | 'chancellor' | 'spymaster' | 'captain' | 'confessor';
-export type Rank = 'king' | 'queen' | 'great' | 'lord' | 'knight' | 'lady' | 'clergy';
+export type Rank = 'king' | 'queen' | 'great' | 'lord' | 'knight' | 'lady' | 'clergy' | 'servant';
+export type HouseId = string;
 export type Status = 'free' | 'imprisoned' | 'dead' | 'fled';
 
 /** Temperament, 0..100. Publicly readable in broad strokes; motives are not. */
@@ -36,7 +37,8 @@ export type AgendaKind =
   | 'peace' // stop the bloodshed
   | 'raise-spouse' // lift one's husband (and so oneself) to power
   | 'protect-spouse' // keep one's husband alive, whatever he plots
-  | 'keep-crown'; // a king's agenda: hold what he has
+  | 'keep-crown' // a king's agenda: hold what he has
+  | 'rise'; // win an office and the King's favour
 
 export interface Agenda {
   kind: AgendaKind;
@@ -77,7 +79,11 @@ export interface Character {
   epithet: string;
   gender: 'm' | 'f';
   age: number;
+  /** Display name of the house ("Ashby"). */
   house: string;
+  householdId: HouseId;
+  /** What a servant or retainer does ("steward", "maid"). */
+  role?: string;
   rank: Rank;
   /** May be acclaimed king by the Witan. */
   canClaim: boolean;
@@ -101,8 +107,26 @@ export interface Character {
   /** Extra protection from hired swords; decays each week. */
   guard: number;
   heraldry: Heraldry;
-  playable: { blurb: string; difficulty: 'Gentle' | 'Cunning' | 'Treacherous' | 'Desperate' };
+  playable?: { blurb: string; difficulty: 'Gentle' | 'Cunning' | 'Treacherous' | 'Desperate' };
+  /** Generator archetype, for flavour and tuning. */
+  archetype?: string;
 }
+
+export interface House {
+  id: HouseId;
+  name: string;
+  rank: 'royal' | 'great' | 'lesser' | 'church';
+  heraldry: Heraldry;
+  head: CharId | null;
+  members: CharId[];
+  seat?: LandId;
+  motto?: string;
+  /** Turn the house came to court (0 = from the start). */
+  arrived: number;
+}
+
+/** How well the player knows a person. */
+export type Acquaintance = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface OpinionMod {
   key: string;
@@ -128,7 +152,8 @@ export type SecretKind =
   | 'theft' // stole land or gold
   | 'betrayal' // means to turn on an ally
   | 'slander' // bore false witness
-  | 'ruin'; // gathers charges to destroy someone at court
+  | 'ruin' // gathers charges to destroy someone at court
+  | 'affair'; // a secret love outside marriage
 
 export interface Secret {
   id: SecretId;
@@ -197,11 +222,18 @@ export interface Plot {
   charges: SecretId[];
   /** Do not strike until all of these are dead, imprisoned or fled. */
   waitFor: CharId[];
+  /** And, if set, until at least one of these holds. */
+  trigger?: PlotCondition[];
   createdTurn: number;
   /** The owner's own description of the real plan. */
   intent: string;
   hiredBlades: number;
 }
+
+export type PlotCondition =
+  | { kind: 'office'; who: CharId }
+  | { kind: 'favour'; who: CharId; min: number }
+  | { kind: 'after'; turn: number };
 
 export interface Pledge {
   id: string;
@@ -299,21 +331,29 @@ export interface ObjectiveResult {
 }
 
 export interface Ending {
-  reason: 'season-end' | 'player-dead' | 'player-fled';
+  reason: 'season-end' | 'player-dead' | 'player-fled' | 'crowned';
   turn: number;
   result: ObjectiveResult;
 }
 
 export interface GameState {
-  version: 1;
+  version: 2;
   seed: number;
   rng: number;
   turn: number;
+  /** 0 = open-ended: the game runs until the player dies, flees or is crowned. */
   maxTurns: number;
+  /** The player was crowned and chose to rule on. */
+  reigning?: boolean;
   player: CharId;
   phase: 'playing' | 'ended';
   chars: Record<CharId, Character>;
   order: CharId[];
+  houses: Record<HouseId, House>;
+  /** The player's acquaintance with each person (fog of war). Missing = unknown. */
+  known: Record<CharId, Acquaintance>;
+  /** Times the player has kept company with each person. */
+  company: Record<CharId, number>;
   relations: Record<CharId, Record<CharId, Relation>>;
   secrets: Record<SecretId, Secret>;
   knowledge: Record<CharId, Record<SecretId, Knowledge>>;

@@ -18,6 +18,7 @@ import {
   readCase,
   release,
   rollJudgments,
+  succeedHouse,
   vacate,
 } from './court';
 import {
@@ -30,15 +31,18 @@ import {
   pledgeText,
   resolveStrike,
 } from './plots';
-import { chance, clamp, roll } from './rng';
+import { chance, clamp, rand, roll } from './rng';
 import { hearCredence, makeSecret, SECRET_KIND_LABEL } from './secrets';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
+  acquaintance,
   addMod,
   adjustTrust,
   ch,
   credence,
+  hearOf,
+  isServant,
   effective,
   insightOf,
   isAlive,
@@ -67,13 +71,15 @@ import type {
 } from './types';
 
 export type FabricateKind = 'regicide' | 'pact' | 'murder';
+export type SpyFocus = 'motive' | 'secrets' | 'schemes' | 'household';
 
 export type Intent =
   | { type: 'converse'; target: CharId }
+  | { type: 'introduce'; target: CharId }
   | { type: 'gift'; target: CharId; amount: number }
   | { type: 'whisper'; target: CharId; secretId: SecretId }
   | { type: 'fabricate'; kind: FabricateKind; guilty: CharId[]; victim: CharId }
-  | { type: 'spy'; target: CharId; focus: 'motive' | 'secrets' | 'schemes' }
+  | { type: 'spy'; target: CharId; focus: SpyFocus }
   | { type: 'scheme'; kind: PlotKind; targets: CharId[]; charges: SecretId[] }
   | { type: 'advance'; plotId: PlotId; gold: number }
   | { type: 'recruit'; target: CharId; plotId: PlotId; offer: Offer }
@@ -104,6 +110,7 @@ export interface Outcome {
 
 export const COST: Record<IntentType, number> = {
   converse: 1,
+  introduce: 1,
   gift: 1,
   whisper: 1,
   fabricate: 1,
@@ -129,7 +136,8 @@ export const COST: Record<IntentType, number> = {
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
-  converse: { name: 'Keep company', desc: 'Spend an hour together. Warms them to you, and you may read something in their face.' },
+  converse: { name: 'Keep company', desc: 'Spend an hour together. Warms them to you, and you may read something in their face. Servants gossip.' },
+  introduce: { name: 'Seek an introduction', desc: 'Find someone to present you, or present yourself. You cannot deal with a stranger.' },
   gift: { name: 'Give a gift', desc: 'Gold buys goodwill, especially from the greedy.' },
   whisper: { name: 'Whisper a secret', desc: 'Tell them something you know, or something you have invented. They decide whether to believe it.' },
   fabricate: { name: 'Forge a lie', desc: 'Invent a treason and the letters to prove it. Lies can be spread, and laid before the King.' },
@@ -157,6 +165,12 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
 const KING_ONLY: IntentType[] = ['arrest', 'question', 'execute', 'release', 'appoint'];
 const PRISON_OK: IntentType[] = ['whisper', 'escape', 'counsel'];
 
+/** Someone wants an answer from the player. Being approached is an introduction. */
+export function pushAudience(s: GameState, a: Audience): void {
+  hearOf(s, a.from, 3);
+  s.audiences.push(a);
+}
+
 // ── Validation ──────────────────────────────────────────────────────────────
 
 export function check(s: GameState, actor: CharId, it: Intent): string | null {
@@ -168,6 +182,10 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
   if (KING_ONLY.includes(it.type) && s.king !== actor) return 'Only the King may do that.';
   if (actor === s.player && COST[it.type] > s.ap) return 'Not enough time left this week.';
   const target = 'target' in it ? it.target : undefined;
+  if (actor === s.player) {
+    const fog = fogProblem(s, it);
+    if (fog) return fog;
+  }
   if (target !== undefined) {
     if (target === actor) return 'You cannot do that to yourself.';
     if (!s.chars[target]) return 'No such person.';
@@ -291,6 +309,30 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
   }
 }
 
+/** Deeds that need you to have been introduced (servants need only be seen). */
+export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant'];
+
+/** The player cannot deal with people they do not know. */
+function fogProblem(s: GameState, it: Intent): string | null {
+  const target = 'target' in it ? it.target : undefined;
+  if (target && s.chars[target]) {
+    const lvl = acquaintance(s, target);
+    const need = isServant(s, target) ? 2 : 3;
+    if (CONTACT.includes(it.type) && lvl < need) {
+      return lvl < 2 ? 'You have only heard of them. Find them first.' : 'You have not been introduced.';
+    }
+    if (it.type === 'introduce') {
+      if (lvl >= 3) return 'You already know them.';
+      if (lvl < 2) return 'You have only heard of them. Spy on their household, or wait to see them at court.';
+      if (isServant(s, target)) return 'Servants need no introduction.';
+    }
+    if (it.type === 'spy' && lvl < 1) return 'You know nothing of them.';
+  }
+  if (it.type === 'fabricate' && [...it.guilty, it.victim].some((g) => acquaintance(s, g) < 1)) return 'You cannot name someone you have never heard of.';
+  if (it.type === 'scheme' && it.targets.some((g) => acquaintance(s, g) < (it.kind === 'murder' ? 2 : 1))) return 'You do not know your target well enough.';
+  return null;
+}
+
 function usableCharge(s: GameState, actor: CharId, secretId: SecretId): boolean {
   const k = knows(s, actor, secretId);
   return !!k && (k.lie || k.credence >= 40);
@@ -330,6 +372,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
   switch (it.type) {
     case 'converse':
       return converse(s, actor, it.target);
+    case 'introduce':
+      return introduce(s, actor, it.target);
     case 'gift':
       return gift(s, actor, it.target, it.amount);
     case 'whisper':
@@ -417,6 +461,15 @@ function converse(s: GameState, actor: CharId, target: CharId): Outcome {
   adjustTrust(s, actor, target, 2);
   const place = vary(s, PLACES);
   log(s, `${nm(s, actor)} and ${nm(s, target)} talked ${place}.`, [actor, target], 'neutral', [actor, target]);
+  let extra = '';
+  if (actor === s.player) {
+    s.company[target] = (s.company[target] ?? 0) + 1;
+    if (s.company[target] >= 3 && hearOf(s, target, 4)) extra += ` You feel you know ${him(s, target)} now.`;
+  }
+  if (isServant(s, target)) {
+    const told = servantGossip(s, actor, target);
+    if (told) extra += ` ${told}`;
+  }
 
   let read = '';
   if (chance(s, 15 + A.traits.cunning * 0.35)) {
@@ -429,7 +482,62 @@ function converse(s: GameState, actor: CharId, target: CharId): Outcome {
     else read = `${cap(he(s, target))} seems at ease with you.`;
     log(s, `You read ${first(s, target)}: ${read}`, [actor], 'secret', [target]);
   }
-  return { ok: true, text: `You spent an hour with ${first(s, target)} ${place}.${read ? ' ' + read : ''}`, tone: 'good' };
+  return { ok: true, text: `You spent an hour with ${first(s, target)} ${place}.${read ? ' ' + read : ''}${extra}`, tone: 'good' };
+}
+
+/** A servant who likes you lets something slip. Returns the line to show, if any. */
+export function servantGossip(s: GameState, actor: CharId, servant: CharId): string | null {
+  const S = ch(s, servant);
+  const pool = Object.entries(s.knowledge[servant] ?? {})
+    .filter(([sid, k]) => !k.lie && k.credence >= 30 && s.secrets[sid] && !s.secrets[sid].guilty.includes(actor) && credence(s, actor, sid) < 40)
+    .map(([sid, k]) => ({ sec: s.secrets[sid], k }));
+  if (!pool.length) return null;
+  const pct = clamp(15 + opinion(s, servant, actor) * 0.6 + ch(s, actor).traits.charm * 0.2 + (S.traits.greed >= 55 ? 5 : 0), 5, 85);
+  if (!chance(s, pct)) return null;
+  const { sec, k } = pool[Math.floor(rand(s) * pool.length)];
+  learn(s, actor, sec.id, Math.round(k.credence * 0.85), servant);
+  log(s, `${first(s, servant)} let something slip: “${sec.text}”`, [actor], 'secret', [servant, ...sec.guilty]);
+  return `${first(s, servant)} lowers ${his(s, servant)} voice: “${sec.text}”`;
+}
+
+const RANK_STEP: Record<string, number> = { servant: 0, knight: 1, lady: 1, lord: 2, clergy: 2, great: 3, queen: 4, king: 4 };
+
+/** The best person to present the actor, and the chance it works. */
+export function introductionOdds(s: GameState, actor: CharId, target: CharId): { pct: number; via?: CharId } {
+  const A = ch(s, actor);
+  const gap = Math.max(0, (RANK_STEP[ch(s, target).rank] ?? 2) - (RANK_STEP[A.rank] ?? 2));
+  let best = { pct: 15 + A.traits.charm * 0.3 - gap * 8, via: undefined as CharId | undefined };
+  for (const via of s.order) {
+    if (via === actor || via === target || !isFree(s, via) || isServant(s, via)) continue;
+    if (actor === s.player && acquaintance(s, via) < 3) continue;
+    if (opinion(s, via, actor) < 0) continue;
+    const pct = 35 + opinion(s, via, actor) * 0.5 + opinion(s, target, via) * 0.3 + A.traits.charm * 0.15 - gap * 4;
+    if (pct > best.pct) best = { pct, via };
+  }
+  if (target === s.king) best.pct -= 15;
+  return { pct: clamp(Math.round(best.pct), 5, 92), via: best.via };
+}
+
+function introduce(s: GameState, actor: CharId, target: CharId): Outcome {
+  const { pct, via } = introductionOdds(s, actor, target);
+  if (!chance(s, pct)) {
+    if (!via) addMod(s, target, actor, 'presumptuous', 'Presumptuous', -4, 0.5);
+    return {
+      ok: false,
+      text: via ? `${first(s, via)} tried to present you, but ${first(s, target)} had no time for you.` : `${first(s, target)} looked through you as if you were not there.`,
+      tone: 'bad',
+    };
+  }
+  if (actor === s.player) hearOf(s, target, 3);
+  addMod(s, target, actor, 'newly-met', 'Newly met', 3, 0.5);
+  log(
+    s,
+    via ? `${nm(s, via)} presented ${nm(s, actor)} to ${nm(s, target)}.` : `${nm(s, actor)} presented ${him(s, actor)}self to ${nm(s, target)}.`,
+    [actor, target, ...(via ? [via] : [])],
+    'good',
+    [actor, target],
+  );
+  return { ok: true, text: `You have been introduced to ${nm(s, target)}.`, tone: 'good' };
 }
 
 const cap = (t: string) => t[0].toUpperCase() + t.slice(1);
@@ -507,7 +615,7 @@ export function spyChance(s: GameState, actor: CharId, target: CharId): number {
   return clamp(Math.round(35 + A.traits.cunning * 0.5 - T.traits.cunning * 0.35 + master - T.traits.paranoia * 0.1), 5, 90);
 }
 
-function spy(s: GameState, actor: CharId, target: CharId, focus: 'motive' | 'secrets' | 'schemes'): Outcome {
+function spy(s: GameState, actor: CharId, target: CharId, focus: SpyFocus): Outcome {
   const T = ch(s, target);
   if (!chance(s, spyChance(s, actor, target))) {
     if (chance(s, 45)) {
@@ -519,8 +627,19 @@ function spy(s: GameState, actor: CharId, target: CharId, focus: 'motive' | 'sec
     return { ok: false, text: `Your spies learned nothing of ${first(s, target)}.`, tone: 'neutral' };
   }
   const ins = insightOf(s, actor);
+  if (focus === 'household') {
+    const house = s.houses[T.householdId];
+    const members = (house?.members ?? []).filter((m) => m !== actor && ch(s, m).status !== 'dead');
+    if (actor === s.player) for (const m of members) hearOf(s, m, 2);
+    const servants = members.filter((m) => isServant(s, m));
+    const slip = servants.length ? servantGossip(s, actor, servants[Math.floor(rand(s) * servants.length)]) : null;
+    const list = members.map((m) => `${first(s, m)}${ch(s, m).role ? ` (${ch(s, m).role})` : ''}`).join(', ');
+    log(s, `Your spies mapped the household of ${house ? `House ${house.name}` : nm(s, target)}: ${list}.`, [actor], 'secret', [target]);
+    return { ok: true, text: `The household of ${house ? `House ${house.name}` : first(s, target)}: ${list}.${slip ? ` ${slip}` : ''}`, tone: 'good' };
+  }
   if (focus === 'motive') {
     if (!ins.agendas.includes(target)) ins.agendas.push(target);
+    if (actor === s.player) hearOf(s, target, 5);
     log(s, `Your spies uncovered the true design of ${nm(s, target)}: ${T.agenda.summary}`, [actor], 'secret', [target]);
     return { ok: true, text: `${first(s, target)}'s true design: ${T.agenda.summary}`, tone: 'good' };
   }
@@ -650,7 +769,7 @@ function recruit(s: GameState, owner: CharId, cand: CharId, plotId: PlotId, o: O
   const p = s.plots[plotId];
   learn(s, cand, p.secretId, 100, owner);
   if (cand === s.player) {
-    s.audiences.push(recruitAudience(s, owner, p, o));
+    pushAudience(s, recruitAudience(s, owner, p, o));
     return { ok: true, text: 'An offer has been made.', tone: 'neutral' };
   }
   const answer = recruitDecision(s, owner, cand, p, o);
@@ -727,11 +846,11 @@ function denounce(s: GameState, actor: CharId, it: Extract<Intent, { type: 'deno
     [actor, ...accusedList.map((x) => x.accused)],
   );
   if (s.king === s.player) {
-    s.audiences.push(judgmentAudience(s, actor, charges, plot, it.only));
+    pushAudience(s, judgmentAudience(s, actor, charges, plot, it.only));
     return { ok: true, text: 'The King will hear the charge.', tone: 'neutral' };
   }
   if (accusedList.some((x) => x.accused === s.player) && actor !== s.player) {
-    s.audiences.push(accusedAudience(s, actor, charges, plot, it.only));
+    pushAudience(s, accusedAudience(s, actor, charges, plot, it.only));
     return { ok: true, text: 'The accused has been summoned.', tone: 'neutral' };
   }
   const judgments = rollJudgments(s, actor, charges, plot, {}, it.only);
@@ -841,7 +960,7 @@ function blackmail(s: GameState, actor: CharId, it: Extract<Intent, { type: 'bla
   const sec = s.secrets[it.secretId];
   learn(s, it.target, it.secretId, sec.truth ? 100 : 0, 'self');
   if (it.target === s.player) {
-    s.audiences.push({
+    pushAudience(s, {
       id: uid(s, 'a'),
       kind: 'blackmail',
       from: actor,
@@ -893,7 +1012,7 @@ export function applyBlackmail(s: GameState, actor: CharId, it: Extract<Intent, 
 function petition(s: GameState, actor: CharId, it: Extract<Intent, { type: 'petition' }>): Outcome {
   const K = s.king!;
   if (K === s.player) {
-    s.audiences.push(petitionAudience(s, actor, it));
+    pushAudience(s, petitionAudience(s, actor, it));
     log(s, `${nm(s, actor)} petitioned the King.`, 'all', 'court', [actor]);
     return { ok: true, text: 'Your petition is before the King.', tone: 'neutral' };
   }
@@ -1030,7 +1149,7 @@ function counsel(s: GameState, actor: CharId, target: CharId, mode: 'goad' | 're
   T.pressure = clamp(T.pressure + Math.round(inf / 2), -100, 100);
   const text = directiveText(s, spec);
   if (target === s.player) {
-    s.audiences.push({
+    pushAudience(s, {
       id: uid(s, 'a'),
       kind: 'counsel',
       from: actor,
@@ -1110,6 +1229,7 @@ function grant(s: GameState, actor: CharId, target: CharId, landId: LandId): Out
 export function exile(s: GameState, id: CharId): void {
   const c = ch(s, id);
   vacate(s, id);
+  succeedHouse(s, id);
   for (const l of Object.values(s.lands)) if (l.holder === id) l.holder = null;
   for (const p of Object.values(s.plots)) {
     if (p.status !== 'active') continue;

@@ -8,7 +8,6 @@ import {
   perform,
   resolveAudience,
   afterPlayerAction,
-  type CharId,
   type GameState,
   type Intent,
   type OfficeId,
@@ -40,7 +39,8 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
   const out: Intent[] = [
     { type: 'converse', target: t() },
     { type: 'gift', target: t(), amount: 10 },
-    { type: 'spy', target: t(), focus: pickOf(r, ['motive', 'secrets', 'schemes'] as const)! },
+    { type: 'spy', target: t(), focus: pickOf(r, ['motive', 'secrets', 'schemes', 'household'] as const)! },
+    { type: 'introduce', target: t() },
     { type: 'guard' },
     { type: 'fabricate', kind: 'regicide', guilty: [t()], victim: s.king ?? '' },
     { type: 'fabricate', kind: 'pact', guilty: [t(), t()], victim: s.king ?? '' },
@@ -85,12 +85,12 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
   return out;
 }
 
-/** Play one season with random (legal) player choices. */
-export function randomSeason(seed: number, player: CharId, onStep?: (s: GameState) => void): GameState {
-  const s = newGame(seed, player);
-  const r = lcg(seed * 7919 + player.length);
+/** Play a number of weeks of a generated court with random (legal) player choices. */
+export function randomSeason(seed: number, weeks = 40, onStep?: (s: GameState) => void): GameState {
+  const s = newGame(seed);
+  const r = lcg(seed * 7919 + 13);
   let guard = 0;
-  while (s.phase === 'playing' && guard++ < 400) {
+  while (s.phase === 'playing' && s.turn <= weeks && guard++ < weeks * 20) {
     let answered = 0;
     while (s.audiences.length && s.phase === 'playing') {
       if (answered++ > 50) throw new Error(`audiences never stop coming: ${s.audiences.map((a) => a.kind).join(',')}`);
@@ -117,11 +117,11 @@ export function randomSeason(seed: number, player: CharId, onStep?: (s: GameStat
 
 const P = (s: GameState) => s.player;
 
-/** Play a season with the player on the same autopilot as the rest of the court. */
-export function autopilotSeason(seed: number, player: CharId): GameState {
-  const s = newGame(seed, player);
+/** Play a number of weeks with the player on the same autopilot as the rest of the court. */
+export function autopilotSeason(seed: number, weeks = 40): GameState {
+  const s = newGame(seed);
   let guard = 0;
-  while (s.phase === 'playing' && guard++ < 200) {
+  while (s.phase === 'playing' && s.turn <= weeks && guard++ < weeks * 5) {
     let answered = 0;
     while (s.audiences.length) {
       if (answered++ > 50) throw new Error('audiences never stop coming');

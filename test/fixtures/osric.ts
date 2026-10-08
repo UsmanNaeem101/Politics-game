@@ -1,3 +1,7 @@
+// TEST FIXTURE ONLY. The hand-written opening at King Osric's court that started the
+// project. The game itself generates its courts (src/engine/generate.ts); this fixed
+// court survives so mechanics tests can rely on known people and secrets.
+//
 // "The Season of Knives": the opening position at the court of King Osric.
 //
 //  - Sir Aldric (the Marshal) means to murder the King and take the crown.
@@ -13,11 +17,10 @@
 //    Gareth and Wystan have sworn to his scheme only to let him do the bloody
 //    work, then murder him and take back everything.
 
-import { makeSecret, syncPlotSecret } from './secrets';
-import { addMod, adjustTrust, learn, rel } from './world';
-import type { Character, CharId, GameState, Land, OfficeId, Plot, Traits } from './types';
+import { emptyState, makeSecret, syncPlotSecret, addMod, adjustTrust, learn, rel } from '../../src/engine';
+import type { Character, CharId, GameState, House, Land, OfficeId, Plot, Traits } from '../../src/engine';
 
-type Seed = Omit<Character, 'status' | 'pressure' | 'guard'> & { pressure?: number };
+type Seed = Omit<Character, 'status' | 'pressure' | 'guard' | 'householdId'> & { pressure?: number };
 
 const T = (
   ambition: number,
@@ -333,38 +336,15 @@ const OFFICES: Record<OfficeId, CharId | null> = {
 };
 
 export function createScenario(seed: number, player: CharId): GameState {
-  const s: GameState = {
-    version: 1,
-    seed,
-    rng: seed | 0,
-    turn: 1,
-    maxTurns: 20,
-    player,
-    phase: 'playing',
-    chars: {},
-    order: CHARACTERS.map((c) => c.id),
-    relations: {},
-    secrets: {},
-    knowledge: {},
-    plots: {},
-    pledges: [],
-    lands: Object.fromEntries(LANDS.map((l) => [l.id, { ...l }])),
-    offices: { ...OFFICES },
-    king: 'osric',
-    interregnum: null,
-    imprisoned: {},
-    directives: {},
-    insight: {},
-    ap: 3,
-    apMax: 3,
-    audiences: [],
-    events: [],
-    nextId: 1,
-    nightStart: 1,
-  };
+  const s: GameState = { ...emptyState(seed, player), maxTurns: 20, order: CHARACTERS.map((c) => c.id) };
+  s.lands = Object.fromEntries(LANDS.map((l) => [l.id, { ...l }]));
+  s.offices = { ...OFFICES };
+  s.king = 'osric';
   for (const c of CHARACTERS) {
+    const householdId = `h-${c.house.toLowerCase()}`;
     s.chars[c.id] = {
       ...c,
+      householdId,
       traits: { ...c.traits },
       agenda: { ...c.agenda, targets: c.agenda.targets.slice() },
       firstAgenda: { ...c.agenda, targets: c.agenda.targets.slice() },
@@ -373,7 +353,20 @@ export function createScenario(seed: number, player: CharId): GameState {
       pressure: c.pressure ?? 0,
       guard: 0,
     };
+    const h: House = (s.houses[householdId] ??= {
+      id: householdId,
+      name: c.house,
+      rank: c.house === 'Wend' ? 'royal' : c.house === 'Church' ? 'church' : c.rank === 'great' ? 'great' : 'lesser',
+      heraldry: c.heraldry,
+      head: c.id,
+      members: [],
+      arrived: 0,
+    });
+    h.members.push(c.id);
   }
+  // In the fixture everyone is already acquainted with everyone.
+  for (const id of s.order) s.known[id] = 3;
+  s.known[player] = 5;
 
   seedRelations(s);
   seedSecretsAndPlots(s);
@@ -751,3 +744,8 @@ function seedSecretsAndPlots(s: GameState) {
 }
 
 export const PLAYABLE: CharId[] = CHARACTERS.map((c) => c.id);
+
+/** A fixture game: the Osric court with its opening line in the log. */
+export function osricGame(seed: number, player: CharId): GameState {
+  return createScenario(seed, player);
+}

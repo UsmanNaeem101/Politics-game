@@ -21,7 +21,9 @@ import { secretsAgainst, threatsTo } from './secrets';
 import { claimants } from './court';
 import {
   addMod,
+  adjustTrust,
   ch,
+  isServant,
   log,
   credence,
   effective,
@@ -47,6 +49,7 @@ export function desire(s: GameState, me: CharId, g: CharId): number {
   const c = ch(s, me);
   let d = Math.max(0, -opinion(s, me, g)) * 0.4;
   if (c.agenda.targets.includes(g)) d += 35;
+  if (c.agenda.kind === 'rise' && officeOf(s, g)) d += 12;
   if (threatsTo(s, me, me, 50).some((sec) => sec.guilty.includes(g))) d += 30;
   if (c.agenda.kind === 'crown' && g === s.king) d += 15;
   if (c.spouse === g) d -= 80;
@@ -86,7 +89,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   const E = effective(s, me);
   const out: Candidate[] = [];
   const add = (intent: Intent, u: number) => out.push({ intent, u });
-  const others = s.order.filter((id) => id !== me && isFree(s, id));
+  const others = s.order.filter((id) => id !== me && isFree(s, id) && !isServant(s, id));
   const king = s.king;
   const myRow = s.knowledge[me] ?? {};
 
@@ -245,7 +248,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   }
 
   // ── Forgery ───────────────────────────────────────────────────────────────
-  if (king && c.traits.honor < 45 && c.traits.cunning >= 55) {
+  if (king && c.traits.honor < 50 && c.traits.cunning >= 50) {
     for (const g of others) {
       if (g === king) continue;
       const want = desire(s, me, g);
@@ -258,8 +261,10 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
 
   // ── New schemes ───────────────────────────────────────────────────────────
   const myPlots = Object.values(s.plots).filter((p) => p.status === 'active' && p.owner === me);
-  if (king && c.agenda.kind === 'crown' && !myPlots.some((p) => p.kind === 'murder' && p.targets.includes(king))) {
-    add({ type: 'scheme', kind: 'murder', targets: [king], charges: [] }, E.ambition * 0.3 - c.traits.honor * 0.1);
+  // Only a man with standing reaches for the King's life; small fry climb first.
+  const standing = c.rank === 'great' || !!officeOf(s, me) || c.prestige >= 45;
+  if (king && c.agenda.kind === 'crown' && standing && !myPlots.some((p) => p.kind === 'murder' && p.targets.includes(king))) {
+    add({ type: 'scheme', kind: 'murder', targets: [king], charges: [] }, E.ambition * 0.25 - c.traits.honor * 0.1 - 4);
   }
   for (const sec of threatsTo(s, me, me, 50)) {
     for (const g of sec.guilty) {
@@ -271,8 +276,10 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (c.agenda.kind === 'destroy') {
     for (const g of c.agenda.targets) {
       if (!isFree(s, g) || myPlots.some((p) => p.targets.includes(g))) continue;
-      const charge = secretsAgainst(s, g, me, 50).find((x) => x.treason || x.kind === 'theft');
+      const charge = secretsAgainst(s, g, me, 50).find((x) => x.treason || x.kind === 'theft' || x.kind === 'affair');
       if (charge) add({ type: 'scheme', kind: 'ruin', targets: [g], charges: [charge.id] }, 22);
+      // No charge to bring: a hot, unscrupulous man reaches for a knife instead.
+      else if (g !== king) add({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
     }
   }
 
@@ -422,6 +429,7 @@ export function npcTurn(s: GameState, me: CharId): void {
  * a brother made whole may let a grudge go.
  */
 export function evolveAgendas(s: GameState): void {
+  reactToBetrayals(s);
   for (const id of s.order) {
     const c = ch(s, id);
     if (c.status !== 'free' || id === s.king) continue;
@@ -453,6 +461,11 @@ export function evolveAgendas(s: GameState): void {
       }
       continue;
     }
+    if (a.kind === 'rise' && officeOf(s, id) && c.traits.ambition >= 70 && s.king && chance(s, 5)) {
+      c.agenda = { kind: 'crown', targets: [s.king], summary: 'An office was not enough. Why not the throne?' };
+      truth(`${c.name} sat in his new office and began to look at the throne.`);
+      continue;
+    }
     if (a.kind === 'restitution') {
       const whole = Object.values(s.lands).filter((l) => l.rightful === id).every((l) => l.holder === id);
       if (whole && c.traits.wrath < 60 && opinion(s, id, a.targets[0] ?? id) > -20) {
@@ -461,6 +474,27 @@ export function evolveAgendas(s: GameState): void {
       } else if (a.targets.every((t) => !isFree(s, t)) && whole) {
         c.agenda = { kind: 'peace', targets: [], summary: 'Justice is done. Keep the land.' };
       }
+    }
+  }
+}
+
+/** A husband who learns of his wife's lover turns on them both. */
+function reactToBetrayals(s: GameState): void {
+  for (const sec of Object.values(s.secrets)) {
+    if (sec.kind !== 'affair' || !sec.truth) continue;
+    for (const v of sec.victims) {
+      if (!isFree(s, v) || credence(s, v, sec.id) < 60) continue;
+      const r = s.relations[v]?.[sec.guilty[1]];
+      if (r?.mods.some((m) => m.key === 'cuckold')) continue;
+      const [wife, lover] = sec.guilty;
+      addMod(s, v, lover, 'cuckold', 'Lies with my wife', -60);
+      addMod(s, v, wife, 'faithless', 'Faithless', -40);
+      adjustTrust(s, v, wife, -50);
+      const c = ch(s, v);
+      if (v !== s.player && c.traits.wrath >= 45 && isFree(s, lover) && c.agenda.kind !== 'keep-crown') {
+        c.agenda = { kind: 'destroy', targets: [lover], summary: `Destroy ${ch(s, lover).short}, who shamed him.` };
+      }
+      log(s, `${c.name} has learned that his wife is unfaithful.`, [], 'secret', [v, wife, lover]);
     }
   }
 }
