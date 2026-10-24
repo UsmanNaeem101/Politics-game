@@ -186,11 +186,19 @@ function deliver(s: GameState, w: Character): void {
   addMod(s, father, w.id, 'child-mother', 'Mother of my child', 10, 0.05);
 }
 
-/** How likely she is to conceive in a month of trying: likelier young, rarely after forty. */
+/** How likely she is to conceive in a month of trying: best in her early twenties, waning after, rarely past forty. */
 export function conceiveOdds(s: GameState, id: CharId): number {
   const age = ch(s, id).age;
   if (age < 17 || age > 44) return 0;
-  return clamp(Math.round(40 - Math.max(0, age - 28) * 2.3), 5, 40);
+  if (age < 20) return 50;
+  if (age <= 26) return 60;
+  return clamp(Math.round(60 - (age - 26) * 3), 5, 60);
+}
+
+/** A word for where she is in her bearing years. */
+export function fertilityWord(s: GameState, id: CharId): string {
+  const age = ch(s, id).age;
+  return age < 20 ? 'young yet' : age <= 26 ? 'in her prime' : age <= 34 ? 'still in good years' : age <= 40 ? 'past her best years' : 'near the end of her bearing years';
 }
 
 /** Why he cannot try for a child with her, or null: she must be his wife or his lover, and able. */

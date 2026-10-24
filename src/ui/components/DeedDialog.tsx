@@ -3,6 +3,7 @@ import {
   ACTION_INFO,
   TAIL_COST,
   conceiveOdds,
+  fertilityWord,
   incomeOf,
   meansWord,
   dineOdds,
@@ -1049,7 +1050,7 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       return {
         pct: conceiveOdds(s, it.target),
         lines: [
-          `The chance she conceives this month, at ${ch(s, it.target).age}. Whatever comes of it, she is drawn closer to you.`,
+          `The chance she conceives this month: at ${ch(s, it.target).age} she is ${fertilityWord(s, it.target)}. Whatever comes of it, she is drawn closer to you.`,
           `A child is born nine months on, and binds its mother to you as its father.`,
           husband === P
             ? 'Your wife’s child is your heir by blood.'
