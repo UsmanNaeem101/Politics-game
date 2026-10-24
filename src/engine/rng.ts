@@ -13,6 +13,15 @@ export function rand(s: RngHolder): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
+/**
+ * Stir fresh luck into the generator. A game turned back would otherwise draw the very same dice
+ * again, and every gamble lost would be lost the same way however often it was retried.
+ */
+export function stir(s: RngHolder, salt: number): void {
+  s.rng = (Math.imul(s.rng ^ (salt | 0), 0x85ebca6b) ^ Math.imul(salt | 0, 0xc2b2ae35)) | 0;
+  rand(s);
+}
+
 /** True with probability pct/100. */
 export function chance(s: RngHolder, pct: number): boolean {
   return rand(s) * 100 < pct;

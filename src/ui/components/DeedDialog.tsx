@@ -955,6 +955,7 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
           p.hiredBlades
             ? `${p.hiredBlades} hired blade${p.hiredBlades > 1 ? 's' : ''} will do the work while you are seen elsewhere.`
             : 'No hired blades: your own hands will be on it. Work on the scheme with gold to hire some.',
+          ...(strikeChance(s, p) >= 92 ? ['This is as sure as a killing gets. Even so, about one strike in twelve goes wrong.'] : []),
         ],
       };
     }

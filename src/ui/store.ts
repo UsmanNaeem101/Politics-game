@@ -1,7 +1,7 @@
 // Saving and restoring a game in this browser. Every access is guarded: storage
 // can be missing or blocked, and the game must still run without it.
 
-import { repairSave, type GameState } from '../engine';
+import { repairSave, stir, type GameState } from '../engine';
 
 const KEY = 'crown-of-whispers/save/v2';
 const PREFS = 'crown-of-whispers/prefs/v1';
@@ -98,7 +98,9 @@ export function turnBack(point: BackPoint): GameState | null {
     const turn = Number(localStorage.getItem(SLOTS[point][1]));
     const s = restore(raw);
     if (!s || !raw) return null;
-    localStorage.setItem(KEY, raw);
+    // Fresh dice: the same luck again would only replay the same failures.
+    stir(s, (Math.random() * 0x100000000) ^ Date.now());
+    localStorage.setItem(KEY, JSON.stringify(s));
     if (point === 'start' && Number(localStorage.getItem(PREV_TURN)) >= turn) drop('end');
     return s;
   } catch {

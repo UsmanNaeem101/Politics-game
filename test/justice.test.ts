@@ -25,6 +25,7 @@ import {
   repairSave,
   resolveStrike,
   secretMatters,
+  stir,
   strikeChance,
   traceChance,
   verdictFor,
@@ -133,6 +134,33 @@ describe('hired blades', () => {
     p.hiredBlades = 4;
     expect(strikeChance(s, p)).toBeGreaterThan(kill0);
     expect(traceChance(s, p)).toBeLessThan(trace0);
+  });
+});
+
+describe('a strike retried after turning back', () => {
+  it('draws fresh dice, rather than failing the same way again', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = fresh(seed);
+      const p = createPlot(s, 'anselm', 'murder', ['edmund']);
+      p.progress = 100;
+      p.hiredBlades = 6;
+      s.chars.edmund.guard = 0;
+      s.ap = 3;
+      if (strikeChance(s, p) !== 92) continue;
+      const saved = JSON.stringify(s);
+      if (perform(s, 'anselm', { type: 'strike', plotId: p.id }).ok) continue;
+      // The same dice, the same failure.
+      expect(perform(JSON.parse(saved) as GameState, 'anselm', { type: 'strike', plotId: p.id }).ok).toBe(false);
+      let killed = 0;
+      for (let salt = 1; salt <= 10; salt++) {
+        const back = JSON.parse(saved) as GameState;
+        stir(back, salt);
+        if (perform(back, 'anselm', { type: 'strike', plotId: p.id }).ok) killed++;
+      }
+      expect(killed).toBeGreaterThanOrEqual(7);
+      return;
+    }
+    throw new Error('no failed strike at 92%');
   });
 });
 

@@ -23,5 +23,5 @@ export { generateCourt, arriveHouse, courtProblems } from './generate';
 export { emptyState } from './state';
 export { ARCHETYPES } from './content/archetypes';
 export { KINGDOM } from './content/names';
-export { seedFrom, clamp, clampPct } from './rng';
+export { seedFrom, clamp, clampPct, stir } from './rng';
 export * from './view';

@@ -178,7 +178,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <p>
               The game keeps two earlier places: the <strong>start of this month</strong>, and the <strong>end of the last one</strong>. If you
               die or flee you can turn back to either and choose differently. You can also turn back from the title screen while your game
-              goes on. The same choices bring the same results, so do something different.
+              goes on. The dice are cast afresh when you turn back: a gamble that failed may go your way the next time, and one that came off may not.
             </p>
           </section>
           <p className="credit small muted">
