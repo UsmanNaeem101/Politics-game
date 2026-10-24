@@ -195,6 +195,7 @@ export function Dossier() {
         )}
         <div className="dossier-id">
           <h2 className="display-sm">{nm(s, id)}</h2>
+          {lvl >= 1 && c.formerly?.length ? <p className="muted small">Formerly {c.formerly.join(', then ')}</p> : null}
           <p className="muted">
             {!dark && <GIcon name={roleIcon(s, id)} size={14} />} {dark ? (house ? `of House ${house.name}` : 'Unknown') : `${roleLabel(s, id)}${c.epithet ? ` · ${c.epithet}` : ''}${lvl >= 3 ? ` · ${c.age}` : ''}`}
           </p>

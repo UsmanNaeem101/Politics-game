@@ -81,6 +81,29 @@ export function incomeOf(s: GameState, id: CharId): number {
 /** Dead, or gone from court for good. */
 export const gone = (s: GameState, id: CharId) => !s.chars[id] || s.chars[id].status === 'dead' || s.chars[id].status === 'fled';
 
+/**
+ * A new name or style: a bride takes her husband's house, an heir becomes Lord. What is written
+ * about them in secrets keeps up, and the old name is remembered.
+ */
+export function rename(s: GameState, id: CharId, name: string, remember = true): void {
+  const c = ch(s, id);
+  const old = c.name;
+  if (old === name) return;
+  c.name = name;
+  if (remember) (c.formerly ??= []).push(old);
+  for (const sec of Object.values(s.secrets)) {
+    if ((sec.guilty.includes(id) || sec.victims.includes(id)) && sec.text.includes(old)) sec.text = sec.text.split(old).join(name);
+  }
+}
+
+/** Everyone named in a secret the player holds is someone they have heard of, whoever has joined it since. */
+export function hearOfTheNamed(s: GameState): void {
+  for (const sid of Object.keys(s.knowledge[s.player] ?? {})) {
+    const sec = s.secrets[sid];
+    if (sec) for (const id of sec.guilty.concat(sec.victims)) hearOf(s, id, 1);
+  }
+}
+
 /** A husband or wife still living. A widow keeps a link to her late husband in `spouse`. */
 export const livingSpouse = (s: GameState, id: CharId): CharId | undefined => {
   const sp = s.chars[id]?.spouse;

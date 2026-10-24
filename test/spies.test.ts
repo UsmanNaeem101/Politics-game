@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   accessTo,
+  alreadyJudged,
   recruitedSpies,
   addMod,
   answerCaughtSpy,
@@ -145,6 +146,26 @@ describe('turning informer', () => {
       }
     }
     throw new Error('the King never believed an informer');
+  });
+});
+
+describe('the double-cross', () => {
+  it('the leader of a scheme may draw a man in, then hand him to the King', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = createScenario(seed, 'anselm');
+      const p = createPlot(s, 'anselm', 'murder', ['osric']);
+      joinPlot(s, p, 'gareth', true);
+      s.plots[p.id].progress = 50;
+      expect(check(s, 'anselm', { type: 'denounce', secretId: p.secretId })).toBeNull();
+      const r = perform(s, 'anselm', { type: 'denounce', secretId: p.secretId });
+      expect(p.status).not.toBe('active');
+      if (!r.ok) continue;
+      expect(r.text).toMatch(/pardoned/);
+      expect(s.chars.gareth.status).not.toBe('free');
+      expect(alreadyJudged(s, s.secrets[p.secretId], 'anselm')).toBe(true);
+      return;
+    }
+    throw new Error('the King never believed the leader');
   });
 });
 

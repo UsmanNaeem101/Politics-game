@@ -192,7 +192,8 @@ export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): num
 /** A plot this person was sworn into by someone else, and could betray to the King. */
 export function betrayable(s: GameState, actor: CharId, sec: Secret): Plot | undefined {
   const p = sec.plotId ? s.plots[sec.plotId] : undefined;
-  return p && p.status === 'active' && p.owner !== actor && p.members.some((m) => m.id === actor) ? p : undefined;
+  // A sworn member may give it up; so may the man who leads it, having drawn others in to hand them over.
+  return p && p.status === 'active' && (p.owner === actor || p.members.some((m) => m.id === actor)) ? p : undefined;
 }
 
 export function abandonPlot(s: GameState, p: Plot): void {

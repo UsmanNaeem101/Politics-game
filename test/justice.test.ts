@@ -11,8 +11,10 @@ import {
   crimeName,
   deedDone,
   imprison,
+  joinPlot,
   kill,
   learn,
+  makeSecret,
   opinion,
   pursueInquiries,
   repairSave,
@@ -115,6 +117,21 @@ describe('a charge once judged', () => {
     expect(check(s, other, { type: 'denounce', secretId: sid })).toMatch(/already judged/);
     s.secrets[sid].evidence += 15;
     expect(chargesFor(s, other, [sid]).map((c) => c.accused)).toContain('aldric');
+  });
+
+  it('a new scheme is a new charge, whatever he was judged for before', () => {
+    const s = fresh();
+    // Judged once on a forged charge of plotting the King's death...
+    const forged = makeSecret(s, { kind: 'regicide', guilty: ['gareth'], victims: ['osric'], truth: false, fabricatedBy: 'cedric', evidence: 60 });
+    applyJudgments(s, 'cedric', [{ accused: 'gareth', secretId: forged.id, verdict: 'dismiss', score: 30, forgeryFound: true }]);
+    // ...a forged copy is the same charge,
+    const again = makeSecret(s, { kind: 'regicide', guilty: ['gareth'], victims: ['osric'], truth: false, fabricatedBy: 'cedric', evidence: 62 });
+    expect(alreadyJudged(s, again, 'gareth')).toBe(true);
+    // but a real scheme he has since sworn to is not.
+    const p = createPlot(s, 'anselm', 'murder', ['osric']);
+    joinPlot(s, p, 'gareth', true);
+    expect(alreadyJudged(s, s.secrets[p.secretId], 'gareth')).toBe(false);
+    expect(chargesFor(s, 'anselm', [p.secretId]).map((c) => c.accused)).toContain('gareth');
   });
 
   it('an old save remembers what the King has already dismissed', () => {

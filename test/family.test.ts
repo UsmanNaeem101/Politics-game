@@ -10,10 +10,13 @@ import {
   generateCourt,
   imprison,
   kill,
+  learn,
+  makeSecret,
   marriageable,
   matchmaking,
   perform,
   runSpies,
+  wed,
   type GameState,
 } from '../src/engine';
 
@@ -140,5 +143,28 @@ describe('an unfaithful wife', () => {
     expect(sp.reports).toBeGreaterThan(0);
     const pillow = s.events.filter((e) => Array.isArray(e.visibleTo) && e.visibleTo.includes(lover) && /supper|heard at home|kisses/.test(e.text));
     expect(pillow.length).toBeGreaterThan(0);
+  });
+});
+
+describe('names', () => {
+  it('a bride takes her husband’s name; secrets about her keep up, and her old name is remembered', () => {
+    const s = generateCourt(9);
+    // A widow, and a widower from another house.
+    const wives = s.order.filter((id) => s.chars[id].gender === 'f' && s.chars[id].rank === 'lady' && s.chars[id].spouse && s.chars[s.chars[id].spouse!].status === 'free' && s.chars[id].spouse !== s.player);
+    const bride = wives[0];
+    const other = wives.find((w) => s.chars[w].householdId !== s.chars[bride].householdId)!;
+    const groom = s.chars[other].spouse!;
+    kill(s, s.chars[bride].spouse!, 'Died', false);
+    kill(s, other, 'Died', false);
+    expect(marriageable(s, bride) && marriageable(s, groom)).toBe(true);
+    const old = s.chars[bride].name;
+    const victim = s.order.find((id) => id !== bride && id !== groom && s.chars[id].status === 'free' && s.chars[id].rank !== 'child')!;
+    const sec = makeSecret(s, { kind: 'murder', guilty: [bride], victims: [victim], truth: true, evidence: 30, text: `${old} conspired to kill ${s.chars[victim].name}.` });
+    learn(s, s.player, sec.id, 60, 'rumour');
+    wed(s, groom, bride);
+    expect(s.chars[bride].name).not.toBe(old);
+    expect(s.chars[bride].formerly).toContain(old);
+    expect(sec.text).toContain(s.chars[bride].name);
+    expect(sec.text).not.toContain(old);
   });
 });

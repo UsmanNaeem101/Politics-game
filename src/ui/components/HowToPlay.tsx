@@ -104,6 +104,11 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               gathers charges and witnesses to lay before the King. When you draw someone in, offer a carrot. They may join sincerely, or meaning to
               betray you. You will not be told which.
             </p>
+            <p>
+              You can betray a scheme yourself, whether you joined it or lead it: lay it before the King from your Secrets ("Betray it to the
+              King"). Drawing a man into a plot against the King and then handing him over is a fine double-cross. Believed, you are pardoned;
+              disbelieved, everyone in it knows what you did.
+            </p>
           </section>
           <section>
             <h3>The King’s justice</h3>

@@ -9,7 +9,7 @@ import { chance, clamp, pick, roll, weighted } from './rng';
 import { makeSecret } from './secrets';
 import { affairSpy } from './spies';
 import { first, nm } from './text';
-import { acquaintance, addMod, adjustTrust, ch, gone, hearOf, isChild, isFree, isServant, learn, log, opinion, uid } from './world';
+import { acquaintance, addMod, adjustTrust, ch, gone, hearOf, isChild, isFree, isServant, learn, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
 
 export const COMING_OF_AGE = 16;
@@ -99,7 +99,7 @@ export function comeOfAge(s: GameState, c: Character, quiet = false): void {
   const heads = house?.head === c.id;
   const arch: ArchetypeId = c.gender === 'm' ? 'younger-son' : 'devoted';
   c.rank = c.gender === 'm' ? (heads ? (house.rank === 'great' ? 'great' : 'lord') : 'knight') : 'lady';
-  c.name = c.gender === 'm' ? `${heads ? 'Lord' : 'Sir'} ${c.short} ${house.name}` : `Lady ${c.short} ${house.name}`;
+  rename(s, c.id, c.gender === 'm' ? `${heads ? 'Lord' : 'Sir'} ${c.short} ${house.name}` : `Lady ${c.short} ${house.name}`, false);
   c.canClaim = c.gender === 'm';
   c.archetype = arch;
   c.epithet = epithet(s, c.traits);
@@ -204,14 +204,14 @@ export function wed(s: GameState, a: CharId, b: CharId): void {
     moveTo(s, woman.id, his);
     const seat = his.seat ? s.lands[his.seat]?.name : undefined;
     if (woman.rank === 'lady') {
-      woman.name = `Lady ${woman.short} ${his.name}`;
+      rename(s, woman.id, `Lady ${woman.short} ${his.name}`);
       woman.house = his.name;
       woman.title = `Lady of ${seat ?? his.name}`;
     }
   }
   if (s.king === man.id) {
     woman.rank = 'queen';
-    woman.name = `${woman.short} of ${woman.house}`;
+    rename(s, woman.id, `${woman.short} of ${woman.house}`);
     woman.title = 'Queen of Wendmere';
   }
   addMod(s, man.id, woman.id, 'marriage', 'Spouse', 20, 0, true);

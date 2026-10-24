@@ -26,6 +26,7 @@ import {
   decayMods,
   gone,
   hearOf,
+  hearOfTheNamed,
   houseTier,
   incomeOf,
   isAlive,
@@ -91,6 +92,19 @@ export function repairSave(s: GameState): void {
       sec.inquiry = s.turn;
     }
   }
+  // Secrets written before a wedding or an heir's styling still use the old names.
+  const nameOf = new Map(s.order.filter((id) => !gone(s, id)).map((id) => [ch(s, id).name, id]));
+  for (const sec of Object.values(s.secrets)) {
+    for (const id of sec.guilty.concat(sec.victims)) {
+      const c = s.chars[id];
+      if (!c || sec.text.includes(c.name)) continue;
+      const m = new RegExp(`\\b(?:Lady|Lord|Sir) ${c.short} [A-Z][a-z]+\\b`).exec(sec.text);
+      if (!m || nameOf.has(m[0])) continue;
+      sec.text = sec.text.split(m[0]).join(c.name);
+      if (!(c.formerly ??= []).includes(m[0])) c.formerly.push(m[0]);
+    }
+  }
+  hearOfTheNamed(s);
   // Charges the King dismissed before judgments were recorded are not heard again without new proof.
   const K = s.king;
   if (K && !s.judged) {
@@ -201,6 +215,7 @@ function newcomers(s: GameState): void {
 /** What the player notices, and what their wife brings home, as a new month begins. */
 function dawn(s: GameState): void {
   const P = s.player;
+  hearOfTheNamed(s);
   if (!isFree(s, P)) return;
   // Faces at court.
   const heard = shuffle(

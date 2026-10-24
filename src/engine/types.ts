@@ -90,6 +90,8 @@ export interface Character {
   traits: Traits;
   status: Status;
   statusTurn?: number;
+  /** Names this person has gone by: a maiden name, a knight's before he was a lord. */
+  formerly?: string[];
   /** Found guilty or let out of the Tower: begins no new scheme before this month. */
   lieLow?: number;
   fate?: string;

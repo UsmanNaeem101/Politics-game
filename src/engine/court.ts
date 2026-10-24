@@ -20,6 +20,7 @@ import {
   OFFICE_NAMES,
   officeOf,
   opinion,
+  rename,
   trust,
 } from './world';
 import type { CharId, GameState, OfficeId, Plot, Secret, SecretId } from './types';
@@ -98,7 +99,7 @@ export function succeedHouse(s: GameState, id: CharId): void {
   const seat = house.seat ? s.lands[house.seat]?.name : undefined;
   if (h.gender === 'm' && h.rank !== 'child') {
     h.rank = house.rank === 'great' ? 'great' : 'lord';
-    h.name = `Lord ${h.short} ${house.name}`;
+    rename(s, heir, `Lord ${h.short} ${house.name}`);
     h.title = `Lord of ${seat ?? house.name}`;
     h.canClaim = true;
   }
@@ -350,12 +351,13 @@ export interface Judgment {
 }
 
 /** People an accuser would never name: a spouse, or a fellow member of their own schemes. */
-export function shields(s: GameState, accuser: CharId): CharId[] {
+export function shields(s: GameState, accuser: CharId, betraying: string[] = []): CharId[] {
   const out = new Set<CharId>();
   const sp = s.chars[accuser]?.spouse;
   if (sp) out.add(sp);
   for (const p of Object.values(s.plots)) {
-    if (p.status !== 'active' || p.owner !== accuser) continue;
+    // Laying the scheme's own secret before the King is betraying it: then no one in it is spared.
+    if (p.status !== 'active' || p.owner !== accuser || betraying.includes(p.id)) continue;
     for (const m of p.members) out.add(m.id);
   }
   return [...out];
@@ -369,7 +371,7 @@ export function chargesFor(
   only?: CharId[],
 ): { secretId: SecretId; accused: CharId }[] {
   const out: { secretId: SecretId; accused: CharId }[] = [];
-  const spared = shields(s, accuser);
+  const spared = shields(s, accuser, secretIds.map((id) => s.secrets[id]?.plotId).filter((x): x is string => !!x));
   for (const sid of secretIds) {
     const sec = s.secrets[sid];
     if (!sec) continue;
@@ -383,8 +385,13 @@ export function chargesFor(
   return out;
 }
 
-/** The crime itself, not the letter that alleges it: who, what, against whom. */
+/**
+ * The crime itself, not the letter that alleges it. A real scheme is its own charge, whoever else
+ * once plotted the same; a forgery or a tale is the same charge as any other like it (who, what,
+ * against whom), so a forger cannot bring it again and again in fresh ink.
+ */
 function chargeKey(sec: Secret, accused: CharId): string {
+  if (sec.plotId) return `${accused}:plot:${sec.plotId}`;
   return `${accused}:${sec.kind}${sec.deed ? '!' : ''}:${sec.trade ?? ''}:${[...sec.victims].sort().join(',')}`;
 }
 

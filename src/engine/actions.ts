@@ -1028,10 +1028,21 @@ function denounce(s: GameState, actor: CharId, it: Extract<Intent, { type: 'deno
   };
 }
 
-/** The informer leaves the plot. Believed, they are pardoned for bringing it; disbelieved, they have made enemies for nothing. */
+/**
+ * The informer leaves the plot (its leader ends it). Believed, they are pardoned for bringing it;
+ * disbelieved, they have made enemies for nothing.
+ */
 function turnInformer(s: GameState, actor: CharId, plots: Plot[], upheld: boolean): string {
   if (!plots.length) return '';
   for (const p of plots) {
+    const others = [p.owner, ...p.members.map((m) => m.id)].filter((o) => o !== actor && !gone(s, o));
+    for (const o of others) addMod(s, o, actor, 'informed', 'Betrayed us to the King', -40);
+    if (p.owner === actor) {
+      // The leader is pardoned for what he brought, and his scheme is over either way.
+      if (upheld) markJudged(s, s.secrets[p.secretId], actor);
+      p.status = upheld ? 'foiled' : 'abandoned';
+      continue;
+    }
     p.members = p.members.filter((m) => m.id !== actor);
     syncPlotSecret(s, p);
     if (upheld) p.status = 'foiled';
