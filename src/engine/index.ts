@@ -10,6 +10,7 @@ export * from './objectives';
 export * from './turn';
 export * from './economy';
 export { heardFeeling, tableTalk, talkChance } from './talk';
+export * from './family';
 export * from './spies';
 export { SPY_HOOKS, SPY_HOOK_KINDS } from './content/spies';
 export { BUSINESSES, BUSINESS_KINDS, ESTATES, ESTATE_NAMES, MAX_BUSINESSES, type BusinessDef } from './content/businesses';

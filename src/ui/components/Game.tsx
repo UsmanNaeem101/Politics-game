@@ -38,12 +38,13 @@ export function Game(props: {
   onQuit: () => void;
   onRestart: (seed: number, name: string) => void;
   onRuleOn: () => void;
+  onTurnBack: () => void;
 }) {
   const { s, endWeek } = useGame();
   const { tab, setTab } = props;
   const [aftermath, setAftermath] = useState<{ title: string; outcome: Outcome } | null>(null);
 
-  if (s.phase === 'ended') return <EndScreen onRestart={props.onRestart} onQuit={props.onQuit} onRuleOn={props.onRuleOn} />;
+  if (s.phase === 'ended') return <EndScreen onRestart={props.onRestart} onQuit={props.onQuit} onRuleOn={props.onRuleOn} onTurnBack={props.onTurnBack} />;
 
   const audience = s.audiences[0];
   const threats = knownThreats(s, s.player).length;

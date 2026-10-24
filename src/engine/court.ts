@@ -73,13 +73,29 @@ export function succeedHouse(s: GameState, id: CharId): void {
   const c = ch(s, id);
   const house = s.houses[c.householdId];
   if (!house || house.head !== id) return;
-  const kin = [...c.siblings, ...(c.spouse ? [c.spouse] : [])].filter((k) => isFree(s, k) && ch(s, k).householdId === house.id);
-  const heir = kin.find((k) => ch(s, k).gender === 'm') ?? kin[0];
+  // Grown sons, eldest first; then brothers; then grown daughters, sisters, the widow; then a boy lord.
+  const here = (k: CharId) => isFree(s, k) && ch(s, k).householdId === house.id;
+  const byAge = (a: CharId, b: CharId) => ch(s, b).age - ch(s, a).age;
+  const kids = (c.children ?? []).filter(here).sort(byAge);
+  const grown = kids.filter((k) => ch(s, k).rank !== 'child');
+  const young = kids.filter((k) => ch(s, k).rank === 'child');
+  const male = (k: CharId) => ch(s, k).gender === 'm';
+  const sibs = c.siblings.filter(here);
+  const kin = [
+    ...grown.filter(male),
+    ...sibs.filter(male),
+    ...grown.filter((k) => !male(k)),
+    ...sibs.filter((k) => !male(k)),
+    ...(c.spouse && here(c.spouse) ? [c.spouse] : []),
+    ...young.filter(male),
+    ...young,
+  ];
+  const heir = kin[0];
   house.head = heir ?? null;
   if (!heir || house.rank === 'royal' || house.rank === 'church') return;
   const h = ch(s, heir);
   const seat = house.seat ? s.lands[house.seat]?.name : undefined;
-  if (h.gender === 'm') {
+  if (h.gender === 'm' && h.rank !== 'child') {
     h.rank = house.rank === 'great' ? 'great' : 'lord';
     h.name = `Lord ${h.short} ${house.name}`;
     h.title = `Lord of ${seat ?? house.name}`;
@@ -92,7 +108,9 @@ export function succeedHouse(s: GameState, id: CharId): void {
 /** Lands pass by blood unless the dead man was attainted for treason. */
 function passOnLands(s: GameState, id: CharId, attainted: boolean): void {
   const c = ch(s, id);
-  const heirs = c.siblings.filter((b) => isAlive(s, b));
+  // Children inherit before brothers.
+  const kids = (c.children ?? []).filter((k) => isAlive(s, k));
+  const heirs = kids.length ? kids : c.siblings.filter((b) => isAlive(s, b));
   const held = Object.values(s.lands).filter((l) => l.holder === id);
   let i = 0;
   for (const land of held) {
@@ -143,6 +161,7 @@ export function release(s: GameState, id: CharId, why: string): void {
   const rec = s.imprisoned[id];
   c.status = 'free';
   c.statusTurn = s.turn;
+  c.lieLow = Math.max(c.lieLow ?? 0, s.turn + 6);
   delete s.imprisoned[id];
   if (s.king) addMod(s, id, s.king, 'jailed', 'Threw me in a cell', -20, 1);
   if (rec?.accuser && rec.accuser !== id) addMod(s, id, rec.accuser, 'denounced', 'Denounced me to the King', -35);
@@ -354,13 +373,29 @@ export function chargesFor(
     const sec = s.secrets[sid];
     if (!sec) continue;
     for (const g of sec.guilty) {
-      if (g === accuser || g === s.king || !isFree(s, g) || spared.includes(g)) continue;
+      if (g === accuser || g === s.king || !isFree(s, g) || spared.includes(g) || alreadyJudged(s, sec, g)) continue;
       if (only && !only.includes(g)) continue;
       if (out.some((o) => o.accused === g)) continue;
       out.push({ secretId: sid, accused: g });
     }
   }
   return out;
+}
+
+/** The crime itself, not the letter that alleges it: who, what, against whom. */
+function chargeKey(sec: Secret, accused: CharId): string {
+  return `${accused}:${sec.kind}${sec.deed ? '!' : ''}:${sec.trade ?? ''}:${[...sec.victims].sort().join(',')}`;
+}
+
+/** Judged once on a charge, a man is not judged again on it unless new proof has come to light. */
+export function alreadyJudged(s: GameState, sec: Secret, accused: CharId): boolean {
+  const then = s.judged?.[chargeKey(sec, accused)];
+  return then !== undefined && sec.evidence < then + 15;
+}
+
+export function markJudged(s: GameState, sec: Secret, accused: CharId): void {
+  const key = chargeKey(sec, accused);
+  (s.judged ??= {})[key] = Math.max(s.judged[key] ?? 0, sec.evidence);
 }
 
 /** Roll the dice on a set of charges (King is an NPC). */
@@ -395,6 +430,7 @@ export function applyJudgments(s: GameState, accuser: CharId, judgments: Judgmen
   const forged = new Set<SecretId>();
   for (const j of judgments) {
     const sec = s.secrets[j.secretId];
+    markJudged(s, sec, j.accused);
     learn(s, K, j.secretId, clamp(j.score, 0, 100), accuser);
     addMod(s, j.accused, accuser, 'denounced', 'Denounced me to the King', -40);
     if (j.forgeryFound) {
@@ -497,8 +533,10 @@ export function pursueInquiries(s: GameState): void {
     log(s, `${digger ? nm(s, digger) : 'The King’s people'} found more: ${sec.text}`, digger ? [K, digger] : [K], 'secret', suspects);
     // A king who is the player judges for himself.
     if (K === s.player || credence(s, K, sec.id) < 70) continue;
-    for (const g of suspects) imprison(s, g, [sec.id], digger);
-    log(s, `The Guard came for ${names(s, suspects)}. The King’s people had been asking questions, and found answers.`, 'all', 'court', suspects);
+    const fresh = suspects.filter((g) => !alreadyJudged(s, sec, g));
+    if (!fresh.length) continue;
+    for (const g of fresh) imprison(s, g, [sec.id], digger);
+    log(s, `The Guard came for ${names(s, fresh)}. The King’s people had been asking questions, and found answers.`, 'all', 'court', fresh);
     delete sec.inquiry;
   }
 }
@@ -537,6 +575,11 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
   c.gold -= fine;
   if (s.king) ch(s, s.king).gold += fine;
   c.prestige = Math.max(0, c.prestige - 20);
+  c.lieLow = s.turn + 10;
+  markJudged(s, sec, id);
+  // A scheme laid bare before the King is finished.
+  const plot = sec.plotId ? s.plots[sec.plotId] : undefined;
+  if (plot && plot.status === 'active' && plot.owner === id) plot.status = 'foiled';
   if (s.king) addMod(s, s.king, id, 'disgraced', `Found guilty of ${crimeName(sec)}`, -35, 0.5);
   let restored = '';
   if (sec.kind === 'theft') {
@@ -592,7 +635,8 @@ export function exposeForgery(s: GameState, sec: Secret, accuser: CharId): void 
     'dire',
     [forger, ...sec.guilty],
   );
-  if (isFree(s, forger) && forger !== K) disgrace(s, forger, slander);
+  // Already fined for slandering them: the shame of a second exposure is punishment enough.
+  if (isFree(s, forger) && forger !== K && !alreadyJudged(s, slander, forger)) disgrace(s, forger, slander);
 }
 
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
@@ -666,20 +710,33 @@ export function decidePrisoners(s: GameState): void {
     if (!rec || ch(s, id).status !== 'imprisoned') continue;
     const secs = rec.charges.map((c) => s.secrets[c]).filter(Boolean);
     const best = secs.reduce((m, sec) => Math.max(m, credence(s, K, sec.id)), 0);
-    const worst = secs.find((sec) => credence(s, K, sec.id) === best) ?? secs[0];
     // A favourite needs more proof before the King will kill him.
     const bar = 75 + Math.max(0, opinion(s, K, id)) * 0.3;
-    if (best >= bar && worst) {
+    // The gravest charge he believes enough, not merely the one he believes most.
+    const gravest = (at: number) => {
+      const held = secs.filter((sec) => credence(s, K, sec.id) >= at);
+      return held.find(capital) ?? held[0];
+    };
+    // Whatever he decides, he has judged them on all of it.
+    const judged = () => secs.forEach((sec) => markJudged(s, sec, id));
+    const worst = gravest(bar);
+    if (worst) {
       if (capital(worst)) execute(s, id, crimeName(worst));
       else {
         release(s, id, 'the King judged the crime unworthy of the axe');
         disgrace(s, id, worst);
+        judged();
       }
     } else if (best <= 30) {
       release(s, id, 'the King found no proof against them');
+      judged();
     } else if (rec.questioned >= 4) {
-      if (best >= 65 && king.traits.wrath >= 60 && worst && capital(worst)) execute(s, id, crimeName(worst));
-      else if (best < 65) release(s, id, 'nothing more could be wrung from them');
+      const grave = gravest(65);
+      if (grave && capital(grave) && king.traits.wrath >= 60) execute(s, id, crimeName(grave));
+      else if (best < 65) {
+        release(s, id, 'nothing more could be wrung from them');
+        judged();
+      }
     }
   }
 }
@@ -713,7 +770,7 @@ export function officeEligible(s: GameState, id: CharId, office: OfficeId): bool
   const c = ch(s, id);
   if (c.status !== 'free' || s.king === id || officeOf(s, id)) return false;
   if (office === 'confessor') return c.rank === 'clergy';
-  return !['lady', 'clergy', 'queen', 'servant'].includes(c.rank);
+  return !['lady', 'clergy', 'queen', 'servant', 'child'].includes(c.rank);
 }
 
 export function appoint(s: GameState, id: CharId, office: OfficeId): void {
@@ -800,7 +857,7 @@ export function witanForecast(s: GameState): { id: CharId; votes: number }[] {
   if (!cands.length) return [];
   const tally = new Map<CharId, number>(cands.map((c) => [c, 0]));
   for (const id of s.order) {
-    if (!isFree(s, id) || ch(s, id).rank === 'servant') continue;
+    if (!isFree(s, id) || ch(s, id).rank === 'servant' || ch(s, id).rank === 'child') continue;
     const vote = id === s.player ? s.player : preferredCandidate(s, id, cands, false);
     if (!tally.has(vote)) continue;
     tally.set(vote, (tally.get(vote) ?? 0) + electorWeight(s, id));
@@ -821,7 +878,7 @@ export function holdWitan(s: GameState, playerVote?: CharId): WitanResult {
   }
   const tally = new Map<CharId, number>(cands.map((c) => [c, 0]));
   for (const id of s.order) {
-    if (!isFree(s, id) || ch(s, id).rank === 'servant') continue;
+    if (!isFree(s, id) || ch(s, id).rank === 'servant' || ch(s, id).rank === 'child') continue;
     const vote = id === s.player && playerVote && cands.includes(playerVote) ? playerVote : preferredCandidate(s, id, cands);
     tally.set(vote, (tally.get(vote) ?? 0) + electorWeight(s, id));
   }

@@ -34,6 +34,11 @@ before changing anything substantial; it is the plan we are building toward.
   deed lists and validation use it. A plot member can betray it to the King (`betrayable()` in `plots.ts`,
   `turnInformer` in `actions.ts`).
 - Houses rise and fall: `houseTier()` in `world.ts` places them on the map by the head's prestige and office.
+- Families: `family.ts` (children with rank `child`, births, coming of age, weddings, NPC matchmaking, outsiders from the
+  provinces, the player's proposals). An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
+- Justice: a charge once judged is recorded on the secret (`Secret.judged`); `alreadyJudged()` in `court.ts` keeps it
+  from being heard again without +15 proof. The UI keeps the save from before the last week ended (`store.ts`) so an
+  ending can be turned back.
 - `test/fixtures/osric.ts` is the original fixed court, kept only for mechanics tests.
 
 ## Engineering rules

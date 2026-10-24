@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, type BusinessKind, type TraitKey } from '../../engine';
+import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, weekLabel, type BusinessKind, type TraitKey } from '../../engine';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Shield } from './Shield';
 import { TradeCard } from './Trade';
@@ -10,11 +10,15 @@ export function TitleScreen({
   onStart,
   onContinue,
   hasSave,
+  backTo,
+  onTurnBack,
   onHelp,
 }: {
   onStart: (seed: number, name: string, trade?: BusinessKind) => void;
   onContinue: () => void;
   hasSave: boolean;
+  backTo: number | null;
+  onTurnBack: () => void;
   onHelp: () => void;
 }) {
   const [seed, setSeed] = useState(randomSeed);
@@ -44,6 +48,11 @@ export function TitleScreen({
           {hasSave && (
             <button className="btn btn--primary" onClick={onContinue}>
               Continue your game
+            </button>
+          )}
+          {backTo && (
+            <button className="btn btn--primary" onClick={onTurnBack} title="Your last game ended. Go back to how it stood before.">
+              <GIcon name="time" size={16} /> Turn back to {weekLabel(backTo)}
             </button>
           )}
           <button className="btn" onClick={onHelp}>

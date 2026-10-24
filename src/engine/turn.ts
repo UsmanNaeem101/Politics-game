@@ -3,13 +3,14 @@
 
 import { evolveAgendas, expireDirectives, npcTurn } from './ai';
 import { witanAudience } from './audiences';
-import { decidePrisoners, fillOffices, holdWitan, kill, pursueInquiries, questionPrisoner } from './court';
+import { decidePrisoners, fillOffices, holdWitan, kill, markJudged, pursueInquiries, questionPrisoner } from './court';
 import { arriveHouse, generateCourt, type GenerateOptions } from './generate';
 import { evaluate } from './objectives';
 import { leakPlots, spymasterHears } from './plots';
 import { deedDone } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
+import { affairsAsSpies, births, matchmaking } from './family';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -62,6 +63,7 @@ function noteRisingHouses(s: GameState): void {
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   s.spies ??= {};
+  affairsAsSpies(s);
   // Trades came after this save was made: every house takes one up now.
   if (!s.businesses) {
     s.businesses = {};
@@ -86,6 +88,17 @@ export function repairSave(s: GameState): void {
       sec.inquiry = s.turn;
     }
   }
+  // Charges the King dismissed before judgments were recorded are not heard again without new proof.
+  const K = s.king;
+  if (K && !s.judged) {
+    s.judged = {};
+    for (const sec of Object.values(s.secrets)) {
+      if (!credence(s, K, sec.id)) continue;
+      for (const g of sec.guilty) {
+        if (g !== K && isFree(s, g) && s.relations[K]?.[g]?.mods.some((m) => m.key === 'accused')) markJudged(s, sec, g);
+      }
+    }
+  }
 }
 
 /** Can the player end the week right now? */
@@ -102,7 +115,7 @@ export function endWeek(s: GameState): void {
   // The night: everyone else moves, in an order no one can predict.
   const npcs = shuffle(
     s,
-    s.order.filter((id) => id !== s.player && !isServant(s, id)),
+    s.order.filter((id) => id !== s.player && !isServant(s, id) && ch(s, id).rank !== 'child'),
   );
   for (const id of npcs) {
     if (s.phase !== 'playing') break;
@@ -150,6 +163,8 @@ function worldTurns(s: GameState): void {
   expireDirectives(s);
   evolveAgendas(s);
   mortality(s);
+  births(s);
+  matchmaking(s);
   newcomers(s);
 }
 

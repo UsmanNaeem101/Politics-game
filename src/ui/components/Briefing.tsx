@@ -120,7 +120,7 @@ export function Briefing() {
         <h3 className="card-title">
           <GIcon name="agent" size={16} /> Your spies
           <span className="muted small">
-            {mySpies.length} of {MAX_SPIES}
+            {mySpies.filter((sp) => !sp.affair).length} of {MAX_SPIES}
           </span>
         </h3>
         {mySpies.length === 0 ? (
@@ -143,7 +143,7 @@ export function Briefing() {
                   </button>
                   <br />
                   <small className="muted">
-                    {sp.hook === 'gold' ? `${sp.wage} crowns a week` : `for ${SPY_HOOKS[sp.hook].name.toLowerCase()}`} · {sp.reports} {sp.reports === 1 ? 'report' : 'reports'} since{' '}
+                    {sp.affair ? 'for love' : sp.hook === 'gold' ? `${sp.wage} crowns a week` : `for ${SPY_HOOKS[sp.hook].name.toLowerCase()}`} · {sp.reports} {sp.reports === 1 ? 'report' : 'reports'} since{' '}
                     {weekLabel(sp.since)}
                   </small>
                 </span>

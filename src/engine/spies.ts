@@ -19,6 +19,7 @@ import {
   hasPerk,
   hearOf,
   insightOf,
+  isChild,
   isFree,
   isServant,
   learn,
@@ -36,10 +37,23 @@ export const MAX_SPIES = 3;
 
 export const activeSpies = (s: GameState): Spy[] => Object.values(s.spies ?? {}).filter((x) => x.status === 'active');
 export const spiesOf = (s: GameState, master: CharId): Spy[] => activeSpies(s).filter((x) => x.master === master);
+/** Spies you recruited (a lover who tells you things does not count against the three). */
+export const recruitedSpies = (s: GameState, master: CharId): Spy[] => spiesOf(s, master).filter((x) => !x.affair);
+
+/** A married woman with a lover tells him what her husband says, and tells her husband what her lover wants him to hear. */
+export function affairSpy(s: GameState, wife: CharId, lover: CharId): void {
+  const husband = s.chars[wife]?.spouse;
+  if (!husband || husband === lover || gone(s, husband) || gone(s, wife) || gone(s, lover)) return;
+  if (activeSpies(s).some((x) => x.affair && x.agent === wife && x.master === lover)) return;
+  const spy: Spy = { id: uid(s, 'sp'), agent: wife, master: lover, mark: husband, hook: 'devotion', wage: 0, since: s.turn, status: 'active', reports: 0, affair: true };
+  s.spies[spy.id] = spy;
+}
+
+const PILLOW_OPENERS = ['{agent} told you what her husband let fall at supper:', '{agent} whispered what she had heard at home:', 'Between kisses, {agent} said:'];
 
 /** How close the agent can get to the mark, if at all. */
 export function accessTo(s: GameState, agent: CharId, mark: CharId): Access | null {
-  if (agent === mark || !isFree(s, agent) || !isFree(s, mark)) return null;
+  if (agent === mark || !isFree(s, agent) || !isFree(s, mark) || isChild(s, agent) || isChild(s, mark)) return null;
   if (ch(s, agent).householdId === ch(s, mark).householdId) return 'household';
   // Lovers carry a mark on each other; it is cheaper to look there than through every secret.
   const lovers = s.relations[mark]?.[agent]?.mods.some((m) => m.key === 'lover');
@@ -53,6 +67,7 @@ export function marksFor(s: GameState, master: CharId, agent: CharId): CharId[] 
     (m) =>
       m !== master &&
       !isServant(s, m) &&
+      !isChild(s, m) &&
       accessTo(s, agent, m) !== null &&
       (master !== s.player || acquaintance(s, m) >= 1) &&
       !spiesOf(s, master).some((x) => x.mark === m && x.agent === agent),
@@ -157,16 +172,23 @@ export function runSpies(s: GameState): void {
       ch(s, master).gold -= spy.wage;
       ch(s, agent).gold += spy.wage;
     }
+    if (spy.affair && ch(s, agent).spouse !== mark) {
+      endSpy(s, spy);
+      continue;
+    }
     if (!spy.turnedBy) {
       const M = effective(s, mark);
       const A = effective(s, agent);
-      const pct = clamp(3 + M.paranoia * 0.08 + M.cunning * 0.05 - A.cunning * 0.06 + (s.offices.spymaster === mark ? 6 : 0), 1, 20);
+      // A wife is watched less than a maid, but a husband who finds the letters needs no questioning.
+      const pct = clamp((spy.affair ? 1 : 3) + M.paranoia * 0.08 + M.cunning * 0.05 - A.cunning * 0.06 + (s.offices.spymaster === mark ? 6 : 0), 1, 20);
       if (chance(s, pct)) {
-        caught(s, spy);
+        if (spy.affair) lettersFound(s, spy);
+        else caught(s, spy);
         continue;
       }
       const reportPct = (accessTo(s, agent, mark) === 'household' ? 50 : 35) + A.cunning * 0.2;
       if (chance(s, reportPct)) report(s, spy);
+      if (spy.affair && chance(s, 25)) deceive(s, spy);
     } else if (chance(s, 40)) {
       feedLie(s, spy);
     }
@@ -174,7 +196,53 @@ export function runSpies(s: GameState): void {
 }
 
 function opener(s: GameState, spy: Spy): string {
-  return pick(s, REPORT_OPENERS).replace('{agent}', first(s, spy.agent)).replace('{mark}', first(s, spy.mark));
+  return pick(s, spy.affair ? PILLOW_OPENERS : REPORT_OPENERS)
+    .replace('{agent}', first(s, spy.agent))
+    .replace('{mark}', first(s, spy.mark));
+}
+
+/** The secret that this wife and her lover share. */
+function affairSecret(s: GameState, spy: Spy): Secret | undefined {
+  return Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(spy.agent) && x.guilty.includes(spy.master));
+}
+
+/** The husband finds her letters. */
+function lettersFound(s: GameState, spy: Spy): void {
+  const { agent: wife, master: lover, mark: husband } = spy;
+  const sec = affairSecret(s, spy);
+  if (sec) learn(s, husband, sec.id, 90, 'self');
+  endSpy(s, spy);
+  log(s, `You found ${husband === s.player ? 'your wife' : first(s, wife)}'s letters to ${nm(s, lover)}. There is no mistaking them.`, [husband], 'dire', [wife, lover]);
+  log(s, `${first(s, wife)}'s husband found her letters to you. He knows.`, [lover], 'dire', [wife, husband]);
+}
+
+/** She tells her husband what her lover wants him to believe, in her own voice. */
+function deceive(s: GameState, spy: Spy): void {
+  const { agent: wife, master: lover, mark: husband } = spy;
+  const spare = [wife, lover, husband];
+  const forged = Object.entries(s.knowledge[lover] ?? {})
+    .filter(([sid, k]) => k.lie && s.secrets[sid] && !s.secrets[sid].guilty.some((g) => spare.includes(g)) && secretMatters(s, s.secrets[sid]) && credence(s, husband, sid) < 40)
+    .map(([sid]) => s.secrets[sid]);
+  let sec = forged.length ? pick(s, forged) : undefined;
+  if (!sec && lover !== s.player) {
+    const enemy = s.order
+      .filter((x) => !spare.includes(x) && isFree(s, x) && !isServant(s, x) && !isChild(s, x) && x !== s.king)
+      .sort((a, b) => opinion(s, lover, a) - opinion(s, lover, b))[0];
+    if (!enemy) return;
+    sec = makeSecret(s, {
+      kind: 'murder',
+      guilty: [enemy],
+      victims: [husband],
+      truth: false,
+      fabricatedBy: lover,
+      evidence: roll(s, 20, 35) + ch(s, lover).traits.cunning * 0.2,
+    });
+    learn(s, lover, sec.id, 0, 'self', true);
+  }
+  if (!sec) return;
+  learn(s, husband, sec.id, clamp(55 + roll(s, 0, 15), 0, 90), wife);
+  log(s, `${husband === s.player ? 'Your wife' : first(s, wife)} told you, as if in passing: “${sec.text}”`, [husband], 'secret', sec.guilty);
+  log(s, `${first(s, wife)} carried your tale to her husband: “${sec.text}”`, [lover], 'secret', [wife, husband]);
 }
 
 /** What a spy brings back. Their mark's own schemes first, then guilt, gossip, designs and faces. */
@@ -339,6 +407,13 @@ export function sweepHousehold(s: GameState, actor: CharId): Result {
 /** A forgery came to light: if it reached its victim through a turned spy, the spy is unmasked too. */
 export function unmaskTurned(s: GameState, sec: Secret): void {
   for (const spy of activeSpies(s)) {
+    // A forgery a wife carried home: her husband begins to wonder whose errand she was on.
+    if (spy.affair && sec.fabricatedBy === spy.master && s.knowledge[spy.mark]?.[sec.id]?.source === spy.agent) {
+      const aff = affairSecret(s, spy);
+      if (aff) learn(s, spy.mark, aff.id, 55, 'rumour');
+      log(s, `The tale was a forgery, and it was ${spy.mark === s.player ? 'your wife' : first(s, spy.agent)} who brought it to you. You wonder for whom.`, [spy.mark], 'secret', [spy.agent]);
+      continue;
+    }
     if (!spy.turnedBy || spy.turnedBy !== sec.fabricatedBy || s.knowledge[spy.master]?.[sec.id]?.source !== spy.agent) continue;
     endSpy(s, spy, `The letters were forged, and they came to you through ${nm(s, spy.agent)}. Your spy had been turned.`);
   }

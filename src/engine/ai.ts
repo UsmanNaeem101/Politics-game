@@ -19,8 +19,8 @@ import {
   betrayable, canStrike, isMember, strikeChance, waitCleared } from './plots';
 import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
-import { capital, claimants } from './court';
-import { accessTo, spiesOf, spyOdds } from './spies';
+import { alreadyJudged, capital, claimants, officeEligible } from './court';
+import { accessTo, recruitedSpies, spyOdds } from './spies';
 import {
   addMod,
   adjustTrust,
@@ -30,6 +30,7 @@ import {
   credence,
   effective,
   isAlive,
+  isChild,
   isFree,
   knows,
   knowsAgenda,
@@ -92,7 +93,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   const E = effective(s, me);
   const out: Candidate[] = [];
   const add = (intent: Intent, u: number) => out.push({ intent, u });
-  const others = s.order.filter((id) => id !== me && isFree(s, id) && !isServant(s, id));
+  const others = s.order.filter((id) => id !== me && isFree(s, id) && !isServant(s, id) && !isChild(s, id));
   const king = s.king;
   const myRow = s.knowledge[me] ?? {};
 
@@ -122,7 +123,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (king === me) {
     for (const g of others) {
       const belief = Object.entries(myRow)
-        .filter(([sid, k]) => !k.lie && s.secrets[sid]?.guilty.includes(g) && s.secrets[sid].treason)
+        .filter(([sid, k]) => !k.lie && s.secrets[sid]?.guilty.includes(g) && s.secrets[sid].treason && !alreadyJudged(s, s.secrets[sid], g))
         .reduce((m, [, k]) => Math.max(m, k.credence), 0);
       const bar = 70 + Math.max(0, opinion(s, me, g)) * 0.3;
       if (belief >= bar) add({ type: 'arrest', target: g }, 45 + c.traits.paranoia * 0.3 + belief * 0.2);
@@ -267,26 +268,30 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   }
 
   // ── New schemes ───────────────────────────────────────────────────────────
+  // Fresh from the Tower or the King's judgment, a man keeps his head down for a while.
+  const plan = (it: Intent, w: number) => {
+    if ((c.lieLow ?? 0) <= s.turn) add(it, w);
+  };
   const myPlots = Object.values(s.plots).filter((p) => p.status === 'active' && p.owner === me);
   // Only a man with standing reaches for the King's life; small fry climb first.
   const standing = c.rank === 'great' || !!officeOf(s, me) || c.prestige >= 45;
   if (king && c.agenda.kind === 'crown' && standing && !myPlots.some((p) => p.kind === 'murder' && p.targets.includes(king))) {
-    add({ type: 'scheme', kind: 'murder', targets: [king], charges: [] }, E.ambition * 0.25 - c.traits.honor * 0.1 - 4);
+    plan({ type: 'scheme', kind: 'murder', targets: [king], charges: [] }, E.ambition * 0.25 - c.traits.honor * 0.1 - 4);
   }
   for (const sec of threatsTo(s, me, me, 50)) {
     for (const g of sec.guilty) {
       if (!isFree(s, g) || g === king || myPlots.some((p) => p.targets.includes(g))) continue;
-      add({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, 12 + E.boldness * 0.2 + E.wrath * 0.15 - c.traits.honor * 0.2);
-      add({ type: 'scheme', kind: 'ruin', targets: [g], charges: [sec.id] }, 14 + c.traits.cunning * 0.1 + c.traits.honor * 0.1);
+      plan({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, 12 + E.boldness * 0.2 + E.wrath * 0.15 - c.traits.honor * 0.2);
+      plan({ type: 'scheme', kind: 'ruin', targets: [g], charges: [sec.id] }, 14 + c.traits.cunning * 0.1 + c.traits.honor * 0.1);
     }
   }
   if (c.agenda.kind === 'destroy') {
     for (const g of c.agenda.targets) {
       if (!isFree(s, g) || myPlots.some((p) => p.targets.includes(g))) continue;
       const charge = secretsAgainst(s, g, me, 50).find((x) => capital(x) || x.kind === 'theft' || x.kind === 'affair' || x.kind === 'racket');
-      if (charge) add({ type: 'scheme', kind: 'ruin', targets: [g], charges: [charge.id] }, 22);
+      if (charge) plan({ type: 'scheme', kind: 'ruin', targets: [g], charges: [charge.id] }, 22);
       // No charge to bring: a hot, unscrupulous man reaches for a knife instead.
-      else if (g !== king) add({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
+      else if (g !== king) plan({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
     }
   }
 
@@ -306,7 +311,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     add({ type: 'spy', target: spyTarget.g, focus: 'schemes' }, u);
     // Better still, someone placed close to them, for as long as it lasts.
     // Weighed every third week, in turn: finding the right person to suborn takes time.
-    if ((s.turn + me.length) % 3 === 0 && spiesOf(s, me).length < 2) {
+    if ((s.turn + me.length) % 3 === 0 && recruitedSpies(s, me).length < 2) {
       const wage = 4;
       const best = s.order
         .filter((a) => a !== me && accessTo(s, a, spyTarget.g) && ch(s, a).householdId !== c.householdId)
@@ -358,15 +363,15 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     }
     for (const pid of Object.keys(s.imprisoned)) {
       if (ch(s, pid).status !== 'imprisoned') continue;
+      // Only those with a tie to the prisoner risk the King's temper for them.
       let u = 0;
-      if (c.agenda.kind === 'peace') u = 18 + Math.max(0, opinion(s, me, pid)) * 0.2;
+      if (c.agenda.kind === 'peace' && opinion(s, me, pid) >= 30) u = 12 + opinion(s, me, pid) * 0.2;
       if (c.spouse === pid) u = 45;
       if (c.siblings.includes(pid) && opinion(s, me, pid) > 10) u = 25;
       if (u) add({ type: 'petition', kind: 'mercy', target: pid }, u);
     }
-    for (const office of Object.keys(s.offices) as (keyof typeof s.offices)[]) {
-      if (!s.offices[office] && c.traits.ambition >= 50) add({ type: 'petition', kind: 'office', office }, 12 + c.traits.ambition * 0.1);
-    }
+    const vacant = (Object.keys(s.offices) as (keyof typeof s.offices)[]).find((o) => !s.offices[o] && officeEligible(s, me, o));
+    if (vacant && c.traits.ambition >= 55) add({ type: 'petition', kind: 'office', office: vacant }, 8 + c.traits.ambition * 0.1);
   }
 
   // ── Safety ───────────────────────────────────────────────────────────────

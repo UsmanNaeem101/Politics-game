@@ -35,6 +35,8 @@ const MAP = {
   racket: 'robber', invest: 'shop', divest: 'sell-card', trade: 'swap-bag',
   // spies
   plant: 'eye-target', 'dismiss-spy': 'cancel', sweep: 'secret-door', agent: 'domino-mask',
+  // families
+  child: 'baby-face', propose: 'linked-rings', plead: 'envelope',
   // parts of society
   nobility: 'knight-banner', church: 'church', guilds: 'anvil', commons: 'farmer', underworld: 'hood',
 };

@@ -23,6 +23,7 @@ import { chance, clamp, pick, roll, seedFrom, shuffle, weighted } from './rng';
 import { makeSecret, syncPlotSecret } from './secrets';
 import { emptyState } from './state';
 import { endowNewcomer, endowTrades } from './economy';
+import { affairsAsSpies, bearChild } from './family';
 import { names } from './text';
 import { addMod, adjustTrust, insightOf, learn, log, meetPersonalTies, rel, uid } from './world';
 import type {
@@ -323,6 +324,16 @@ function household(
     marry(lord, wife);
     spouseFeelings(g, lord, wife);
   }
+  // Children, some of them grown.
+  if (lord.spouse) {
+    const wife = s.chars[lord.spouse];
+    const n = weighted(s, [35, 35, 22, 8].map((w, i) => ({ i, w })), (x) => x.w)!.i;
+    for (let i = 0; i < n; i++) {
+      const age = wife.age - roll(s, 17, 32);
+      if (age < 0) continue;
+      g.usedGiven.add(bearChild(s, wife.id, lord.id, age).short);
+    }
+  }
   const nBrothers = weighted(s, opts.brothers.map((w, i) => ({ i, w })), (x) => x.w)?.i ?? 0;
   const kin = [lord];
   for (let i = 0; i < nBrothers; i++) {
@@ -452,6 +463,7 @@ function build(seed: number, attempt: number, opts: GenerateOptions): GameState 
   assignAgendas(g, king, captain, priest, greats);
   seedSituations(g, king, greats, lessers, player, history);
   endowTrades(s, opts.trade);
+  affairsAsSpies(s);
   servantsOverhear(g);
   playerAcquaintance(g, player);
   for (const p of Object.values(s.plots)) syncPlotSecret(s, p);
@@ -509,8 +521,8 @@ function writeHistory(g: Gen, king: Character, greats: Character[], lessers: Cha
 
   // A stolen inheritance.
   const withBrothers = shuffle(s, heads.filter((h) => h.siblings.length > 0));
-  for (const thief of withBrothers.slice(0, chance(s, 25) ? 2 : 1)) {
-    if (!chance(s, thief.id === player.id ? 30 : 75)) continue;
+  for (const thief of withBrothers.slice(0, chance(s, 10) ? 2 : 1)) {
+    if (!chance(s, thief.id === player.id ? 25 : 60)) continue;
     const brothers = thief.siblings.map((b) => s.chars[b]);
     for (const b of brothers) {
       const lid = uid(s, 'l');
@@ -585,7 +597,7 @@ function writeHistory(g: Gen, king: Character, greats: Character[], lessers: Cha
     const husband = s.chars[wife.spouse!];
     const lovers = s.order
       .map((id) => s.chars[id])
-      .filter((c) => c.gender === 'm' && c.id !== husband.id && c.status === 'free' && !['king', 'clergy', 'servant'].includes(c.rank) && c.householdId !== wife.householdId && c.traits.honor < 60);
+      .filter((c) => c.gender === 'm' && c.id !== husband.id && c.status === 'free' && !['king', 'clergy', 'servant', 'child'].includes(c.rank) && c.householdId !== wife.householdId && c.traits.honor < 60);
     const lover = weighted(s, lovers, (c) => c.traits.charm + (c.archetype === 'rake' ? 60 : 0));
     if (!lover) continue;
     const sec = makeSecret(s, {
@@ -622,7 +634,8 @@ function assignAgendas(g: Gen, king: Character, captain: Character, priest: Char
     greats.filter((o) => o.id !== c.id).sort((a, b) => (s.relations[c.id]?.[a.id] ? 0 : 1) - (s.relations[c.id]?.[b.id] ? 0 : 1))[0];
 
   for (const c of Object.values(s.chars)) {
-    if (c.id === s.player || c === king || c === captain || c === priest) continue;
+    if (c.id === s.player || c === king || c === captain || c === priest || c.rank === 'child') continue;
+    if (!c.archetype) continue;
     if (c.rank === 'servant') {
       setAgenda(c, { kind: 'peace', targets: [], summary: 'Keep a roof over their head, and a little silver put by.' });
       continue;

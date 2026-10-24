@@ -15,7 +15,7 @@ import { Game } from './components/Game';
 import { HowToPlay } from './components/HowToPlay';
 import { TitleScreen } from './components/TitleScreen';
 import { GameCtx, type Ctx, type DeedSpec, type TabId } from './context';
-import { applyTheme, loadGame, loadPrefs, saveGame, savePrefs, type Prefs } from './store';
+import { applyTheme, loadGame, loadPrefs, saveGame, savePrefs, turnBack, weekBefore, type Prefs } from './store';
 
 declare global {
   interface Window {
@@ -33,6 +33,7 @@ export function App({ initial }: { initial?: GameState | null }) {
   const [help, setHelp] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const [hasSave, setHasSave] = useState(() => !!loadGame());
+  const [backTo, setBackTo] = useState(() => weekBefore());
   const [dawn, setDawn] = useState(false);
 
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
@@ -60,6 +61,16 @@ export function App({ initial }: { initial?: GameState | null }) {
       setPrefs(p);
       savePrefs(p);
     }
+  };
+
+  const goBack = () => {
+    const g = turnBack();
+    if (!g) return setBackTo(null);
+    gameRef.current = g;
+    setSelected(null);
+    setScreen('game');
+    setDawn(false);
+    bump();
   };
 
   const toggleTheme = () => {
@@ -111,6 +122,8 @@ export function App({ initial }: { initial?: GameState | null }) {
         <TitleScreen
           onStart={start}
           hasSave={hasSave}
+          backTo={hasSave ? null : backTo}
+          onTurnBack={goBack}
           onContinue={() => {
             const g = loadGame();
             if (!g) return setHasSave(false);
@@ -133,8 +146,10 @@ export function App({ initial }: { initial?: GameState | null }) {
             onTheme={toggleTheme}
             onQuit={() => {
               setHasSave(!!loadGame());
+              setBackTo(weekBefore());
               setScreen('title');
             }}
+            onTurnBack={goBack}
             onRestart={(seed, name) => start(seed, name)}
             onRuleOn={() => {
               if (gameRef.current) continueReign(gameRef.current);

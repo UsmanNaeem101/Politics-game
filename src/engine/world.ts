@@ -354,6 +354,8 @@ export function meetPersonalTies(s: GameState): void {
 }
 
 export const isServant = (s: GameState, id: CharId) => s.chars[id]?.rank === 'servant';
+/** Too young to take part: no schemes, no votes, no offices, no deeds done to them. */
+export const isChild = (s: GameState, id: CharId) => s.chars[id]?.rank === 'child';
 export const isNoble = (s: GameState, id: CharId) => !!s.chars[id] && s.chars[id].rank !== 'servant';
 
 export function knowers(s: GameState, secret: SecretId, minCred = 1): CharId[] {

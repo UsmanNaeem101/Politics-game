@@ -1,0 +1,144 @@
+import { describe, expect, it } from 'vitest';
+import {
+  COMING_OF_AGE,
+  addMod,
+  affairSpy,
+  bearChild,
+  births,
+  check,
+  comeOfAge,
+  generateCourt,
+  imprison,
+  kill,
+  marriageable,
+  matchmaking,
+  perform,
+  runSpies,
+  type GameState,
+} from '../src/engine';
+
+/** A lord at court with a wife of childbearing age. */
+function couple(s: GameState): { lord: string; wife: string } {
+  for (const h of Object.values(s.houses)) {
+    const lord = h.head && s.chars[h.head];
+    if (!lord || lord.id === s.player || lord.id === s.king || !lord.spouse) continue;
+    const wife = s.chars[lord.spouse];
+    if (wife.status === 'free' && wife.age >= 17 && wife.age <= 40) return { lord: lord.id, wife: wife.id };
+  }
+  throw new Error('no couple');
+}
+
+describe('children', () => {
+  it('a generated court has children, linked to both parents, and no deed touches them', () => {
+    const s = generateCourt(3);
+    const kids = Object.values(s.chars).filter((c) => c.rank === 'child');
+    expect(kids.length).toBeGreaterThan(3);
+    for (const k of kids) {
+      expect(k.age).toBeLessThan(COMING_OF_AGE);
+      for (const p of k.parents ?? []) expect(s.chars[p].children).toContain(k.id);
+    }
+    s.known[kids[0].id] = 3;
+    expect(check(s, s.player, { type: 'converse', target: kids[0].id })).toMatch(/child/);
+  });
+
+  it('wives bear children, in time', () => {
+    const s = generateCourt(4);
+    const { lord, wife } = couple(s);
+    const before = s.chars[wife].children?.length ?? 0;
+    for (let w = 0; w < 400 && (s.chars[wife].children?.length ?? 0) === before; w++) births(s);
+    const born = s.chars[wife].children!.at(-1)!;
+    expect(s.chars[born].rank).toBe('child');
+    expect(s.chars[born].parents).toEqual([wife, lord]);
+    expect(s.chars[lord].children).toContain(born);
+    expect(s.chars[born].householdId).toBe(s.chars[wife].householdId);
+  });
+
+  it('a child comes of age as a knight or a lady of the house', () => {
+    const s = generateCourt(4);
+    const { lord, wife } = couple(s);
+    const c = bearChild(s, wife, lord, 15);
+    expect(marriageable(s, c.id)).toBe(false);
+    c.age = COMING_OF_AGE;
+    comeOfAge(s, c);
+    expect(['knight', 'lady']).toContain(c.rank);
+    expect(c.name).toMatch(c.gender === 'm' ? /^Sir / : /^Lady /);
+  });
+
+  it('a son inherits before his uncle', () => {
+    const s = generateCourt(4);
+    const { lord, wife } = couple(s);
+    const heir = bearChild(s, wife, lord, 20);
+    if (heir.gender !== 'm') heir.gender = 'm';
+    kill(s, lord, 'Died', false);
+    expect(s.houses[s.chars[lord].householdId].head).toBe(heir.id);
+  });
+});
+
+describe('marrying again', () => {
+  it('a widow marries again after a season’s mourning', () => {
+    const s = generateCourt(5);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    expect(marriageable(s, wife)).toBe(true);
+    s.turn += 14;
+    for (let w = 0; w < 300 && s.chars[wife].spouse === lord; w++) matchmaking(s);
+    const next = s.chars[wife].spouse!;
+    expect(next).not.toBe(lord);
+    expect(s.chars[next].spouse).toBe(wife);
+  });
+
+  it('a widowed player may seek a match: someone at court, or from the provinces', () => {
+    const s = generateCourt(6);
+    const P = s.player;
+    const late = s.chars[P].spouse;
+    if (late) kill(s, late, 'Died', false);
+    expect(check(s, P, { type: 'propose' })).toBe(late ? 'It is too soon after the funeral.' : null);
+    s.turn += 5;
+    expect(check(s, P, { type: 'propose' })).toBeNull();
+    const r = perform(s, P, { type: 'propose' });
+    expect(r.ok).toBe(true);
+    const bride = s.chars[P].spouse!;
+    expect(s.chars[bride].spouse).toBe(P);
+    expect(s.chars[bride].householdId).toBe(s.chars[P].householdId);
+    expect(check(s, P, { type: 'propose' })).toBe('You are married.');
+  });
+});
+
+describe('from the Tower', () => {
+  it('you may ask a friend to plead your case before the King', () => {
+    const s = generateCourt(7);
+    const P = s.player;
+    const friend = s.order.find((id) => id !== P && id !== s.king && s.chars[id].status === 'free' && s.chars[id].rank !== 'servant' && s.chars[id].rank !== 'child')!;
+    s.known[friend] = 3;
+    s.known[s.king!] = 3;
+    expect(check(s, P, { type: 'plead', target: friend })).toBe('You are not in the Tower.');
+    imprison(s, P, []);
+    expect(check(s, P, { type: 'plead', target: s.king! })).toMatch(/someone who can reach/);
+    expect(check(s, P, { type: 'plead', target: friend })).toBeNull();
+    addMod(s, friend, P, 'friend', 'Old friends', 80);
+    let freed = false;
+    for (let i = 0; i < 20 && !freed; i++) {
+      perform(s, P, { type: 'plead', target: friend });
+      freed = s.chars[P].status === 'free';
+    }
+    expect(freed).toBe(true);
+  });
+});
+
+describe('an unfaithful wife', () => {
+  it('brings her lover what her husband lets fall at home', () => {
+    const s = generateCourt(8);
+    const { lord, wife } = couple(s);
+    const lover = s.order.find((id) => id !== lord && id !== s.player && s.chars[id].gender === 'm' && s.chars[id].status === 'free' && s.chars[id].rank !== 'servant' && s.chars[id].rank !== 'child' && s.chars[id].householdId !== s.chars[wife].householdId)!;
+    affairSpy(s, wife, lover);
+    const sp = Object.values(s.spies).find((x) => x.affair && x.agent === wife)!;
+    expect(sp.mark).toBe(lord);
+    s.chars[lord].traits.paranoia = 0;
+    s.chars[lord].traits.cunning = 0;
+    for (let w = 0; w < 40 && sp.status === 'active' && sp.reports === 0; w++) runSpies(s);
+    if (sp.status !== 'active') return; // found out, which is its own story
+    expect(sp.reports).toBeGreaterThan(0);
+    const pillow = s.events.filter((e) => Array.isArray(e.visibleTo) && e.visibleTo.includes(lover) && /supper|heard at home|kisses/.test(e.text));
+    expect(pillow.length).toBeGreaterThan(0);
+  });
+});

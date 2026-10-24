@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  alreadyJudged,
   applyJudgments,
+  chargesFor,
+  check,
   applyPetition,
   capital,
   createPlot,
@@ -98,6 +101,29 @@ describe('a dismissed charge', () => {
     for (let i = 0; i < 100; i++) pursueInquiries(s);
     expect(sec.guilty.every((g) => s.chars[g].status !== 'imprisoned')).toBe(true);
     expect(credence(s, 'osric', sec.id)).toBeLessThan(60);
+  });
+});
+
+describe('a charge once judged', () => {
+  it('is not heard again, from anyone, until new proof comes to light', () => {
+    const s = fresh();
+    const sid = 's-aldric-regicide';
+    const other = s.order.find((id) => !['osric', 'aldric', 'anselm'].includes(id) && s.chars[id].rank !== 'servant' && chargesFor(s, id, [sid]).length > 0)!;
+    learn(s, other, sid, 70, 'rumour');
+    applyJudgments(s, 'anselm', [{ accused: 'aldric', secretId: sid, verdict: 'dismiss', score: 45, forgeryFound: false }]);
+    expect(chargesFor(s, other, [sid])).toEqual([]);
+    expect(check(s, other, { type: 'denounce', secretId: sid })).toMatch(/already judged/);
+    s.secrets[sid].evidence += 15;
+    expect(chargesFor(s, other, [sid]).map((c) => c.accused)).toContain('aldric');
+  });
+
+  it('an old save remembers what the King has already dismissed', () => {
+    const s = fresh();
+    const sid = 's-aldric-regicide';
+    applyJudgments(s, 'anselm', [{ accused: 'aldric', secretId: sid, verdict: 'dismiss', score: 45, forgeryFound: false }]);
+    delete s.judged;
+    repairSave(s);
+    expect(alreadyJudged(s, s.secrets[sid], 'aldric')).toBe(true);
   });
 });
 

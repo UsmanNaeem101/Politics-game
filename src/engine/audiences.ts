@@ -14,6 +14,7 @@ import {
 import {
   applyJudgments,
   capital,
+  markJudged,
   chargesFor,
   claimants,
   crimeName,
@@ -112,6 +113,7 @@ function resolveJudgment(s: GameState, a: Audience, optionId: string): Outcome {
   const list = chargesFor(s, accuser, charges, a.data.only as CharId[] | undefined);
   if (!list.length) return { ok: false, text: 'The accused are beyond your judgment now.', tone: 'neutral' };
   for (const { secretId, accused } of list) {
+    markJudged(s, s.secrets[secretId], accused);
     learn(s, K, secretId, optionId === 'execute' ? 90 : optionId === 'imprison' ? 60 : 20, accuser);
     addMod(s, accused, accuser, 'denounced', 'Denounced me to the King', -40);
   }
@@ -169,6 +171,9 @@ function resolveAccused(s: GameState, a: Audience, optionId: string): Outcome {
   const charges = a.data.charges as SecretId[];
   const plot = a.data.plotId ? s.plots[a.data.plotId as string] : undefined;
   if (!s.king) return { ok: true, text: 'With the throne empty, no one judges you.', tone: 'good' };
+  if (!chargesFor(s, accuser, charges, a.data.only as CharId[] | undefined).length) {
+    return { ok: true, text: 'The King has judged that charge before, and will not hear it again without new proof.', tone: 'good' };
+  }
   let bonus = 0;
   if (optionId === 'flee') {
     if (chance(s, clamp(30 + ch(s, P).traits.cunning * 0.3 + ch(s, P).traits.boldness * 0.1, 10, 75))) {

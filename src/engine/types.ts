@@ -7,7 +7,7 @@ export type PlotId = string;
 export type LandId = string;
 
 export type OfficeId = 'marshal' | 'chancellor' | 'spymaster' | 'captain' | 'confessor';
-export type Rank = 'king' | 'queen' | 'great' | 'lord' | 'knight' | 'lady' | 'clergy' | 'servant';
+export type Rank = 'king' | 'queen' | 'great' | 'lord' | 'knight' | 'lady' | 'clergy' | 'servant' | 'child';
 export type HouseId = string;
 export type Status = 'free' | 'imprisoned' | 'dead' | 'fled';
 
@@ -90,11 +90,16 @@ export interface Character {
   traits: Traits;
   status: Status;
   statusTurn?: number;
+  /** Found guilty or let out of the Tower: begins no new scheme before this week. */
+  lieLow?: number;
   fate?: string;
   gold: number;
   prestige: number;
   spouse?: CharId;
   siblings: CharId[];
+  /** Mother and father (as the world believes; a secret may say otherwise). */
+  parents?: CharId[];
+  children?: CharId[];
   /** The true motive. Hidden. */
   agenda: Agenda;
   /** The motive they began the season with (agendas can change). */
@@ -219,6 +224,8 @@ export interface Spy {
   /** Caught and turned by this person: now carries their lies to the master. */
   turnedBy?: CharId;
   reports: number;
+  /** An unfaithful spouse, spying on her husband for her lover (and lying to him for her lover). */
+  affair?: boolean;
 }
 
 /** What a trade gives its owner for intrigue. */
@@ -439,5 +446,7 @@ export interface GameState {
   nextId: number;
   /** Event id at which the current week's night began, for the dawn report. */
   nightStart: number;
+  /** Charges the King has judged, by chargeKey(): how much proof there was then. A forged copy is the same charge. */
+  judged?: Record<string, number>;
   ending?: Ending;
 }

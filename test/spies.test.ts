@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   accessTo,
-  activeSpies,
+  recruitedSpies,
   addMod,
   answerCaughtSpy,
   caught,
@@ -45,8 +45,8 @@ function court(): { s: GameState; lord: string; maid: string } {
 function plant(s: GameState, agent: string, mark: string): Spy {
   s.chars[s.player].gold = 1000;
   addMod(s, agent, s.player, 'friend', 'Friendly', 30);
-  for (let i = 0; i < 60 && !activeSpies(s).length; i++) recruitSpy(s, s.player, agent, mark, 'gold', 8);
-  const sp = activeSpies(s)[0];
+  for (let i = 0; i < 60 && !recruitedSpies(s, s.player).length; i++) recruitSpy(s, s.player, agent, mark, 'gold', 8);
+  const sp = recruitedSpies(s, s.player)[0];
   if (!sp) throw new Error('never recruited');
   return sp;
 }

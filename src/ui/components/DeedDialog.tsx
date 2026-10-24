@@ -1,6 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
+  matchProblem,
+  pleadWillingness,
+  proposeOdds,
   betrayable,
   SPY_HOOKS,
   SPY_HOOK_KINDS,
@@ -202,6 +205,10 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return spec.spyId ? { type, spyId: spec.spyId } : null;
       case 'sweep':
         return { type };
+      case 'propose':
+        return { type, target: target || undefined };
+      case 'plead':
+        return target ? { type, target } : null;
     }
   })();
 
@@ -724,6 +731,24 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       );
       break;
     }
+    case 'propose':
+      fields = !spec.target && (
+        <>
+          {pick(
+            'Whose hand',
+            target,
+            setTarget,
+            [{ value: '', label: 'Leave it to a matchmaker: a match from the provinces' }].concat(
+              others(s, (id) => !matchProblem(s, P, id), 3).map((o) => ({ value: o, label: nm(s, o) })),
+            ),
+            'deed-target',
+          )}
+        </>
+      );
+      break;
+    case 'plead':
+      fields = !spec.target && personPick('To whom will you write', (id) => met(s)(id) && id !== s.king);
+      break;
     case 'divest':
       fields = (
         <fieldset className="field">
@@ -918,6 +943,18 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     }
     case 'sweep':
       return { lines: ['You may find someone else’s spy among your people. Then you choose: send them away, or turn them.'] };
+    case 'propose':
+      return it.target
+        ? { pct: proposeOdds(s, P, it.target), lines: ['Their regard for you counts, and your standing against theirs, and what their family thinks of you.'] }
+        : { lines: ['A matchmaker will find you a wife from the provinces. She will join your household this week.'] };
+    case 'plead': {
+      const will = pleadWillingness(s, P, it.target);
+      const odds = petitionOdds(s, it.target, { type: 'petition', kind: 'mercy', target: P });
+      return {
+        pct: clampPct((will * odds) / 100),
+        lines: [`Chance ${first(s, it.target)} goes to the King for you: ${will}%. Chance the King then relents: ${odds}%.`],
+      };
+    }
     default:
       return { lines: [] };
   }

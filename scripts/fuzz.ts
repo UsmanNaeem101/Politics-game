@@ -43,6 +43,14 @@ function check(s: GameState, tag: string) {
     spyCount[sp.master] = (spyCount[sp.master] ?? 0) + 1;
   }
   for (const [m, n] of Object.entries(spyCount)) if (n > 3) bad(`${m} keeps ${n} spies`);
+  for (const c of Object.values(s.chars)) {
+    if (c.rank === 'child' && c.age >= 17) bad(`${c.id} still a child at ${c.age}`);
+    if (c.rank === 'child' && (c.spouse || Object.values(s.plots).some((p) => p.status === 'active' && (p.owner === c.id || p.targets.includes(c.id) || p.members.some((m) => m.id === c.id)))))
+      bad(`child ${c.id} married or in a plot`);
+    for (const p of c.parents ?? []) if (!s.chars[p]?.children?.includes(c.id)) bad(`${c.id} has a parent who does not own them`);
+    if (c.status !== 'dead' && c.spouse && s.chars[c.spouse].status !== 'dead' && s.chars[c.spouse].spouse !== c.id) bad(`${c.id} married to someone married elsewhere`);
+  }
+  for (const sp of Object.values(s.spies)) if (sp.status === 'active' && (s.chars[sp.agent].rank === 'child' || s.chars[sp.mark].rank === 'child')) bad(`spy ${sp.id} involves a child`);
 }
 let games = 0;
 const t0 = Date.now();

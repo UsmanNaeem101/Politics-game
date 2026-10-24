@@ -62,6 +62,8 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
     { type: 'escape' },
     { type: 'invest', kind: pickOf(r, BUSINESS_KINDS)! },
     { type: 'sweep' },
+    { type: 'propose', target: r() < 0.5 ? undefined : t() },
+    { type: 'plead', target: t() },
     { type: 'plant', target: t(), mark: t(), hook: pickOf(r, ['gold', 'devotion', 'grudge'] as const)!, wage: 3 },
   ];
   for (const sp of spiesOf(s, P)) out.push({ type: 'dismiss-spy', spyId: sp.id });

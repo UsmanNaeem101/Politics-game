@@ -2,10 +2,12 @@
 // what the AI may do, the player may do, and with the same odds.
 
 import {
+  alreadyJudged,
   applyJudgments,
   chargesFor,
   crimeName,
   disgrace,
+  markJudged,
   execute,
   forgeryDetection,
   imprison,
@@ -38,7 +40,8 @@ import { hearCredence, kindLabel, makeSecret, secretMatters, syncPlotSecret } fr
 import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
 import { tableTalk } from './talk';
-import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, spiesOf, sweepHousehold } from './spies';
+import { marriageable, matchProblem, propose, unwed } from './family';
+import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, recruitedSpies, sweepHousehold } from './spies';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -52,7 +55,9 @@ import {
   effective,
   insightOf,
   isAlive,
+  gone,
   hasPerk,
+  isChild,
   isFree,
   knows,
   learn,
@@ -111,7 +116,9 @@ export type Intent =
   | { type: 'divest'; businessId: string }
   | { type: 'plant'; target: CharId; mark: CharId; hook: SpyHook; wage: number; secretId?: SecretId }
   | { type: 'dismiss-spy'; spyId: string }
-  | { type: 'sweep' };
+  | { type: 'sweep' }
+  | { type: 'propose'; target?: CharId }
+  | { type: 'plead'; target: CharId };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -152,6 +159,8 @@ export const COST: Record<IntentType, number> = {
   plant: 1,
   'dismiss-spy': 0,
   sweep: 1,
+  propose: 1,
+  plead: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -184,10 +193,12 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   plant: { name: 'Recruit as a spy', desc: 'Have them watch someone they can get close to. Offer a wage, use what you know, or ask a favour.' },
   'dismiss-spy': { name: 'Dismiss a spy', desc: 'End their service.' },
   sweep: { name: 'Search your household', desc: 'Look for someone else’s spy among your people.' },
+  propose: { name: 'Seek a match', desc: 'Ask for someone’s hand, or have a match found for you in the provinces.' },
+  plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
 };
 
 const KING_ONLY: IntentType[] = ['arrest', 'question', 'execute', 'release', 'appoint'];
-const PRISON_OK: IntentType[] = ['whisper', 'escape', 'counsel'];
+const PRISON_OK: IntentType[] = ['whisper', 'escape', 'counsel', 'plead'];
 
 /** Someone wants an answer from the player. Being approached is an introduction. */
 export function pushAudience(s: GameState, a: Audience): void {
@@ -213,6 +224,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
   if (target !== undefined) {
     if (target === actor) return 'You cannot do that to yourself.';
     if (!s.chars[target]) return 'No such person.';
+    if (isChild(s, target)) return 'A child is no part of this.';
     const needsPrisoner = it.type === 'execute' || it.type === 'release';
     if (needsPrisoner && ch(s, target).status !== 'imprisoned') return 'They are not in the Tower.';
     if (!needsPrisoner && it.type !== 'petition' && !isFree(s, target)) return 'They are not at court.';
@@ -240,6 +252,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
     case 'scheme': {
       if (!it.targets.length) return 'Choose a target.';
       if (it.targets.some((t) => t === actor || !isFree(s, t))) return 'Targets must be free and not yourself.';
+      if (it.targets.some((t) => isChild(s, t))) return 'A child is no part of this.';
       if (it.kind === 'murder' && it.targets.length !== 1) return 'A murder plot has one victim.';
       if (it.kind === 'ruin') {
         if (!it.charges.length) return 'A ruin scheme needs at least one charge.';
@@ -270,7 +283,10 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       if (!charges.length) return 'Nothing to denounce.';
       if (it.plotId && s.plots[it.plotId]?.owner !== actor) return 'You do not lead that scheme.';
       if (it.secretId && !usableCharge(s, actor, it.secretId)) return 'You do not believe that yourself.';
-      if (!chargesFor(s, actor, charges, it.only).length) return 'No one named in it stands free to be accused.';
+      if (!chargesFor(s, actor, charges, it.only).length) {
+        const judged = charges.some((c) => s.secrets[c]?.guilty.some((g) => g !== actor && alreadyJudged(s, s.secrets[c], g)));
+        return judged ? 'The King has already judged that charge. Bring new proof, or let it lie.' : 'No one named in it stands free to be accused.';
+      }
       return null;
     }
     case 'strike': {
@@ -333,10 +349,20 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
     case 'invest':
       return investProblem(s, actor, it.kind);
     case 'plant': {
-      if (spiesOf(s, actor).length >= MAX_SPIES) return `You can keep no more than ${MAX_SPIES} spies.`;
+      if (recruitedSpies(s, actor).length >= MAX_SPIES) return `You can keep no more than ${MAX_SPIES} spies.`;
       if (isServant(s, it.mark) || !marksFor(s, actor, it.target).includes(it.mark)) return 'They cannot get close enough to watch them.';
       return hookProblem(s, actor, it.target, it.mark, it.hook, it.wage, it.secretId);
     }
+    case 'propose': {
+      const late = a.spouse ? s.chars[a.spouse] : undefined;
+      if (late && gone(s, late.id) && s.turn - (late.statusTurn ?? 0) < 4) return 'It is too soon after the funeral.';
+      if (!it.target) return marriageable(s, actor) ? null : unwed(s, actor) ? 'You are not free to marry.' : 'You are married.';
+      return matchProblem(s, actor, it.target);
+    }
+    case 'plead':
+      if (a.status !== 'imprisoned') return 'You are not in the Tower.';
+      if (!s.king || it.target === s.king) return 'Write to someone who can reach the King.';
+      return null;
     case 'dismiss-spy': {
       const sp = s.spies?.[it.spyId];
       return sp && sp.status === 'active' && sp.master === actor ? null : 'They are not your spy.';
@@ -349,7 +375,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
 }
 
 /** Deeds that need you to have been introduced (servants need only be seen). */
-export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant', 'plant'];
+export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant', 'plant', 'propose', 'plead'];
 
 /** The player cannot deal with people they do not know. */
 function fogProblem(s: GameState, it: Intent): string | null {
@@ -497,7 +523,34 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
     }
     case 'sweep':
       return sweepHousehold(s, actor);
+    case 'propose':
+      return propose(s, actor, it.target);
+    case 'plead':
+      return plead(s, actor, it.target);
   }
+}
+
+/** Will they risk the King's anger to beg for a prisoner? Love and blood make it likelier; a charge the King believes, less. */
+export function pleadWillingness(s: GameState, prisoner: CharId, friend: CharId): number {
+  const F = ch(s, friend);
+  const charges = s.imprisoned[prisoner]?.charges ?? [];
+  const belief = s.king ? charges.reduce((m, c) => Math.max(m, credence(s, s.king!, c)), 0) : 0;
+  const close = F.spouse === prisoner ? 30 : F.siblings.includes(prisoner) || F.parents?.includes(prisoner) || F.children?.includes(prisoner) ? 20 : 0;
+  return clamp(Math.round(15 + opinion(s, friend, prisoner) * 0.7 + close + (trust(s, friend, prisoner) - 40) * 0.2 - belief * 0.2 - F.traits.paranoia * 0.1), 3, 95);
+}
+
+function plead(s: GameState, actor: CharId, friend: CharId): Outcome {
+  if (!chance(s, pleadWillingness(s, actor, friend))) {
+    addMod(s, actor, friend, 'deserted', 'Would not plead for me', -15, 0.3);
+    return { ok: false, text: `${first(s, friend)} will not risk the King's anger for you.`, tone: 'bad' };
+  }
+  const it: Extract<Intent, { type: 'petition' }> = { type: 'petition', kind: 'mercy', target: actor };
+  const granted = chance(s, petitionOdds(s, friend, it));
+  log(s, `${nm(s, friend)} went before the King to beg mercy for ${nm(s, actor)}.`, 'all', 'court', [friend, actor]);
+  applyPetition(s, friend, it, granted);
+  addMod(s, actor, friend, 'pleaded', 'Pleaded for me', 20, 0.2);
+  if (!granted) return { ok: false, text: `${first(s, friend)} knelt before the King for you, and the King would not hear it.`, tone: 'bad' };
+  return { ok: true, text: `${first(s, friend)} knelt before the King for you, and the King relented. You are free.`, tone: 'good' };
 }
 
 // ── Trade ───────────────────────────────────────────────────────────────────
@@ -1149,6 +1202,8 @@ function basePetitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { typ
   const charges = s.imprisoned[it.target!]?.charges ?? [];
   const belief = charges.reduce((m, c) => Math.max(m, credence(s, K, c)), 0);
   const hanging = charges.some((c) => s.secrets[c] && capital(s.secrets[c]));
+  // A King hardly forgives a man he believes tried to kill him.
+  const mine = charges.some((c) => s.secrets[c]?.victims.includes(K) && capital(s.secrets[c]) && credence(s, K, c) >= 50);
   return clamp(
     Math.round(
       15 +
@@ -1156,7 +1211,8 @@ function basePetitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { typ
         ch(s, actor).traits.charm * 0.2 +
         (officeOf(s, actor) === 'confessor' ? 15 : 0) +
         (ch(s, actor).spouse === it.target ? 15 : 0) -
-        belief * (hanging ? 0.6 : 0.4) +
+        belief * (hanging ? 0.6 : 0.4) -
+        (mine ? 60 : 0) +
         (100 - king.traits.wrath) * 0.25,
     ),
     3,
@@ -1167,8 +1223,9 @@ function basePetitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { typ
 export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, { type: 'petition' }>, granted: boolean): Outcome {
   const K = s.king!;
   if (!granted) {
-    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -4, 0.5);
-    log(s, `The King refused ${nm(s, actor)}'s petition.`, 'all', 'court', [actor]);
+    // A lord refused waits a season or more before he asks again.
+    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -12, 0.5);
+    log(s, `The King refused ${nm(s, actor)}'s petition.`, [actor, K], 'court', [actor]);
     return { ok: false, text: 'The King refuses you.', tone: 'bad' };
   }
   if (it.kind === 'restitution') {
@@ -1190,9 +1247,10 @@ export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, {
     return { ok: true, text: `You are named ${OFFICE_NAMES[it.office!]}.`, tone: 'good' };
   }
   // Mercy spares the neck, not the shame: a crime the King believes is still punished.
-  const proven = (s.imprisoned[it.target!]?.charges ?? [])
-    .map((c) => s.secrets[c])
-    .find((sec) => sec && capital(sec) && credence(s, K, sec.id) >= 60);
+  const charges = (s.imprisoned[it.target!]?.charges ?? []).map((c) => s.secrets[c]).filter(Boolean);
+  const proven = charges.find((sec) => capital(sec) && credence(s, K, sec.id) >= 60);
+  // And it settles the matter: no one may bring the same charge again without new proof.
+  for (const sec of charges) markJudged(s, sec, it.target!);
   release(s, it.target!, `${nm(s, actor)} begged mercy and the King granted it`);
   if (proven && isFree(s, it.target!)) disgrace(s, it.target!, proven);
   addMod(s, it.target!, actor, 'saved', 'Saved my life', 40, 0.2);
@@ -1385,7 +1443,7 @@ function escape(s: GameState, actor: CharId): Outcome {
 
 function arrest(s: GameState, king: CharId, target: CharId): Outcome {
   const charges = Object.entries(s.knowledge[king] ?? {})
-    .filter(([sid, k]) => !k.lie && k.credence >= 25 && s.secrets[sid]?.guilty.includes(target))
+    .filter(([sid, k]) => !k.lie && k.credence >= 25 && s.secrets[sid]?.guilty.includes(target) && !alreadyJudged(s, s.secrets[sid], target))
     .map(([sid]) => sid);
   const belief = charges.reduce((m, c) => Math.max(m, credence(s, king, c)), 0);
   imprison(s, target, charges, king);

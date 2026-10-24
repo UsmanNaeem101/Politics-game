@@ -107,7 +107,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               A denunciation is judged on proof, on witnesses, and on whom the King trusts. The accused may be dismissed, sent to the Tower, or sent
               to the block. Prisoners confess or name other names. Treason and a murder actually done are hanging matters. A charge the King
               dismisses is not forgotten: the hall heard it, the accused's name is muddied, and for a grave charge the King may set his people to
-              keep looking. A lord found murdered is looked into too.
+              keep looking. A lord found murdered is looked into too. Once judged, a charge cannot be brought again unless new proof comes to
+              light. If you are thrown in the Tower, you can ask someone to <strong>plead your case</strong> before the King. A spouse or kin is
+              likelier to risk it.
             </p>
           </section>
           <section>
@@ -123,6 +125,18 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <p>
               A strong-willed spouse can <strong>goad</strong>, <strong>restrain</strong>, or <strong>demand</strong> a deed. When your wife demands
               something of you, heeding her costs no time.
+            </p>
+            <p>
+              Couples have children. They grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
+              schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. The
+              widowed marry again after a season. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand
+              on theirs.
+            </p>
+          </section>
+          <section>
+            <h3>A bad end</h3>
+            <p>
+              If you die or flee, you can <strong>turn back</strong> to how things stood before the week ended, and choose differently.
             </p>
           </section>
           <p className="credit small muted">

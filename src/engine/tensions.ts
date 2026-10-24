@@ -4,6 +4,7 @@
 
 import { chance, pick, roll, shuffle, weighted } from './rng';
 import { makeSecret } from './secrets';
+import { affairSpy } from './spies';
 import { first, nm } from './text';
 import {
   SEASONS,
@@ -23,7 +24,7 @@ import {
 import type { Character, GameState } from './types';
 
 const nobles = (s: GameState): Character[] =>
-  s.order.map((id) => s.chars[id]).filter((c) => c.status === 'free' && !isServant(s, c.id) && c.rank !== 'clergy');
+  s.order.map((id) => s.chars[id]).filter((c) => c.status === 'free' && !isServant(s, c.id) && c.rank !== 'clergy' && c.rank !== 'child');
 
 /** The seasonal feast: faces, introductions, and a quarrel or two. */
 export function seasonalFeast(s: GameState): void {
@@ -117,6 +118,7 @@ function newAffair(s: GameState): boolean {
   rel(s, wife.id, lover.id).trust = 75;
   const maid = s.houses[wife.householdId]?.members.find((m) => ch(s, m).role === 'maid' && isFree(s, m));
   if (maid && chance(s, 60)) learn(s, maid, sec.id, 60, 'spies');
+  affairSpy(s, wife.id, lover.id);
   log(s, `${wife.name} and ${lover.name} slipped away from the feast together.`, [], 'secret', [wife.id, lover.id]);
   return true;
 }

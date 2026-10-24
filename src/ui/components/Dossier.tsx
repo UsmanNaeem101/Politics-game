@@ -1,8 +1,11 @@
 import {
+  marriageable,
+  matchProblem,
   betrayable,
   MAX_SPIES,
   marksFor,
   spiesOf,
+  recruitedSpies,
   secretMatters,
   heardFeeling,
   BUSINESSES,
@@ -56,7 +59,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   const out: DeedButton[] = [];
   const iAmKing = s.king === P;
   const jailed = me.status === 'imprisoned';
-  if (t.status === 'dead' || t.status === 'fled') return [];
+  if (t.status === 'dead' || t.status === 'fled' || t.rank === 'child') return [];
   const lvl = acquaintance(s, target);
   const servant = t.rank === 'servant';
   const known = Object.entries(s.knowledge[P] ?? {}).filter(
@@ -73,10 +76,11 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   const gate = (d: DeedButton): DeedButton => (needIntro(d.type) ? { ...d, why: lvl < 2 ? 'Find them first.' : 'You must be introduced first.' } : d);
 
   if (target === P) {
-    if (jailed) return [{ type: 'escape' }];
+    if (jailed) return [{ type: 'escape' }, ...(s.king ? [{ type: 'plead' as const }] : [])];
     out.push({ type: 'scheme' }, { type: 'fabricate' }, { type: 'guard', why: me.gold < 20 ? 'You need 20 crowns.' : undefined });
     if (!iAmKing && s.king) out.push({ type: 'petition' });
     out.push({ type: 'invest' }, { type: 'sweep' });
+    if (marriageable(s, P)) out.push({ type: 'propose' });
     if (businessesOf(s, P).length) out.push({ type: 'divest' });
     out.push({ type: 'flee' });
     return out;
@@ -88,6 +92,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   }
   if (jailed) {
     out.push(gate({ type: 'whisper', why: known.length ? undefined : 'You know nothing worth a letter.' }));
+    if (s.king && target !== s.king && !servant) out.push(gate({ type: 'plead' }));
     if (me.spouse === target) out.push({ type: 'counsel' });
     return out;
   }
@@ -96,7 +101,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   out.push(
     gate({
       type: 'plant',
-      why: spiesOf(s, P).length >= MAX_SPIES ? `You keep ${MAX_SPIES} spies already.` : marksFor(s, P, target).length ? undefined : 'They cannot get close to anyone worth watching.',
+      why: recruitedSpies(s, P).length >= MAX_SPIES ? `You keep ${MAX_SPIES} spies already.` : marksFor(s, P, target).length ? undefined : 'They cannot get close to anyone worth watching.',
     }),
   );
   out.push({ type: 'spy', why: lvl < 1 ? 'You know nothing of them.' : undefined });
@@ -106,6 +111,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (me.spouse === target) out.push({ type: 'counsel' });
   if (!servant) {
     out.push(gate({ type: 'recruit', why: myPlots.some((p) => !p.targets.includes(target) && !p.members.some((m) => m.id === target)) ? undefined : 'You lead no scheme to draw them into.' }));
+    if (!matchProblem(s, P, target)) out.push(gate({ type: 'propose' }));
     if (!iAmKing) out.push({ type: 'denounce', why: !s.king ? 'There is no King to hear you.' : against.length ? undefined : 'You know nothing against them you could swear to.' });
     out.push(gate({ type: 'blackmail', why: against.length ? undefined : 'You know nothing to threaten them with.' }));
     out.push({ type: 'fabricate' });
