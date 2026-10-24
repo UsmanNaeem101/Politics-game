@@ -303,8 +303,20 @@ export function wed(s: GameState, a: CharId, b: CharId): void {
   woman.spouse = man.id;
   const hers = s.houses[woman.householdId];
   const his = s.houses[man.householdId];
-  if (hers?.head === woman.id && his?.head !== man.id) moveTo(s, man.id, hers);
-  else {
+  if (hers?.head === woman.id && his?.head !== man.id) {
+    // He marries into a house she kept, and takes it in hand: it ranks by him now, and may climb again.
+    moveTo(s, man.id, hers);
+    hers.head = man.id;
+    if (hers.rank !== 'royal' && hers.rank !== 'church') {
+      const seat = hers.seat ? s.lands[hers.seat]?.name : undefined;
+      man.rank = hers.rank === 'great' ? 'great' : 'lord';
+      man.house = hers.name;
+      man.title = `Lord of ${seat ?? hers.name}`;
+      man.canClaim = true;
+      rename(s, man.id, `Lord ${man.short} ${hers.name}`);
+    }
+    log(s, `By his marriage to ${nm(s, woman.id)}, ${nm(s, man.id)} is now head of House ${hers.name}.`, 'all', 'court', [man.id, woman.id]);
+  } else {
     moveTo(s, woman.id, his);
     const seat = his.seat ? s.lands[his.seat]?.name : undefined;
     if (woman.rank === 'lady') {

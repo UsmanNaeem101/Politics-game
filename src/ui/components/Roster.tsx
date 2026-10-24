@@ -3,6 +3,7 @@ import {
   acquaintance,
   ch,
   gone,
+  houseStanding,
   houseTier,
   knowsAgenda,
   knownThreats,
@@ -22,7 +23,8 @@ const HOUSE_ORDER = { royal: 0, church: 1, great: 2, lesser: 3 } as const;
 
 export function housesInOrder(s: GameState): House[] {
   return Object.values(s.houses).sort(
-    (a, b) => HOUSE_ORDER[houseTier(s, a)] - HOUSE_ORDER[houseTier(s, b)] || a.arrived - b.arrived || a.name.localeCompare(b.name),
+    (a, b) =>
+      HOUSE_ORDER[houseTier(s, a)] - HOUSE_ORDER[houseTier(s, b)] || houseStanding(s, b) - houseStanding(s, a) || a.arrived - b.arrived || a.name.localeCompare(b.name),
   );
 }
 

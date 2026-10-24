@@ -15,6 +15,7 @@ import '@xyflow/react/dist/style.css';
 import {
   spiesOf,
   gone,
+  houseStanding,
   houseTier,
   heardFeeling,
   OFFICE_NAMES,
@@ -226,7 +227,8 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
   const houses = Object.values(s.houses).filter((h) => truth || h.rank === 'royal' || h.rank === 'church' || membersOf(h).length > 0);
   const royal = houses.filter((h) => h.rank === 'royal' || h.rank === 'church');
   const greats = houses.filter((h) => houseTier(s, h) === 'great');
-  const lessers = houses.filter((h) => houseTier(s, h) === 'lesser').sort((a, b) => a.arrived - b.arrived);
+  // The lesser houses in order of standing: those kept by a widow or a boy at the bottom.
+  const lessers = houses.filter((h) => houseTier(s, h) === 'lesser').sort((a, b) => houseStanding(s, b) - houseStanding(s, a) || a.arrived - b.arrived);
   const measure = (h: House) => {
     const shown = membersOf(h).filter((m) => visible(m));
     const rows = new Set(shown.map((m) => (m === h.head ? 0 : ch(s, m).rank === 'servant' ? 2 : ch(s, m).spouse === h.head ? 0 : 1)));
@@ -255,7 +257,11 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
   };
   const y1 = tier(royal, 0);
   const y2 = tier(greats, y1 + GAP_Y);
-  tier(lessers, y2 + GAP_Y, 4);
+  // Houses kept by a widow or a boy sit in rows of their own, below every house a man leads.
+  const kept = (h: House) => houseStanding(s, h) <= -1000 + 100;
+  const led = lessers.filter((h) => !kept(h));
+  const y3 = led.length ? tier(led, y2 + GAP_Y, 4) : y2;
+  tier(lessers.filter(kept), y3 + GAP_Y, 4);
 
   const edges: Edge[] = [];
   const has = (id: CharId) => pos.has(id);

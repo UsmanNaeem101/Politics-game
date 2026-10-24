@@ -136,6 +136,18 @@ export const livingSpouse = (s: GameState, id: CharId): CharId | undefined => {
  * Where a house stands in the court's eyes now, by its head's prestige and
  * office rather than the rank it started with: houses rise and fall.
  */
+/**
+ * How high a house stands among its tier: its head's prestige and office. A house kept by a widow or a
+ * boy stands below every house a grown man leads, until a man heads it again and works it back up.
+ */
+export function houseStanding(s: GameState, h: House): number {
+  const head = h.head ? s.chars[h.head] : undefined;
+  if (!head || gone(s, head.id)) return -2000;
+  if (head.gender === 'f' || head.rank === 'child') return -1000 + head.prestige;
+  const off = officeOf(s, head.id);
+  return head.prestige + (off === 'marshal' || off === 'chancellor' || off === 'spymaster' ? 20 : off ? 10 : 0);
+}
+
 export function houseTier(s: GameState, h: House): House['rank'] {
   if (h.rank === 'royal' || h.rank === 'church') return h.rank;
   const head = h.head ? s.chars[h.head] : undefined;

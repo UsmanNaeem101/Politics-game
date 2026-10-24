@@ -12,6 +12,7 @@ import {
   exposeForgery,
   generateCourt,
   hookProblem,
+  houseStanding,
   houseTier,
   joinPlot,
   kill,
@@ -21,6 +22,7 @@ import {
   recruitSpy,
   runSpies,
   secretMatters,
+  wed,
   type GameState,
   type Spy,
 } from '../src/engine';
@@ -199,5 +201,24 @@ describe('houses rise and fall', () => {
     great.head = widow;
     s.chars[widow].prestige = 80;
     expect(houseTier(s, great)).toBe('lesser');
+    // ...and below every lesser house a man leads, however rich she is.
+    const lesser = Object.values(s.houses).find((h) => h.rank === 'lesser' && h.head && s.chars[h.head].gender === 'm')!;
+    expect(houseStanding(s, great)).toBeLessThan(houseStanding(s, lesser));
+  });
+
+  it('a man who marries the lady of a house takes it in hand, and it ranks by him', () => {
+    const s = generateCourt(5);
+    const h = Object.values(s.houses).find((x) => x.rank === 'lesser' && x.head && x.head !== s.player && s.chars[x.head].spouse)!;
+    const lord = h.head!;
+    const lady = s.chars[lord].spouse!;
+    kill(s, lord, 'Died', false);
+    h.head = lady;
+    const suitor = s.order.find((id) => s.chars[id].gender === 'm' && s.chars[id].status === 'free' && s.chars[id].rank === 'knight' && !s.chars[id].spouse && s.chars[id].householdId !== h.id)!;
+    expect(suitor).toBeTruthy();
+    wed(s, suitor, lady);
+    expect(h.head).toBe(suitor);
+    expect(s.chars[suitor].householdId).toBe(h.id);
+    expect(s.chars[suitor].name).toMatch(/^Lord /);
+    expect(houseStanding(s, h)).toBeGreaterThan(-1000);
   });
 });

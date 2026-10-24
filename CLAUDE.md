@@ -34,7 +34,8 @@ before changing anything substantial; it is the plan we are building toward.
   deed lists and validation use it. A plot member can betray it to the King (`betrayable()` in `plots.ts`,
   `turnInformer` in `actions.ts`).
 - Houses rise and fall: `houseTier()` in `world.ts` places them on the map by the head's prestige and office; a house
-  kept by a woman or a minor stands among the lesser.
+  kept by a woman or a minor stands among the lesser, below every house a man leads (`houseStanding()`), until a man
+  marries into it and takes it in hand (`wed()` in `family.ts`).
 - Families: `family.ts` (children with rank `child`, births, coming of age, weddings, NPC matchmaking, outsiders from the
   provinces, the player's proposals). An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
 - Justice: a charge once judged is recorded by crime, not by letter (`GameState.judged`, keyed by `chargeKey()` in
