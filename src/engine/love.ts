@@ -76,7 +76,9 @@ export function seduceParts(s: GameState, actor: CharId, target: CharId, gift = 
   const means = meansOf(s, target);
   const want = husband ? 0 : clamp((50 - means) / 50, 0, 1);
   const purse = clamp(A.gold / 80, 0, 1);
-  const giftWorth = Math.min(25, gift * (0.15 + want * 0.35) * (0.6 + T.traits.greed / 100));
+  // What a settlement is worth to her: a great deal if she is in want, little if she is rich or has a husband's purse.
+  const perCrown = husband ? 0.2 : means >= 150 ? 0.12 : 0.3 + want * 0.5;
+  const giftWorth = Math.min(35, gift * perCrown * (0.6 + T.traits.greed / 100));
   const love = husband ? opinion(s, target, husband) : 0;
   // Honour is chiefly a wife's vow. A widow or a maid has none to break, and weighs it half as much.
   const widowed = widowedFor(s, target);
