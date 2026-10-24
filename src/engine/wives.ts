@@ -3,6 +3,7 @@
 // sits in that house. A careless wife may say too much of her own husband's
 // business; one who does not care for him may not tell him everything.
 
+import { secretMatters } from './secrets';
 import { learnFeeling } from './talk';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { first, nm } from './text';
@@ -79,7 +80,7 @@ export function sendToDine(s: GameState, actor: CharId, lady: CharId): Result {
     const gossip = Object.entries(s.knowledge[lady] ?? {})
       .filter(([sid, k]) => !k.lie && k.credence >= 40 && s.secrets[sid] && !shielded(s.secrets[sid]) && credence(s, actor, sid) < 40)
       .map(([sid]) => s.secrets[sid])
-      .filter((sec) => sec.guilty.some((g) => isFree(s, g)));
+      .filter((sec) => sec.guilty.some((g) => isFree(s, g)) && secretMatters(s, sec));
     const hisAims = husband && husband !== actor && !knowsAgenda(s, actor, husband) && (unhappy || opinion(s, lady, wife) >= 20 || chance(s, 35));
     const options: { kind: string; w: number }[] = [];
     if (gossip.length) options.push({ kind: 'gossip', w: 40 });

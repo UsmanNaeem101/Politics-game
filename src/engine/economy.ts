@@ -4,7 +4,7 @@
 
 import { BUSINESSES, BUSINESS_KINDS, MAX_BUSINESSES } from './content/businesses';
 import { chance, pick, roll, weighted } from './rng';
-import { makeSecret } from './secrets';
+import { makeSecret, secretMatters } from './secrets';
 import { first, nm } from './text';
 import { acquaintance, businessesOf, ch, credence, hearOf, isAlive, isFree, isServant, learn, log, opinion, standingOf, uid } from './world';
 import type { Business, BusinessKind, CharId, GameState } from './types';
@@ -122,7 +122,8 @@ function perkWeek(s: GameState, b: Business): void {
     const client = clients.length ? pick(s, clients) : undefined;
     if (!client) return;
     const pool = Object.entries(s.knowledge[client] ?? {}).filter(
-      ([sid, k]) => !k.lie && k.credence >= 50 && s.secrets[sid] && !s.secrets[sid].guilty.includes(b.owner) && credence(s, b.owner, sid) < 40,
+      ([sid, k]) =>
+        !k.lie && k.credence >= 50 && s.secrets[sid] && !s.secrets[sid].guilty.includes(b.owner) && credence(s, b.owner, sid) < 40 && secretMatters(s, s.secrets[sid]),
     );
     if (!pool.length) return;
     const [sid] = pick(s, pool);

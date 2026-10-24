@@ -86,6 +86,22 @@ describe('a killing traced to you', () => {
   });
 });
 
+describe('the dead leave the story', () => {
+  it('a scheme’s secret stops naming a member who dies, and a pact with a dead man is old news', () => {
+    const s = fresh();
+    const p = createPlot(s, 'gareth', 'murder', ['osric']);
+    joinPlot(s, p, 'edmund', true);
+    expect(s.secrets[p.secretId].guilty).toContain('edmund');
+    kill(s, 'edmund', 'Beheaded', true);
+    expect(s.secrets[p.secretId].guilty).not.toContain('edmund');
+    expect(s.secrets[p.secretId].text).not.toContain(s.chars.edmund.short);
+    const pact = makeSecret(s, { kind: 'pact', guilty: ['gareth', 'cedric'], victims: ['osric'], truth: false, fabricatedBy: 'anselm', evidence: 40 });
+    expect(secretMatters(s, pact)).toBe(true);
+    kill(s, 'cedric', 'Died', false);
+    expect(secretMatters(s, pact)).toBe(false);
+  });
+});
+
 describe('a concealment', () => {
   it('is old news once the plot it hides is over', () => {
     const s = fresh();

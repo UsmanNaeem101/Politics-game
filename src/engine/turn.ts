@@ -7,7 +7,7 @@ import { decidePrisoners, fillOffices, holdWitan, kill, markJudged, pursueInquir
 import { arriveHouse, generateCourt, type GenerateOptions } from './generate';
 import { evaluate } from './objectives';
 import { leakPlots, spymasterHears } from './plots';
-import { deedDone } from './secrets';
+import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
@@ -107,6 +107,12 @@ export function repairSave(s: GameState): void {
     }
   }
   hearOfTheNamed(s);
+  // Schemes that still named members who died before the dead were struck from them.
+  for (const p of Object.values(s.plots)) {
+    if (p.status !== 'active' || p.members.every((m) => isAlive(s, m.id))) continue;
+    p.members = p.members.filter((m) => isAlive(s, m.id));
+    syncPlotSecret(s, p);
+  }
   // Cold marriages and unfaithfulness were once forever; now they thaw.
   for (const row of Object.values(s.relations)) {
     for (const r of Object.values(row)) {
@@ -268,7 +274,9 @@ function dawn(s: GameState): void {
   else if (husband && isFree(s, husband)) hearOf(s, husband, 2);
   let gossip = '';
   if (opinion(s, wife, P) >= 0 && chance(s, 40)) {
-    const pool = Object.entries(s.knowledge[lady] ?? {}).filter(([sid, k]) => !k.lie && k.credence >= 40 && !s.secrets[sid].guilty.includes(lady) && !s.knowledge[P]?.[sid]);
+    const pool = Object.entries(s.knowledge[lady] ?? {}).filter(
+      ([sid, k]) => !k.lie && k.credence >= 40 && !s.secrets[sid].guilty.includes(lady) && !s.knowledge[P]?.[sid] && secretMatters(s, s.secrets[sid]),
+    );
     if (pool.length) {
       const [sid, k] = pick(s, pool);
       learn(s, wife, sid, k.credence * 0.8, lady);

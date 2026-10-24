@@ -5,7 +5,7 @@
 
 import { BITTER, GOSSIP_OPENERS, OPEN_AIMS, SLIPS, WARM, WARNING_OPENERS } from './content/talk';
 import { chance, clamp, pick, roll, weighted } from './rng';
-import { hearCredence } from './secrets';
+import { hearCredence, secretMatters } from './secrets';
 import { first, he, him, his, names, nm } from './text';
 import {
   acquaintance,
@@ -78,7 +78,7 @@ export function tableTalk(s: GameState, actor: CharId, target: CharId): string |
   const tellable = Object.entries(s.knowledge[target] ?? {})
     .filter(([sid, k]) => !k.lie && k.credence >= 50 && s.secrets[sid] && !shields(s.secrets[sid]) && credence(s, actor, sid) < 40)
     .map(([sid]) => s.secrets[sid])
-    .filter((sec) => !sec.guilty.includes(actor) && sec.guilty.some((g) => isFree(s, g)) && (!sec.plotId || s.plots[sec.plotId]?.status === 'active' || sec.deed));
+    .filter((sec) => !sec.guilty.includes(actor) && sec.guilty.some((g) => isFree(s, g)) && secretMatters(s, sec));
   const warnings = tellable.filter((sec) => sec.victims.includes(actor));
 
   const options: { kind: string; w: number }[] = [];

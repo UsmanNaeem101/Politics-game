@@ -666,7 +666,7 @@ function converse(s: GameState, actor: CharId, target: CharId): Outcome {
 export function servantGossip(s: GameState, actor: CharId, servant: CharId): string | null {
   const S = ch(s, servant);
   const pool = Object.entries(s.knowledge[servant] ?? {})
-    .filter(([sid, k]) => !k.lie && k.credence >= 30 && s.secrets[sid] && !s.secrets[sid].guilty.includes(actor) && credence(s, actor, sid) < 40)
+    .filter(([sid, k]) => !k.lie && k.credence >= 30 && s.secrets[sid] && !s.secrets[sid].guilty.includes(actor) && credence(s, actor, sid) < 40 && secretMatters(s, s.secrets[sid]))
     .map(([sid, k]) => ({ sec: s.secrets[sid], k }));
   if (!pool.length) return null;
   const pct = clamp(15 + opinion(s, servant, actor) * 0.6 + ch(s, actor).traits.charm * 0.2 + (S.traits.greed >= 55 ? 5 : 0), 5, 85);

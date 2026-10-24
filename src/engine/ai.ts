@@ -241,6 +241,16 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   }
 
   // ── Whispers ──────────────────────────────────────────────────────────────
+  // What each listener has already heard, word for word: a forged copy of a true tale is the same tale to them.
+  const heardTales = new Map<CharId, Set<string>>();
+  const heardTale = (l: CharId, text: string) => {
+    let set = heardTales.get(l);
+    if (!set) {
+      set = new Set(Object.keys(s.knowledge[l] ?? {}).map((x) => s.secrets[x]?.text).filter((t): t is string => !!t));
+      heardTales.set(l, set);
+    }
+    return set.has(text);
+  };
   for (const [sid, k] of Object.entries(myRow)) {
     const sec = s.secrets[sid];
     if (!sec || sec.guilty.includes(me) || !sec.guilty.some((g) => isAlive(s, g))) continue;
@@ -254,7 +264,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     for (const l of others) {
       if (sec.guilty.includes(l)) continue;
       // Once told is told: repeating a tale does not make it truer.
-      if (knows(s, l, sid)) continue;
+      if (knows(s, l, sid) || heardTale(l, sec.text)) continue;
       let u = 0;
       if (sec.victims.includes(l) && !k.lie && !anyBiding) {
         if (opinion(s, me, l) >= 15 || c.agenda.kind === 'peace' || (l === king && c.agenda.kind === 'protect-king')) {

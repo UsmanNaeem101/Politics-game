@@ -3,7 +3,7 @@
 
 import { BUSINESSES } from './content/businesses';
 import { chance, clamp, rand, roll } from './rng';
-import { kindLabel, makeSecret, publish, refreshText } from './secrets';
+import { kindLabel, makeSecret, publish, refreshText, syncPlotSecret } from './secrets';
 import { unmaskTurned } from './spies';
 import { He, His, first, his, names, nm, vary } from './text';
 import {
@@ -50,11 +50,14 @@ export function kill(s: GameState, id: CharId, fate: string, attainted: boolean)
       p.status = 'abandoned';
       continue;
     }
+    const was = p.members.length;
     p.members = p.members.filter((m) => m.id !== id);
     if (p.targets.includes(id)) {
       p.targets = p.targets.filter((t) => t !== id);
       if (p.targets.length === 0) p.status = 'succeeded';
     }
+    // The dead are no longer part of it, and its secret no longer names them.
+    if (p.members.length !== was && p.status === 'active') syncPlotSecret(s, p);
   }
   for (const pl of s.pledges) {
     if (pl.status === 'pending' && (pl.from === id || pl.to === id)) pl.status = 'broken';
