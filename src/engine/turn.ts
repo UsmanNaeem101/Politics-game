@@ -105,6 +105,16 @@ export function repairSave(s: GameState): void {
     }
   }
   hearOfTheNamed(s);
+  // Concealments made before they were tied to the treason they hide.
+  for (const sec of Object.values(s.secrets)) {
+    if (sec.kind !== 'concealment' || sec.about) continue;
+    const hidden = Object.values(s.secrets).find(
+      (x) =>
+        ['regicide', 'pact', 'usurpation'].includes(x.kind) &&
+        x.guilty.some((g) => s.chars[g] && [s.chars[g].name, ...(s.chars[g].formerly ?? [])].some((n) => sec.text.includes(`${n} plots`))),
+    );
+    if (hidden) sec.about = hidden.id;
+  }
   // Charges the King dismissed before judgments were recorded are not heard again without new proof.
   const K = s.king;
   if (K && !s.judged) {

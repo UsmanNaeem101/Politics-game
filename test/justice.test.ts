@@ -24,6 +24,7 @@ import {
   pursueInquiries,
   repairSave,
   resolveStrike,
+  secretMatters,
   strikeChance,
   traceChance,
   verdictFor,
@@ -82,6 +83,27 @@ describe('a killing traced to you', () => {
     const grudge = (id: string) => s.relations[id]?.anselm?.mods.find((m) => m.key === 'murderer-edmund')?.value ?? 0;
     expect(grudge(enemy)).toBeGreaterThanOrEqual(0);
     expect(grudge(friend)).toBeLessThan(-35);
+  });
+});
+
+describe('a concealment', () => {
+  it('is old news once the plot it hides is over', () => {
+    const s = fresh();
+    const p = createPlot(s, 'gareth', 'murder', ['osric']);
+    const hide = makeSecret(s, {
+      kind: 'concealment',
+      guilty: ['cedric'],
+      victims: ['osric'],
+      truth: true,
+      evidence: 20,
+      text: `${s.chars.cedric.name} knows that ${s.chars.gareth.name} plots against the King, and keeps it from him.`,
+    });
+    // An old save: the link is found from the words.
+    repairSave(s);
+    expect(hide.about).toBe(p.secretId);
+    expect(secretMatters(s, hide)).toBe(true);
+    kill(s, 'gareth', 'Beheaded', true);
+    expect(secretMatters(s, hide)).toBe(false);
   });
 });
 

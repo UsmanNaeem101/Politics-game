@@ -789,6 +789,7 @@ function seedSituations(g: Gen, king: Character, greats: Character[], lessers: C
         evidence: 20,
         text: `${knower.name} knows that ${plotter.name} plots against the King, and keeps it from him.`,
       });
+      conceal.about = regSecret;
       learn(s, knower.id, conceal.id, 100, 'self');
 
       // 3. The spider: says he will carry the charge, means to frame both and take the crown.

@@ -190,6 +190,8 @@ export interface Secret {
   deed?: boolean;
   /** Month the King set his people to look into it (a dismissed charge, an unsolved murder). */
   inquiry?: number;
+  /** For concealment: the treason it hides. When that is old news, so is this. */
+  about?: SecretId;
   /** For a racket: the business it is about, and what kind. */
   businessId?: string;
   trade?: BusinessKind;

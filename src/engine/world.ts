@@ -92,7 +92,8 @@ export function rename(s: GameState, id: CharId, name: string, remember = true):
   c.name = name;
   if (remember) (c.formerly ??= []).push(old);
   for (const sec of Object.values(s.secrets)) {
-    if ((sec.guilty.includes(id) || sec.victims.includes(id)) && sec.text.includes(old)) sec.text = sec.text.split(old).join(name);
+    const named = sec.guilty.includes(id) || sec.victims.includes(id) || (!!sec.about && !!s.secrets[sec.about]?.guilty.includes(id));
+    if (named && sec.text.includes(old)) sec.text = sec.text.split(old).join(name);
   }
 }
 

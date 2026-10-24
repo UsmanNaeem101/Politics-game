@@ -103,6 +103,12 @@ export function secretMatters(s: GameState, sec: Secret): boolean {
   if (!sec.guilty.some((g) => isAlive(s, g) && s.chars[g]?.status !== 'fled')) return false;
   if (sec.plotId && !sec.deed && s.plots[sec.plotId]?.status !== 'active') return false;
   if (!sec.deed && PLOT_LIKE.includes(sec.kind) && sec.victims.length && sec.victims.every((v) => !isAlive(s, v))) return false;
+  // Keeping a dead man's plot from a King is nothing to whisper about; nor hiding anything from a dead King.
+  if (sec.kind === 'concealment') {
+    const hidden = sec.about ? s.secrets[sec.about] : undefined;
+    if (hidden && !secretMatters(s, hidden)) return false;
+    if (sec.victims.length && sec.victims.every((v) => !isAlive(s, v))) return false;
+  }
   return true;
 }
 
