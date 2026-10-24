@@ -313,13 +313,20 @@ export function adjustTrust(s: GameState, a: CharId, b: CharId, delta: number): 
   r.trust = clamp(r.trust + delta, 0, 100);
 }
 
+/**
+ * How much faster feelings fade in a month than a modifier's own `decay` says. The decay rates were set when a
+ * turn was a week; a month should wear a grudge down about as far as three or four weeks did.
+ */
+export const FADE_PER_MONTH = 3;
+
 export function decayMods(s: GameState): void {
   for (const row of Object.values(s.relations)) {
     for (const r of Object.values(row)) {
       r.mods = r.mods
         .map((m): OpinionMod => {
           if (!m.decay) return m;
-          const v = m.value > 0 ? Math.max(0, m.value - m.decay) : Math.min(0, m.value + m.decay);
+          const step = m.decay * FADE_PER_MONTH;
+          const v = m.value > 0 ? Math.max(0, m.value - step) : Math.min(0, m.value + step);
           return { ...m, value: v };
         })
         .filter((m) => !m.decay || Math.abs(m.value) >= 1);

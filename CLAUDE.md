@@ -47,7 +47,8 @@ before changing anything substantial; it is the plan we are building toward.
   `House.heir`; only children with the father among their `parents` inherit. Widows pay upkeep monthly (`widowsUpkeep()`).
 - Matches are courtships (`GameState.courtships`, `matchmaking()` in `family.ts`): suitors are announced and the answer
   comes after `DELIBERATION` months; no one is matched during `MOURNING`.
-- Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); ages tick yearly in `mortality()` (`turn.ts`),
+- Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); opinion modifiers fade `FADE_PER_MONTH` times
+  their `decay` each month (the rates were set for weekly turns); ages tick yearly in `mortality()` (`turn.ts`),
   which never takes the player or the player's spouse.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own

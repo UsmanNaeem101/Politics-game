@@ -1310,7 +1310,7 @@ export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, {
   const K = s.king!;
   if (!granted) {
     // A lord refused waits a season or more before he asks again.
-    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -8, 0.5);
+    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -20, 0.5);
     log(s, `The King refused ${nm(s, actor)}'s petition.`, [actor, K], 'court', [actor]);
     return { ok: false, text: 'The King refuses you.', tone: 'bad' };
   }
