@@ -11,7 +11,7 @@ import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
-import { affairsAsSpies, births, matchmaking } from './family';
+import { affairsAsSpies, births, matchmaking, widowsUpkeep } from './family';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -211,6 +211,7 @@ function worldTurns(s: GameState): void {
   evolveAgendas(s);
   mortality(s);
   births(s);
+  widowsUpkeep(s);
   matchmaking(s);
   newcomers(s);
 }

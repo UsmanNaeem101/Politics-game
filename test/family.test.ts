@@ -22,6 +22,7 @@ import {
   perform,
   runSpies,
   wed,
+  widowsUpkeep,
   type GameState,
 } from '../src/engine';
 
@@ -246,5 +247,26 @@ describe('children out of wedlock', () => {
     const sec = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.text.includes('out of wedlock'))!;
     expect(credence(s, s.player, sec.id)).toBe(100);
     expect(s.events.some((e) => Array.isArray(e.visibleTo) && e.visibleTo.includes(s.player) && /borne you/.test(e.text))).toBe(true);
+  });
+});
+
+describe('a widow’s purse', () => {
+  it('runs down month by month, and a kind host bears half', () => {
+    const s = generateCourt(14);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    s.chars[wife].gold = 62;
+    s.chars[wife].prestige = 10;
+    const head = s.houses[s.chars[wife].householdId].head;
+    if (head && head !== wife) addMod(s, head, wife, 'cold', 'Cold', -100);
+    for (let i = 0; i < 3; i++) widowsUpkeep(s);
+    expect(s.chars[wife].gold).toBe(50);
+    if (head && head !== wife) {
+      s.relations[head][wife].mods = [{ key: 'kin', label: 'Kin', value: 60, decay: 0 }];
+      s.chars[head].gold = 100;
+      widowsUpkeep(s);
+      expect(s.chars[wife].gold).toBe(48);
+      expect(s.chars[head].gold).toBe(98);
+    }
   });
 });

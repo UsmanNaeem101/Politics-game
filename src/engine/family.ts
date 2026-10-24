@@ -321,6 +321,23 @@ export function outsider(s: GameState, partner: CharId): Character {
   return c;
 }
 
+/**
+ * A widow keeps herself: a few crowns a month for her table, her women and her gowns. If the head of
+ * the house she lives in thinks well of her, he pays half. Savings with nothing coming in run down.
+ */
+export function widowsUpkeep(s: GameState): void {
+  for (const w of Object.values(s.chars)) {
+    if (w.gender !== 'f' || w.status !== 'free' || w.id === s.player || isChild(s, w.id) || isServant(s, w.id) || w.rank === 'clergy') continue;
+    if (widowedFor(s, w.id) === undefined) continue;
+    const cost = w.prestige >= 40 ? 6 : 4;
+    const head = s.houses[w.householdId]?.head;
+    const host = head && head !== w.id && isFree(s, head) && opinion(s, head, w.id) >= 10 ? ch(s, head) : undefined;
+    const share = host ? Math.min(host.gold, Math.floor(cost / 2)) : 0;
+    if (host) host.gold -= share;
+    w.gold = Math.max(0, w.gold - (cost - share));
+  }
+}
+
 /** How long a courted widow, widower or maid takes to give an answer: the player's window to make an offer. */
 export const DELIBERATION = 2;
 
