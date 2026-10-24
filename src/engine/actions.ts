@@ -208,7 +208,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   sweep: { name: 'Search your household', desc: 'Look for someone else’s spy among your people.' },
   propose: { name: 'Seek a match', desc: 'Ask for someone’s hand, or have a match found for you in the provinces.' },
   plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
-  seduce: { name: 'Court as a lover', desc: 'Woo her. A married lover will tell you what her husband says at home. A refusal may reach him.' },
+  seduce: { name: 'Woo as a lover', desc: 'Not marriage: make her your lover. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
   dine: { name: 'Send your wife to dine with her', desc: 'Your wife dines with this lady and brings home what was said: gossip, what her husband wants, who sits in that house.' },
   'night-kill': { name: 'Kill them in the night', desc: 'Under your own roof, at night, with no one on the stair. Easy to do, harder to explain.' },

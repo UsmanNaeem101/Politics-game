@@ -36,26 +36,28 @@ export function seduceProblem(s: GameState, actor: CharId, target: CharId): stri
 
 /** Will she? Her regard for him, his charm, her honour, and how she feels about her husband. */
 export function seduceOdds(s: GameState, actor: CharId, target: CharId): number {
+  return clamp(Math.round(seduceParts(s, actor, target).reduce((sum, p) => sum + p.value, 8)), 3, 85);
+}
+
+/** What the odds are made of, for anyone weighing them. */
+export function seduceParts(s: GameState, actor: CharId, target: CharId): { label: string; value: number }[] {
   const A = ch(s, actor);
   const T = ch(s, target);
   const husband = livingSpouse(s, target);
   const love = husband ? opinion(s, target, husband) : 0;
-  const married = husband ? -Math.max(0, love) * 0.3 + Math.max(0, -love) * 0.35 : 8;
-  return clamp(
-    Math.round(
-      8 +
-        opinion(s, target, actor) * 0.45 +
-        A.traits.charm * 0.3 -
-        T.traits.honor * 0.3 +
-        married +
-        (T.archetype === 'unhappy' ? 15 : 0) +
-        (A.prestige - T.prestige) * 0.1 -
-        (husband && husband === s.king ? 10 : 0) -
-        loversOf(s, target).length * 15,
-    ),
-    3,
-    85,
-  );
+  const parts = [
+    { label: 'Her regard for you', value: opinion(s, target, actor) * 0.45 },
+    { label: 'Your charm', value: A.traits.charm * 0.3 },
+    { label: 'Her honour', value: -T.traits.honor * 0.3 },
+    husband
+      ? { label: love >= 0 ? `Her love for ${first(s, husband)}` : `Her coldness to ${first(s, husband)}`, value: -Math.max(0, love) * 0.3 + Math.max(0, -love) * 0.35 }
+      : { label: 'No husband to betray', value: 8 },
+    { label: 'An unhappy woman', value: T.archetype === 'unhappy' ? 15 : 0 },
+    { label: 'Your standing against hers', value: (A.prestige - T.prestige) * 0.1 },
+    { label: 'Her husband is the King', value: husband && husband === s.king ? -10 : 0 },
+    { label: 'A lover already', value: -loversOf(s, target).length * 15 },
+  ];
+  return parts.filter((p) => Math.round(p.value) !== 0).map((p) => ({ ...p, value: Math.round(p.value) }));
 }
 
 /** They become lovers: a secret, a bond, and if she is married, a spy in her husband's house. */

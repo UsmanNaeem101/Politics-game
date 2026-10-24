@@ -1,4 +1,5 @@
 import {
+  akin,
   dineProblem,
   dateLabel,
   DELIBERATION,
@@ -54,6 +55,7 @@ import { Shield } from './Shield';
 interface DeedButton {
   type: IntentType;
   why?: string;
+  label?: string;
 }
 
 const LEVEL_ICON: GIName[] = ['unknown', 'unknown', 'dossier', 'converse', 'family', 'motive'];
@@ -125,7 +127,11 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (me.spouse === target) out.push({ type: 'counsel' });
   if (!servant) {
     out.push(gate({ type: 'recruit', why: myPlots.some((p) => !p.targets.includes(target) && !p.members.some((m) => m.id === target)) ? undefined : 'You lead no scheme to draw them into.' }));
-    if (!matchProblem(s, P, target)) out.push(gate({ type: 'propose' }));
+    // Her hand in marriage: shown whenever she is free to marry, with the reason if you are not.
+    if (marriageable(s, target) && t.gender !== me.gender && !akin(s, P, target)) {
+      const hand = t.gender === 'f' ? 'Ask for her hand' : 'Ask for his hand';
+      out.push(gate({ type: 'propose', label: hand, why: matchProblem(s, P, target) ?? undefined }));
+    }
     if (!iAmKing) out.push({ type: 'denounce', why: !s.king ? 'There is no King to hear you.' : against.length ? undefined : 'You know nothing against them you could swear to.' });
     out.push(gate({ type: 'blackmail', why: against.length ? undefined : 'You know nothing to threaten them with.' }));
     out.push({ type: 'fabricate' });
@@ -432,7 +438,7 @@ export function Dossier() {
               return (
                 <button key={d.type} className="deed" disabled={!!why} title={why ?? ACTION_INFO[d.type].desc} onClick={() => openDeed({ type: d.type, target: isMe ? undefined : id })}>
                   <GIcon name={d.type as GIName} size={20} />
-                  <span className="deed-name">{ACTION_INFO[d.type].name}</span>
+                  <span className="deed-name">{d.label ?? ACTION_INFO[d.type].name}</span>
                   <span className="cost" aria-label={`${cost} time`}>
                     {cost ? Array.from({ length: cost }, (_, i) => <GIcon key={i} name="time" size={11} />) : 'free'}
                   </span>

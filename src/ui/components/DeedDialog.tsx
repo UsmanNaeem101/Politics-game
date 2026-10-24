@@ -3,6 +3,7 @@ import {
   ACTION_INFO,
   TAIL_COST,
   dineOdds,
+  seduceParts,
   suitorsOf,
   traceChance,
   livingSpouse,
@@ -93,7 +94,10 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const P = s.player;
   const me = ch(s, P);
   const type: IntentType = spec.type;
-  const info = ACTION_INFO[type];
+  const info =
+    type === 'propose' && spec.target
+      ? { name: ch(s, spec.target).gender === 'f' ? 'Ask for her hand' : 'Ask for his hand', desc: 'Ask them to marry you. If others are courting them, they weigh you against your rivals.' }
+      : ACTION_INFO[type];
 
   const [result, setResult] = useState<Outcome | null>(null);
   const [target, setTarget] = useState<CharId>(spec.target ?? '');
@@ -989,7 +993,15 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       return { lines: ['You may find someone else’s spy among your people. Then you choose: send them away, or turn them.'] };
     case 'propose':
       return it.target
-        ? { pct: proposeOdds(s, P, it.target), lines: ['Their regard for you counts, and your standing against theirs, and what their family thinks of you.'] }
+        ? {
+            pct: proposeOdds(s, P, it.target),
+            lines: [
+              'Their regard for you counts, and your standing against theirs, and what their family thinks of you.',
+              ...(suitorsOf(s, it.target).length
+                ? [`Courted already by ${suitorsOf(s, it.target).map((x) => first(s, x)).join(' and ')}: each rival makes it harder. Ask before they answer.`]
+                : []),
+            ],
+          }
         : { lines: ['A matchmaker will find you a wife from the provinces. She will join your household this month.'] };
     case 'seduce': {
       const T = ch(s, it.target);
@@ -997,7 +1009,10 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       return {
         pct: seduceOdds(s, P, it.target),
         lines: [
-          'Her regard for you counts, and your charm, against her honour.',
+          seduceParts(s, P, it.target)
+            .map((p) => `${p.label} ${p.value > 0 ? '+' : ''}${p.value}`)
+            .join(' · '),
+          'Her regard for you counts most: keep company with her, or give gifts, first.',
           husband
             ? `A wife who loves ${first(s, husband)} will not stray; one who does not may. As your lover she will tell you what he says at home.`
             : `She is ${T.spouse ? 'a widow' : 'unwed'}: a scandal if it comes out, not a crime.`,
