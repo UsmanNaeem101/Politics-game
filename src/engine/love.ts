@@ -5,7 +5,7 @@
 
 import { deedDone, makeSecret } from './secrets';
 import { kill } from './court';
-import { akin } from './family';
+import { MOURNING, akin, widowedFor } from './family';
 import { affairSpy } from './spies';
 import { chance, clamp, roll } from './rng';
 import { first, nm } from './text';
@@ -45,10 +45,13 @@ export function seduceParts(s: GameState, actor: CharId, target: CharId): { labe
   const T = ch(s, target);
   const husband = livingSpouse(s, target);
   const love = husband ? opinion(s, target, husband) : 0;
+  // Honour is chiefly a wife's vow. A widow or a maid has none to break, and weighs it half as much.
+  const widowed = widowedFor(s, target);
   const parts = [
     { label: 'Her regard for you', value: opinion(s, target, actor) * 0.45 },
     { label: 'Your charm', value: A.traits.charm * 0.3 },
-    { label: 'Her honour', value: -T.traits.honor * 0.3 },
+    husband ? { label: 'Her honour', value: -T.traits.honor * 0.3 } : { label: 'Her honour (no vow to break)', value: -T.traits.honor * 0.15 },
+    { label: 'A lonely widow', value: widowed !== undefined && widowed >= MOURNING / 2 ? 6 : 0 },
     husband
       ? { label: love >= 0 ? `Her love for ${first(s, husband)}` : `Her coldness to ${first(s, husband)}`, value: -Math.max(0, love) * 0.3 + Math.max(0, -love) * 0.35 }
       : { label: 'No husband to betray', value: 8 },

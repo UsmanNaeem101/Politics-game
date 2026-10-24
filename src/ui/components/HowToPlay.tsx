@@ -153,7 +153,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>Love, and following people</h3>
             <p>
-              You may <strong>woo any woman as your lover</strong> from her page. That is not marriage: for her hand, use <strong>Ask for her hand</strong>. Her regard for you, your charm and her honour decide it, and a
+              You may <strong>woo any woman as your lover</strong> from her page. That is not marriage: for her hand, use <strong>Ask for her hand</strong>. Her regard for you, your charm and her honour decide it (a widow or a maid has no vow to break, and
+              weighs her honour half as much), and a
               wife who loves her husband will not stray. A married lover tells you what her husband says at home. Turned away, she may tell
               him. Other men court other men's wives, yours among them.
             </p>

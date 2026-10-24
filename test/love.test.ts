@@ -15,6 +15,7 @@ import {
   perform,
   runTails,
   seduceOdds,
+  seduceParts,
   setTail,
   type GameState,
 } from '../src/engine';
@@ -103,6 +104,9 @@ describe('courting a lover', () => {
     expect(livingSpouse(s, wife)).toBeUndefined();
     expect(s.chars[wife].spouse).toBe(husband);
     expect(seduceOdds(s, s.player, wife)).toBeGreaterThan(married);
+    // Her honour still counts, but half as much: she has no vow to break.
+    const honour = seduceParts(s, s.player, wife).find((p) => p.label.startsWith('Her honour'));
+    if (honour) expect(honour.label).toMatch(/no vow/);
     s.chars[wife].traits.honor = 95;
     addMod(s, wife, s.player, 'dislike', 'Dislikes him', -60);
     s.ap = 3;
