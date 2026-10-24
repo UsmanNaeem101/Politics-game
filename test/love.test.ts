@@ -8,6 +8,8 @@ import {
   dateLabel,
   endWeek,
   generateCourt,
+  kill,
+  livingSpouse,
   loversOf,
   nightOdds,
   perform,
@@ -90,6 +92,22 @@ describe('courting a lover', () => {
     expect(loversOf(s, wife)).toContain(s.player);
     const spy = Object.values(s.spies).find((x) => x.affair && x.agent === wife && x.master === s.player);
     expect(spy?.mark).toBe(husband);
+  });
+
+  it('a widow is courted as a widow: no husband to love, or to tell', () => {
+    const s = generateCourt(5);
+    const { wife, husband } = lady(s);
+    addMod(s, wife, husband, 'love', 'Loves him', 80);
+    const married = seduceOdds(s, s.player, wife);
+    kill(s, husband, 'Died', false);
+    expect(livingSpouse(s, wife)).toBeUndefined();
+    expect(s.chars[wife].spouse).toBe(husband);
+    expect(seduceOdds(s, s.player, wife)).toBeGreaterThan(married);
+    s.chars[wife].traits.honor = 95;
+    addMod(s, wife, s.player, 'dislike', 'Dislikes him', -60);
+    s.ap = 3;
+    const r = perform(s, s.player, { type: 'seduce', target: wife });
+    expect(r.text).not.toMatch(/husband|told/);
   });
 
   it('turned away, she may tell her husband', () => {

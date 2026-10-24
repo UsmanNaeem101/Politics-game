@@ -9,7 +9,7 @@ import { akin } from './family';
 import { affairSpy } from './spies';
 import { chance, clamp, roll } from './rng';
 import { first, nm } from './text';
-import { addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, log, opinion, rel } from './world';
+import { addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rel } from './world';
 import type { CharId, GameState, Secret } from './types';
 
 type Result = { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' };
@@ -38,7 +38,7 @@ export function seduceProblem(s: GameState, actor: CharId, target: CharId): stri
 export function seduceOdds(s: GameState, actor: CharId, target: CharId): number {
   const A = ch(s, actor);
   const T = ch(s, target);
-  const husband = T.spouse && !gone(s, T.spouse) ? T.spouse : undefined;
+  const husband = livingSpouse(s, target);
   const love = husband ? opinion(s, target, husband) : 0;
   const married = husband ? -Math.max(0, love) * 0.3 + Math.max(0, -love) * 0.35 : 8;
   return clamp(
@@ -61,7 +61,7 @@ export function seduceOdds(s: GameState, actor: CharId, target: CharId): number 
 /** They become lovers: a secret, a bond, and if she is married, a spy in her husband's house. */
 export function becomeLovers(s: GameState, woman: CharId, man: CharId, evidence = roll(s, 15, 30)): Secret {
   const W = ch(s, woman);
-  const husband = W.spouse && !gone(s, W.spouse) ? W.spouse : undefined;
+  const husband = livingSpouse(s, woman);
   const head = s.houses[W.householdId]?.head;
   const shamed = husband ?? (head && head !== woman && head !== man && !gone(s, head) ? head : undefined);
   const sec = makeSecret(s, {
@@ -86,7 +86,7 @@ export function becomeLovers(s: GameState, woman: CharId, man: CharId, evidence 
 
 export function seduce(s: GameState, actor: CharId, target: CharId): Result {
   const T = ch(s, target);
-  const husband = T.spouse && !gone(s, T.spouse) ? T.spouse : undefined;
+  const husband = livingSpouse(s, target);
   if (chance(s, seduceOdds(s, actor, target))) {
     becomeLovers(s, target, actor);
     if (actor === s.player) hearOf(s, target, 4);

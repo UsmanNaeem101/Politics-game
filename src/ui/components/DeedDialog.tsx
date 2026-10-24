@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
   TAIL_COST,
+  livingSpouse,
   nightOdds,
   seduceOdds,
   spotChance,
@@ -976,12 +977,15 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         : { lines: ['A matchmaker will find you a wife from the provinces. She will join your household this month.'] };
     case 'seduce': {
       const T = ch(s, it.target);
+      const husband = livingSpouse(s, it.target);
       return {
         pct: seduceOdds(s, P, it.target),
         lines: [
           'Her regard for you counts, and your charm, against her honour.',
-          T.spouse ? `A wife who loves ${first(s, T.spouse)} will not stray; one who does not may. As your lover she will tell you what he says at home.` : 'She is unwed: a scandal if it comes out, not a crime.',
-          'Turned away, she may tell her husband.',
+          husband
+            ? `A wife who loves ${first(s, husband)} will not stray; one who does not may. As your lover she will tell you what he says at home.`
+            : `She is ${T.spouse ? 'a widow' : 'unwed'}: a scandal if it comes out, not a crime.`,
+          husband ? 'Turned away, she may tell her husband.' : 'Turned away, she will think less of you for a while.',
         ],
       };
     }

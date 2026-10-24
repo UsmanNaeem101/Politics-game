@@ -81,6 +81,12 @@ export function incomeOf(s: GameState, id: CharId): number {
 /** Dead, or gone from court for good. */
 export const gone = (s: GameState, id: CharId) => !s.chars[id] || s.chars[id].status === 'dead' || s.chars[id].status === 'fled';
 
+/** A husband or wife still living. A widow keeps a link to her late husband in `spouse`. */
+export const livingSpouse = (s: GameState, id: CharId): CharId | undefined => {
+  const sp = s.chars[id]?.spouse;
+  return sp && !gone(s, sp) ? sp : undefined;
+};
+
 /**
  * Where a house stands in the court's eyes now, by its head's prestige and
  * office rather than the rank it started with: houses rise and fall.

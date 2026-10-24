@@ -1,4 +1,5 @@
 import {
+  livingSpouse,
   nightProblem,
   seduceProblem,
   tailProblem,
@@ -326,6 +327,7 @@ export function Dossier() {
             <dd className="links">
               {c.spouse && acquaintance(s, c.spouse) >= 1 && (
                 <button className="link" onClick={() => select(c.spouse!)}>
+                  {livingSpouse(s, id) ? '' : 'late '}
                   {c.gender === 'f' ? 'husband' : 'wife'}: {first(s, c.spouse)}
                 </button>
               )}
