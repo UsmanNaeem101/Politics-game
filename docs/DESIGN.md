@@ -296,7 +296,7 @@ Each phase ends with something playable.
 | **2 — Minds** | Emotions, memories, multi-dimensional ties, aspirations, real vs performed loyalty, belief-only AI, staged schemes with private stances and triggers | NPCs who hold grudges, panic, and double-cross on their own |
 | **3 — Households and women** | Wives as agents, the ladies' circle as a channel, household instructions (befriend, listen, carry), affairs and lovers, planted information through intimates | The "send your wife to befriend their wives" play, and its counters |
 | **4 — Spies** | Recruitable servants and townsfolk, placement, reports inbox, reliability, discovery, double agents | A spy network to build and protect |
-| **5 — Money and standing** | Businesses and rackets, managers, fronts, standing with six parts of society, scandal | Your income decides who receives you |
+| **5 — Money and standing** (largely done: the eleven trades, standing with six parts of society, rackets as secrets and scandal, perks; still to come: managers, fronts, NPCs changing trade) | Businesses and rackets, managers, fronts, standing with six parts of society, scandal | Your income decides who receives you |
 | **6 — Institutions and succession** | Standing Witan with sittings and votes, heirs, marriage alliances, Church courts, trials by peers | Long campaigns across a succession crisis |
 | **7 — Presentation** | Procedural portraits, event art, sound, onboarding | A finished-feeling game |
 

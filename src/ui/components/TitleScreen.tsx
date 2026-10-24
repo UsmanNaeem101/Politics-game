@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { KINGDOM, TRAIT_WORDS, generateCourt, incomeOf, knownSecrets, landsOf, type TraitKey } from '../../engine';
+import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, type BusinessKind, type TraitKey } from '../../engine';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Shield } from './Shield';
+import { TradeCard } from './Trade';
 
 const randomSeed = () => Math.floor(Math.random() * 999999) + 1;
 
@@ -11,14 +12,16 @@ export function TitleScreen({
   hasSave,
   onHelp,
 }: {
-  onStart: (seed: number, name: string) => void;
+  onStart: (seed: number, name: string, trade?: BusinessKind) => void;
   onContinue: () => void;
   hasSave: boolean;
   onHelp: () => void;
 }) {
   const [seed, setSeed] = useState(randomSeed);
   const [name, setName] = useState('');
-  const court = useMemo(() => generateCourt(seed, { playerName: name }), [seed, name]);
+  const [trade, setTrade] = useState<BusinessKind | ''>('');
+  const court = useMemo(() => generateCourt(seed, { playerName: name, trade: trade || undefined }), [seed, name, trade]);
+  const myTrade = businessesOf(court, court.player)[0]?.kind;
   const me = court.chars[court.player];
   const house = court.houses[me.householdId];
   const wife = me.spouse ? court.chars[me.spouse] : undefined;
@@ -97,6 +100,23 @@ export function TitleScreen({
                 </li>
               </ul>
             </div>
+            <div className="fortune-cell fortune-cell--trade">
+              <span className="fortune-label">
+                <GIcon name="trade" size={15} /> Your trade
+              </span>
+              {myTrade && <TradeCard kind={myTrade} />}
+              <label className="field field--inline">
+                <span>Choose</span>
+                <select id="trade" value={trade} onChange={(e) => setTrade(e.target.value as BusinessKind | '')}>
+                  <option value="">As fortune decides</option>
+                  {BUSINESS_KINDS.filter((k) => !BUSINESSES[k].royalGrant).map((k) => (
+                    <option key={k} value={k}>
+                      {BUSINESSES[k].name} (+{BUSINESSES[k].income} a week{BUSINESSES[k].illicit ? ', racket' : ''})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="fortune-cell">
               <span className="fortune-label">
                 <GIcon name="will" size={15} /> Your temperament
@@ -146,7 +166,7 @@ export function TitleScreen({
             <button className="btn" onClick={() => setSeed(randomSeed())}>
               Another fortune
             </button>
-            <button className="btn btn--primary btn--lg" onClick={() => onStart(seed, name)}>
+            <button className="btn btn--primary btn--lg" onClick={() => onStart(seed, name, trade || undefined)}>
               Enter the court
             </button>
           </div>

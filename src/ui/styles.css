@@ -2600,3 +2600,162 @@ details > summary {
     display: none;
   }
 }
+
+/* ── Trades and standing ───────────────────────────────────────────── */
+
+.trade-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.45rem;
+  max-height: 22rem;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.trade-choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.trade-choice.is-on {
+  border-color: var(--gold);
+}
+
+.trade-choice.is-off {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trade-why {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--rubric);
+}
+
+.trade-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: start;
+  color: var(--ink);
+}
+
+.trade-card > svg {
+  color: var(--gold);
+}
+
+.trade-body {
+  display: grid;
+  gap: 0.2rem;
+  font-size: var(--t-sm);
+}
+
+.trade-name {
+  font-weight: 700;
+}
+
+.trade-nums {
+  color: var(--ink-soft);
+}
+
+.trade-ifknown {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.trade-perk {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.effects {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.effect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.effect--good {
+  color: var(--verdigris);
+}
+
+.effect--bad,
+.effect--danger {
+  color: var(--rubric);
+}
+
+.trade-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.trade-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.trade-line {
+  display: inline-grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.trade-line > svg {
+  color: var(--gold);
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.standing {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.standing li {
+  display: grid;
+  grid-template-columns: auto minmax(7rem, 1fr) auto auto;
+  gap: 0.2rem 0.6rem;
+  align-items: center;
+  font-size: var(--t-sm);
+}
+
+.standing li > svg {
+  color: var(--ink-soft);
+}
+
+.standing-risk {
+  grid-column: 2 / -1;
+  font-size: 0.75rem;
+  color: var(--rubric);
+}
+
+.holding-trade svg {
+  vertical-align: -0.15em;
+}
+
+.fortune-cell--trade .trade-card {
+  margin-bottom: 0.3rem;
+}

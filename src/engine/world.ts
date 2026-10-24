@@ -1,10 +1,13 @@
 // Small, pure-ish helpers over GameState used by every other engine module.
 
+import { BUSINESSES } from './content/businesses';
 import { clamp } from './rng';
 import type {
   Acquaintance,
+  Business,
   Character,
   CharId,
+  Estate,
   EventTone,
   GameEvent,
   GameState,
@@ -13,6 +16,7 @@ import type {
   LandId,
   OfficeId,
   OpinionMod,
+  Perk,
   Relation,
   SecretId,
   Traits,
@@ -68,7 +72,89 @@ export function incomeOf(s: GameState, id: CharId): number {
   }
   const off = officeOf(s, id);
   if (off) inc += OFFICE_INCOME[off];
-  return inc;
+  return inc + tradeIncome(s, id);
+}
+
+// ── Trades and standing ─────────────────────────────────────────────────────
+
+export function businessesOf(s: GameState, id: CharId): Business[] {
+  return Object.values(s.businesses ?? {}).filter((b) => b.owner === id);
+}
+
+/** Crowns a week from trade. Friends in the guilds make honest trade pay better. */
+export function tradeIncome(s: GameState, id: CharId): number {
+  const mine = businessesOf(s, id);
+  if (!mine.length) return 0;
+  const guilds = Math.max(0, standingOf(s, id, 'guilds'));
+  return mine.reduce((sum, b) => sum + BUSINESSES[b.kind].income, 0) + Math.floor(guilds / 6);
+}
+
+/** Which part of society a person speaks for. */
+export function estateOf(s: GameState, id: CharId): Estate {
+  const c = s.chars[id];
+  if (!c) return 'nobility';
+  if (c.rank === 'king') return 'crown';
+  if (c.rank === 'clergy') return 'church';
+  if (c.rank === 'servant') return 'commons';
+  return 'nobility';
+}
+
+/** Does this person know the owner runs this racket? */
+export function knowsRacket(s: GameState, viewer: CharId, b: Business): boolean {
+  if (!b.secretId) return false;
+  if (viewer === b.owner) return true;
+  const sec = s.secrets[b.secretId];
+  return !!sec && (sec.exposed || credence(s, viewer, b.secretId) >= 50);
+}
+
+/** What `a` thinks of `b`'s trades, line by line. */
+export function tradeRegardParts(s: GameState, a: CharId, b: CharId): { key: string; label: string; value: number; racket: boolean }[] {
+  if (a === b) return [];
+  const e = estateOf(s, a);
+  const out: { key: string; label: string; value: number; racket: boolean }[] = [];
+  for (const biz of businessesOf(s, b)) {
+    const def = BUSINESSES[biz.kind];
+    const known = def.illicit && knowsRacket(s, a, biz);
+    const v = (def.illicit && !known ? 0 : def.standing[e] ?? 0) + (known ? def.ifKnown?.[e] ?? 0 : 0);
+    if (v) out.push({ key: `trade-${biz.id}`, label: known ? `Runs a ${def.name.toLowerCase()}` : `Trade: ${def.name.toLowerCase()}`, value: v, racket: known });
+  }
+  return out;
+}
+
+/** The same sum as `tradeRegardParts`, without building the lines: opinion() calls this constantly. */
+export function tradeRegard(s: GameState, a: CharId, b: CharId): number {
+  if (a === b || !s.businesses) return 0;
+  let e: Estate | undefined;
+  let v = 0;
+  for (const id in s.businesses) {
+    const biz = s.businesses[id];
+    if (biz.owner !== b) continue;
+    e ??= estateOf(s, a);
+    const def = BUSINESSES[biz.kind];
+    if (!def.illicit) v += def.standing[e] ?? 0;
+    else if (knowsRacket(s, a, biz)) v += (def.standing[e] ?? 0) + (def.ifKnown?.[e] ?? 0);
+  }
+  return v;
+}
+
+/**
+ * How a part of society regards someone for their trades: what they run openly,
+ * and any racket that has come out. `ifExposed` counts the rackets as known.
+ */
+export function standingOf(s: GameState, id: CharId, e: Estate, ifExposed = false): number {
+  let v = 0;
+  for (const b of businessesOf(s, id)) {
+    const def = BUSINESSES[b.kind];
+    v += def.standing[e] ?? 0;
+    const out = !!b.secretId && (ifExposed || !!s.secrets[b.secretId]?.exposed);
+    if (out) v += def.ifKnown?.[e] ?? 0;
+  }
+  return v;
+}
+
+export function hasPerk(s: GameState, id: CharId | undefined, perk: Perk): boolean {
+  if (!id) return false;
+  return businessesOf(s, id).some((b) => BUSINESSES[b.kind].perk === perk);
 }
 
 /** The title a character currently holds, reflecting offices gained and lost. */
@@ -102,8 +188,8 @@ export function rel(s: GameState, a: CharId, b: CharId): Relation {
 export function opinion(s: GameState, a: CharId, b: CharId): number {
   if (a === b) return 100;
   const r = s.relations[a]?.[b];
-  if (!r) return 0;
-  return clamp(Math.round(r.mods.reduce((sum, m) => sum + m.value, 0)), -100, 100);
+  const mods = r ? r.mods.reduce((sum, m) => sum + m.value, 0) : 0;
+  return clamp(Math.round(mods + tradeRegard(s, a, b)), -100, 100);
 }
 
 export function trust(s: GameState, a: CharId, b: CharId): number {

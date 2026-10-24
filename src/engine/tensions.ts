@@ -11,6 +11,7 @@ import {
   acquaintance,
   addMod,
   ch,
+  hasPerk,
   hearOf,
   isFree,
   isServant,
@@ -37,11 +38,12 @@ export function seasonalFeast(s: GameState): void {
       nobles(s).filter((c) => c.id !== P && acquaintance(s, c.id) <= 1),
     ).slice(0, 3);
     for (const c of seen) hearOf(s, c.id, 2);
-    const tablemate = shuffle(
+    // A wine merchant pours for half the hall, and talks to more of it.
+    const guests = shuffle(
       s,
       nobles(s).filter((c) => c.id !== P && acquaintance(s, c.id) === 2),
-    )[0];
-    if (tablemate) {
+    ).slice(0, hasPerk(s, P, 'cellar') ? 2 : 1);
+    for (const tablemate of guests) {
       hearOf(s, tablemate.id, 3);
       addMod(s, tablemate.id, P, 'feast', 'Shared a table', 5, 0.3);
       log(s, `At the feast you were seated beside ${nm(s, tablemate.id)}, and the two of you talked.`, [P, tablemate.id], 'good', [tablemate.id]);

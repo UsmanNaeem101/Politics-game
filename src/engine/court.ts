@@ -1,6 +1,7 @@
 // The machinery of royal justice: accusations, questioning, the headsman,
 // inheritance, appointments, and the Witan that chooses a king.
 
+import { BUSINESSES } from './content/businesses';
 import { chance, clamp, rand, roll } from './rng';
 import { kindLabel, makeSecret, publish, refreshText } from './secrets';
 import { He, His, first, his, names, nm, vary } from './text';
@@ -9,6 +10,7 @@ import {
   addMod,
   adjustTrust,
   ch,
+  hasPerk,
   credence,
   isAlive,
   isFree,
@@ -223,6 +225,10 @@ export function readCase(s: GameState, accuser: CharId, secretId: SecretId, accu
   const accuserStanding = opinion(s, K, accuser) * 0.2 + (trust(s, K, accuser) - 40) * 0.2;
   score += accuserStanding;
   notes.push(`${first(s, accuser)}'s standing with the King: ${signed(accuserStanding)}`);
+  if (hasPerk(s, accuser, 'royal-ear')) {
+    score += 6;
+    notes.push(`${first(s, accuser)} farms the King's taxes: +6`);
+  }
   const accusedStanding = -opinion(s, K, accused) * 0.2;
   score += accusedStanding;
   notes.push(`${first(s, accused)}'s standing with the King: ${signed(accusedStanding)}`);
@@ -303,7 +309,8 @@ export function forgeryDetection(s: GameState, sec: Secret): number {
   const spy = s.offices.spymaster;
   const spyHelps = spy && spy !== sec.fabricatedBy && isFree(s, spy) ? 12 : 0;
   const forger = sec.fabricatedBy ? ch(s, sec.fabricatedBy).traits.cunning : 50;
-  return clamp(Math.round(12 + king.traits.cunning * 0.3 + spyHelps - forger * 0.25 - sec.evidence * 0.15), 3, 80);
+  const seals = hasPerk(s, sec.fabricatedBy, 'seals') ? 15 : 0;
+  return clamp(Math.round(12 + king.traits.cunning * 0.3 + spyHelps - forger * 0.25 - sec.evidence * 0.15 - seals), 3, 80);
 }
 
 export interface Judgment {
@@ -509,6 +516,8 @@ export function crimeName(sec: Secret): string {
       return 'malicious conspiracy';
     case 'affair':
       return 'adultery against the crown';
+    case 'racket':
+      return (sec.trade && BUSINESSES[sec.trade].crime) ?? 'keeping an unlawful trade';
   }
 }
 
@@ -530,6 +539,10 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
         for (const v of sec.victims) addMod(s, v, s.king!, 'justice', 'Gave me justice', 25, 0.5);
       }
     }
+  }
+  if (sec.kind === 'racket' && sec.businessId && s.businesses?.[sec.businessId]) {
+    delete s.businesses[sec.businessId];
+    restored += ' The King’s men shut the place down.';
   }
   sec.exposed = true;
   publish(s, sec.id, 85, 'court');

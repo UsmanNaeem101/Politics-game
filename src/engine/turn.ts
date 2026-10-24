@@ -8,6 +8,7 @@ import { arriveHouse, generateCourt, type GenerateOptions } from './generate';
 import { evaluate } from './objectives';
 import { leakPlots, spymasterHears } from './plots';
 import { deedDone } from './secrets';
+import { endowTrades, runBusinesses } from './economy';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -37,6 +38,12 @@ export function newGame(seed: number, opts: GenerateOptions = {}): GameState {
 
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
+  // Trades came after this save was made: every house takes one up now.
+  if (!s.businesses) {
+    s.businesses = {};
+    // The player is given an honest trade; any other is theirs to choose.
+    endowTrades(s, 'estates');
+  }
   meetPersonalTies(s);
   // Your wife's friends' husbands, whom you dined with but the old rules left strangers.
   for (const lady of s.order) {
@@ -107,6 +114,7 @@ function worldTurns(s: GameState): void {
   leakPlots(s);
   spymasterHears(s);
   pursueInquiries(s);
+  runBusinesses(s);
   if (s.interregnum && s.interregnum.since < s.turn) {
     holdWitan(s, s.witanVote);
     s.witanVote = undefined;

@@ -1,9 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
+  BUSINESSES,
+  BUSINESS_KINDS,
   COST,
   OFFICE_NAMES,
   blackmailFear,
+  businessesOf,
   ch,
   chanceWord,
   chargesFor,
@@ -18,6 +21,7 @@ import {
   hearCredence,
   influence,
   introductionOdds,
+  investProblem,
   acquaintance,
   knownSecrets,
   landsOf,
@@ -27,8 +31,10 @@ import {
   petitionOdds,
   plotViews,
   recruitOdds,
+  sellPrice,
   spyChance,
   strikeChance,
+  type BusinessKind,
   type CharId,
   type DirectiveSpec,
   type FabricateKind,
@@ -43,6 +49,8 @@ import {
 import { useGame, type DeedSpec } from '../context';
 import { Icon } from './Icon';
 import { Shield } from './Shield';
+import { TradeCard } from './Trade';
+import { GIcon } from '../icons/GIcon';
 
 interface Estimate {
   pct?: number;
@@ -88,6 +96,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const [dirKind, setDirKind] = useState<DirectiveSpec['kind']>('denounce');
   const [source, setSource] = useState<'plot' | 'secret'>(spec.plotId ? 'plot' : 'secret');
   const [accused, setAccused] = useState<CharId[] | null>(null);
+  const [bizKind, setBizKind] = useState<BusinessKind | ''>('');
+  const [businessId, setBusinessId] = useState<string>(spec.businessId ?? '');
 
   const secrets = useMemo(() => knownSecrets(s, P), [s, P]);
   const usable = secrets.filter((k) => k.k.lie || k.k.credence >= 40);
@@ -169,6 +179,10 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return target && landId ? { type, target, landId } : null;
       case 'appoint':
         return target ? { type, target, office } : null;
+      case 'invest':
+        return bizKind ? { type, kind: bizKind } : null;
+      case 'divest':
+        return businessId ? { type, businessId } : null;
     }
   })();
 
@@ -609,6 +623,44 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         'deed-office',
       );
       break;
+    case 'invest':
+      fields = (
+        <fieldset className="field">
+          <legend>Which trade</legend>
+          <div className="trade-choices">
+            {BUSINESS_KINDS.map((k) => {
+              const why = investProblem(s, P, k);
+              return (
+                <label key={k} className={`trade-choice ${bizKind === k ? 'is-on' : ''} ${why ? 'is-off' : ''}`}>
+                  <input type="radio" name="trade" checked={bizKind === k} disabled={!!why} onChange={() => setBizKind(k)} />
+                  <span>
+                    <TradeCard kind={k} />
+                    {why && <small className="trade-why">{why}</small>}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      );
+      break;
+    case 'divest':
+      fields = (
+        <fieldset className="field">
+          <legend>Which to sell</legend>
+          <div className="secret-choices">
+            {businessesOf(s, P).map((b) => (
+              <label key={b.id} className={`secret-choice ${businessId === b.id ? 'is-on' : ''}`}>
+                <input type="radio" name="sell" checked={businessId === b.id} onChange={() => setBusinessId(b.id)} />
+                <span>
+                  <GIcon name={b.kind} size={16} /> {BUSINESSES[b.kind].name} <span className="muted">· sells for {sellPrice(b)} crowns</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      );
+      break;
     default:
       fields = null;
   }
@@ -754,6 +806,21 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       const charges = s.imprisoned[it.target]?.charges ?? [];
       const belief = Math.max(0, ...charges.map((c) => credence(s, P, c)));
       return { lines: [belief >= 50 ? `You are ${belief}% sure of their guilt.` : `You are only ${belief}% sure. Killing on so little will cost you.`] };
+    }
+    case 'invest': {
+      const def = BUSINESSES[it.kind];
+      return {
+        lines: [
+          `Costs ${def.cost} crowns now, and should bring in ${def.income} a week (more if the guilds like you).`,
+          def.illicit
+            ? 'Run in secret. Word may get out: a debtor talks, a client is seen. If it does, it is a scandal, and a charge that can be laid before the King.'
+            : 'The whole court will know what you have gone into.',
+        ],
+      };
+    }
+    case 'divest': {
+      const b = s.businesses[it.businessId];
+      return { lines: [`You will get ${sellPrice(b)} crowns, and lose ${BUSINESSES[b.kind].income} a week.`] };
     }
     default:
       return { lines: [] };

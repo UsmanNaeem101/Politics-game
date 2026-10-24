@@ -1,4 +1,7 @@
 import {
+  BUSINESSES,
+  businessesOf,
+  credence,
   ACQUAINTANCE,
   ACTION_INFO,
   COST,
@@ -60,6 +63,8 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
     if (jailed) return [{ type: 'escape' }];
     out.push({ type: 'scheme' }, { type: 'fabricate' }, { type: 'guard', why: me.gold < 20 ? 'You need 20 crowns.' : undefined });
     if (!iAmKing && s.king) out.push({ type: 'petition' });
+    out.push({ type: 'invest' });
+    if (businessesOf(s, P).length) out.push({ type: 'divest' });
     out.push({ type: 'flee' });
     return out;
   }
@@ -124,6 +129,8 @@ export function Dossier() {
   const dark = lvl <= 1;
   const off = officeOf(s, id);
   const lands = landsOf(s, id).map((l) => s.lands[l]);
+  // Honest trades are common knowledge; a racket only if you have found it out.
+  const trades = businessesOf(s, id).filter((b) => !b.secretId || isMe || credence(s, P, b.secretId) >= 40);
   const motive = knowsAgenda(s, P, id);
   const house = s.houses[c.householdId];
   const theirView = isMe || lvl < 3 ? null : opinion(s, id, P);
@@ -260,6 +267,13 @@ export function Dossier() {
               {[off ? OFFICE_NAMES[off] : '', ...lands.map((l) => l.name + (l.rightful && l.rightful !== id && (knowsTheft || isMe) ? ` (rightfully ${first(s, l.rightful)}'s)` : ''))]
                 .filter(Boolean)
                 .join(', ') || 'Nothing of note'}
+              {trades.map((b) => (
+                <span key={b.id} className="holding-trade">
+                  {' '}
+                  · <GIcon name={b.kind} size={13} /> {BUSINESSES[b.kind].name}
+                  {b.secretId && <span className="chip chip--danger">racket</span>}
+                </span>
+              ))}
               {isMe && (
                 <span className="muted">
                   {' '}

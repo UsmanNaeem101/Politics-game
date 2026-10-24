@@ -29,6 +29,13 @@ function check(s: GameState, tag: string) {
   }
   if (s.ap < 0) bad(`ap ${s.ap}`);
   for (const h of Object.values(s.houses)) if (h.head && !['free', 'imprisoned'].includes(s.chars[h.head].status)) bad(`house ${h.name} headed by ${s.chars[h.head].status}`);
+  for (const b of Object.values(s.businesses)) {
+    if (!s.chars[b.owner]) bad(`business ${b.id} with no owner`);
+    if (b.secretId && !s.secrets[b.secretId]?.guilty.includes(b.owner)) bad(`racket ${b.id} whose secret does not name its owner`);
+  }
+  const counts: Record<string, number> = {};
+  for (const b of Object.values(s.businesses)) counts[b.owner] = (counts[b.owner] ?? 0) + 1;
+  for (const [o, n] of Object.entries(counts)) if (n > 2) bad(`${o} runs ${n} trades`);
 }
 let games = 0;
 const t0 = Date.now();

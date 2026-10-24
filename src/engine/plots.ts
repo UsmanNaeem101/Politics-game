@@ -5,7 +5,7 @@ import { kill, imprison } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { deedDone, describe, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
-import { OFFICE_NAMES, addMod, ch, credence, isAlive, isFree, isRemoved, knows, learn, log, officeOf, opinion, uid } from './world';
+import { OFFICE_NAMES, addMod, ch, credence, hasPerk, isAlive, isFree, isRemoved, knows, learn, log, officeOf, opinion, uid } from './world';
 import type { CharId, GameState, Offer, Plot, PlotCondition, PlotKind, SecretId } from './types';
 
 const ADJ = ['Silent', 'Red', 'Long', 'Crooked', 'Hollow', 'Winter', 'Last', 'Gilded', 'Black', 'Quiet'];
@@ -53,12 +53,15 @@ export function strikePower(s: GameState, p: Plot): number {
   }
   power += p.hiredBlades * 5;
   if (officeOf(s, p.owner) === 'marshal') power += 10;
+  if (hasPerk(s, p.owner, 'cutthroats')) power += 10;
+  if (hasPerk(s, p.owner, 'poisons')) power += 6;
   return power;
 }
 
 export function strikeDefence(s: GameState, target: CharId, owner?: CharId): number {
   const t = ch(s, target);
-  return t.guard + t.traits.paranoia * 0.15 + t.traits.martial * 0.1 + royalGuard(s, target, owner);
+  const retainers = hasPerk(s, target, 'retainers') ? 10 : 0;
+  return t.guard + t.traits.paranoia * 0.15 + t.traits.martial * 0.1 + royalGuard(s, target, owner) + retainers;
 }
 
 export function strikeChance(s: GameState, p: Plot): number {
@@ -150,7 +153,8 @@ export function joinPlot(s: GameState, p: Plot, who: CharId, sincere: boolean, o
 /** Work on a plot. Gold buys hired blades for murder plots. */
 export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): number {
   const a = ch(s, actor);
-  const gain = Math.round(8 + a.traits.cunning * 0.12 + p.members.length * 2 + roll(s, 0, 6));
+  const poisons = p.kind === 'murder' && hasPerk(s, actor, 'poisons') ? 4 : 0;
+  const gain = Math.round(8 + a.traits.cunning * 0.12 + p.members.length * 2 + roll(s, 0, 6) + poisons);
   p.progress = clamp(p.progress + gain, 0, 100);
   if (gold > 0 && p.kind === 'murder') {
     const spend = Math.min(gold, a.gold);
@@ -190,7 +194,8 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
   const wasKing = s.king === target;
 
   if (success) {
-    const traced = chance(s, clamp(55 - ch(s, owner).traits.cunning * 0.4 + p.members.length * 6 - p.progress * 0.15, 5, 85));
+    const quiet = hasPerk(s, owner, 'cutthroats') ? 12 : 0;
+    const traced = chance(s, clamp(55 - ch(s, owner).traits.cunning * 0.4 + p.members.length * 6 - p.progress * 0.15 - quiet, 5, 85));
     p.status = 'succeeded';
     const how = vary(s, [
       'a crossbow bolt from the trees during the hunt',

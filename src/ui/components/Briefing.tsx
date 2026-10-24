@@ -2,8 +2,10 @@ import {
   OFFICE_NAMES,
   PLAYER_AIM,
   acquaintance,
+  businessesOf,
   ch,
   first,
+  incomeOf,
   knownThreats,
   nm,
   officeOf,
@@ -18,11 +20,12 @@ import {
 import { useGame } from '../context';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Person } from './Roster';
+import { StandingList, TradeLine, racketStatus } from './Trade';
 
 const TONE_ICON: Record<string, GIName> = { neutral: 'neutral', good: 'good', bad: 'bad', dire: 'dire', secret: 'secret', court: 'court' };
 
 export function Briefing() {
-  const { s, setTab } = useGame();
+  const { s, setTab, openDeed } = useGame();
   const P = s.player;
   const me = ch(s, P);
   const king = s.king;
@@ -34,6 +37,7 @@ export function Briefing() {
   const threats = knownThreats(s, P);
   const latest = visibleEvents(s, P).slice(-8).reverse();
   const household = s.houses[me.householdId].members.filter((m) => m !== P && ch(s, m).status !== 'dead');
+  const trades = businessesOf(s, P);
 
   return (
     <div className="briefing">
@@ -63,6 +67,46 @@ export function Briefing() {
             {first(s, king)} is {ch(s, king).age}. He has no heir: when he dies, the Witan chooses.
           </p>
         )}
+      </section>
+
+      <section className="card">
+        <h3 className="card-title">
+          <GIcon name="trade" size={16} /> Your trade
+          <span className="muted small">+{incomeOf(s, P)} crowns a week in all</span>
+        </h3>
+        {trades.length === 0 ? (
+          <p className="muted">You run no trade. Your lands alone keep you.</p>
+        ) : (
+          <ul className="trade-list">
+            {trades.map((b) => {
+              const status = racketStatus(s, b, P);
+              return (
+                <li key={b.id}>
+                  <TradeLine b={b} />
+                  {status && <span className={`chip ${status === 'Secret' ? 'chip--muted' : 'chip--danger'}`}>{status}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <div className="card-actions">
+          <button className="btn btn--sm" onClick={() => openDeed({ type: 'invest' })} disabled={s.ap < 1}>
+            <GIcon name="invest" size={14} /> Set up a trade…
+          </button>
+          {trades.length > 0 && (
+            <button className="btn btn--sm" onClick={() => openDeed({ type: 'divest' })} disabled={s.ap < 1}>
+              <GIcon name="divest" size={14} /> Sell…
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="card">
+        <h3 className="card-title">
+          <GIcon name="nobility" size={16} /> Your standing
+        </h3>
+        <StandingList s={s} id={P} />
+        <p className="muted small">What each part of society makes of your trade. It colours how every lord, priest and servant regards you.</p>
       </section>
 
       <section className="card">

@@ -25,6 +25,9 @@ before changing anything substantial; it is the plan we are building toward.
 
 - `src/engine/generate.ts` builds courts; `tensions.ts` adds seasonal trouble; `turn.ts` is the week loop.
 - Fog of war: `GameState.known` (player's acquaintance 0–5), `hearOf()` in `world.ts`, `fogProblem()` in `actions.ts`.
+- Trades and rackets: the table is `content/businesses.ts`; `economy.ts` opens, runs and endows them. Standing is not
+  stored: `tradeRegard()` in `world.ts` adds each trade's effect into `opinion()` by the viewer's estate, and a racket's
+  `ifKnown` only for those who know its secret (kind `racket`). Perks are looked up with `hasPerk()` where they apply.
 - `test/fixtures/osric.ts` is the original fixed court, kept only for mechanics tests.
 
 ## Engineering rules

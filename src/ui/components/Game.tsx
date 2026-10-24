@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { calendar, canEndWeek, ch, knownThreats, opinion, opinionWord, styleOf, type Outcome } from '../../engine';
+import { calendar, canEndWeek, ch, incomeOf, knownThreats, opinion, opinionWord, styleOf, type Outcome } from '../../engine';
 import { useGame, type DeedSpec, type TabId } from '../context';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Aftermath, AudienceModal } from './AudienceModal';
@@ -120,7 +120,7 @@ function TopBar({ onHelp, onTheme, onQuit, onEnd }: { onHelp: () => void; onThem
         </span>
       </button>
       <dl className="stats">
-        <div title="Gold">
+        <div title={`Gold: +${incomeOf(s, s.player)} a week from lands, office and trade`}>
           <dt>
             <GIcon name="gold" size={14} />
           </dt>

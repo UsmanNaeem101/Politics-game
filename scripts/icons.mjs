@@ -29,6 +29,12 @@ const MAP = {
   affair: 'love-mystery', threat: 'plain-dagger', suspect: 'suspicious', motive: 'drama-masks',
   good: 'laurel-crown', bad: 'broken-heart', dire: 'tombstone', court: 'banging-gavel', secret: 'lips', neutral: 'conversation',
   love: 'hearts', hate: 'broken-heart', family: 'family-tree', lover: 'love-mystery', brother: 'two-shadows',
+  // trades and rackets
+  estates: 'wheat', wool: 'wool', mill: 'water-mill', wine: 'wine-bottle', moneylending: 'money-stack', taxfarm: 'receive-money',
+  gambling: 'rolling-dices', bathhouse: 'bathtub', smuggling: 'barrel', forgery: 'stamper', apothecary: 'potion-ball',
+  racket: 'robber', invest: 'shop', divest: 'sell-card', trade: 'swap-bag',
+  // parts of society
+  nobility: 'knight-banner', church: 'church', guilds: 'anvil', commons: 'farmer', underworld: 'hood',
 };
 
 const data = JSON.parse(readFileSync('node_modules/@iconify-json/game-icons/icons.json', 'utf8'));

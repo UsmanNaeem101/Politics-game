@@ -3,7 +3,7 @@
 
 import { isMember, plotsKnownTo } from './plots';
 import { fullText } from './secrets';
-import { credence, insightOf, knows, opinion, visibleTo } from './world';
+import { acquaintance, credence, insightOf, knows, opinion, tradeRegardParts, visibleTo } from './world';
 import type { CharId, GameEvent, GameState, Knowledge, OpinionMod, Plot, Secret } from './types';
 
 export interface KnownSecret {
@@ -60,8 +60,12 @@ export function knownThreats(s: GameState, viewer: CharId): PlotView[] {
 /** Opinion modifiers this viewer can see between two people. */
 export function visibleMods(s: GameState, viewer: CharId, a: CharId, b: CharId): OpinionMod[] {
   const mods = s.relations[a]?.[b]?.mods ?? [];
-  if (a === viewer || b === viewer) return mods.filter((m) => Math.round(m.value) !== 0);
-  return mods.filter((m) => m.public && Math.round(m.value) !== 0);
+  // What `a` makes of `b`'s trades. That someone knows of a racket shows only to those who know them well.
+  const trade = tradeRegardParts(s, a, b)
+    .filter((p) => !p.racket || a === viewer || acquaintance(s, a) >= 4)
+    .map((p) => ({ key: p.key, label: p.label, value: p.value, decay: 0, public: !p.racket }));
+  if (a === viewer || b === viewer) return [...mods.filter((m) => Math.round(m.value) !== 0), ...trade];
+  return [...mods.filter((m) => m.public && Math.round(m.value) !== 0), ...trade.filter((m) => m.public)];
 }
 
 export function visibleEvents(s: GameState, viewer: CharId): GameEvent[] {

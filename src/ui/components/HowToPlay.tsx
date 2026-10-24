@@ -45,6 +45,20 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             </p>
           </section>
           <section>
+            <h3>Money and standing</h3>
+            <p>
+              Your lands pay a little. Your <strong>trade</strong> pays more, and decides how the court sees you. Each trade wins or loses
+              you <strong>standing</strong> with the Crown, the nobility, the Church, the guilds, the commons and the underworld, and that
+              colours how every lord, priest and servant regards you. Estates are honourable; moneylending makes you rich and resented; a
+              tax farm pleases the King and enrages the commons. Every trade gives you an edge in intrigue too.
+            </p>
+            <p>
+              A <strong>racket</strong> (a gambling house, a bathhouse, smuggling, forgery) pays best, and is run in secret. Word can get
+              out. If it does, it is a scandal and a crime: a secret like any other, to be whispered, used for blackmail, or laid before the
+              King. Set up or sell a trade from the Briefing or your own page.
+            </p>
+          </section>
+          <section>
             <h3>Motives are hidden</h3>
             <p>
               Everyone shows a face to the court. What they actually want, and whether they mean the oaths they swore, stays hidden until you find out.

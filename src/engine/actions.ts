@@ -34,6 +34,8 @@ import {
 } from './plots';
 import { chance, clamp, rand, roll } from './rng';
 import { hearCredence, kindLabel, makeSecret } from './secrets';
+import { BUSINESSES } from './content/businesses';
+import { investProblem, openBusiness, sellPrice } from './economy';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -47,6 +49,7 @@ import {
   effective,
   insightOf,
   isAlive,
+  hasPerk,
   isFree,
   knows,
   learn,
@@ -58,6 +61,7 @@ import {
   uid,
 } from './world';
 import type {
+  BusinessKind,
   Audience,
   CharId,
   Directive,
@@ -98,7 +102,9 @@ export type Intent =
   | { type: 'question'; target: CharId }
   | { type: 'execute'; target: CharId }
   | { type: 'release'; target: CharId }
-  | { type: 'appoint'; target: CharId; office: OfficeId };
+  | { type: 'appoint'; target: CharId; office: OfficeId }
+  | { type: 'invest'; kind: BusinessKind }
+  | { type: 'divest'; businessId: string };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -134,6 +140,8 @@ export const COST: Record<IntentType, number> = {
   execute: 1,
   release: 1,
   appoint: 0,
+  invest: 1,
+  divest: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -161,6 +169,8 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   execute: { name: 'Execute prisoner', desc: 'Send a prisoner to the block.' },
   release: { name: 'Release prisoner', desc: 'Let a prisoner go.' },
   appoint: { name: 'Appoint to office', desc: 'Fill a vacant great office.' },
+  invest: { name: 'Set up a trade', desc: 'Put money into a business, or a racket. What you run decides how the court sees you.' },
+  divest: { name: 'Sell a trade', desc: 'Sell up for half what it cost. The court soon forgets an honest trade; a scandal lingers.' },
 };
 
 const KING_ONLY: IntentType[] = ['arrest', 'question', 'execute', 'release', 'appoint'];
@@ -305,6 +315,10 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       if (s.offices[it.office]) return 'That office is filled.';
       if (!officeEligible(s, it.target, it.office)) return 'They cannot hold that office.';
       return null;
+    case 'invest':
+      return investProblem(s, actor, it.kind);
+    case 'divest':
+      return s.businesses?.[it.businessId]?.owner === actor ? null : 'That is not yours to sell.';
     default:
       return null;
   }
@@ -446,7 +460,35 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
     case 'appoint':
       appoint(s, it.target, it.office);
       return { ok: true, text: `${nm(s, it.target)} is now ${OFFICE_NAMES[it.office]}.`, tone: 'good' };
+    case 'invest':
+      return invest(s, actor, it.kind);
+    case 'divest':
+      return divest(s, actor, it.businessId);
   }
+}
+
+// ── Trade ───────────────────────────────────────────────────────────────────
+
+function invest(s: GameState, actor: CharId, kind: BusinessKind): Outcome {
+  const def = BUSINESSES[kind];
+  ch(s, actor).gold -= def.cost;
+  openBusiness(s, actor, kind);
+  if (def.illicit) {
+    log(s, `${nm(s, actor)} quietly set up ${def.secretly}.`, [actor], 'secret', [actor]);
+    return { ok: true, text: `Your ${def.name.toLowerCase()} is open for business, and no one must know whose it is.`, tone: 'neutral' };
+  }
+  log(s, `${nm(s, actor)} has gone into the ${def.name.toLowerCase()}.`, 'all', 'neutral', [actor]);
+  return { ok: true, text: `You are in the ${def.name.toLowerCase()}. It should bring in ${def.income} crowns a week.`, tone: 'good' };
+}
+
+function divest(s: GameState, actor: CharId, businessId: string): Outcome {
+  const b = s.businesses[businessId];
+  const def = BUSINESSES[b.kind];
+  const price = sellPrice(b);
+  ch(s, actor).gold += price;
+  delete s.businesses[businessId];
+  log(s, `${nm(s, actor)} sold ${his(s, actor)} ${def.name.toLowerCase()}.`, def.illicit ? [actor] : 'all', 'neutral', [actor]);
+  return { ok: true, text: `Sold, for ${price} crowns.`, tone: 'neutral' };
 }
 
 // ── Individual deeds ────────────────────────────────────────────────────────
@@ -516,6 +558,7 @@ export function introductionOdds(s: GameState, actor: CharId, target: CharId): {
     if (pct > best.pct) best = { pct, via };
   }
   if (target === s.king) best.pct -= 15;
+  if (hasPerk(s, actor, 'cellar')) best.pct += 10;
   return { pct: clamp(Math.round(best.pct), 5, 92), via: best.via };
 }
 
@@ -592,7 +635,7 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
 }
 
 export function fabricateEvidence(s: GameState, actor: CharId): number {
-  return Math.round(20 + ch(s, actor).traits.cunning * 0.4);
+  return Math.round(20 + ch(s, actor).traits.cunning * 0.4 + (hasPerk(s, actor, 'seals') ? 15 : 0));
 }
 
 function fabricate(s: GameState, actor: CharId, kind: FabricateKind, guilty: CharId[], victim: CharId): Outcome {
@@ -613,7 +656,8 @@ export function spyChance(s: GameState, actor: CharId, target: CharId): number {
   const A = ch(s, actor);
   const T = ch(s, target);
   const master = officeOf(s, actor) === 'spymaster' ? 20 : 0;
-  return clamp(Math.round(35 + A.traits.cunning * 0.5 - T.traits.cunning * 0.35 + master - T.traits.paranoia * 0.1), 5, 90);
+  const informants = hasPerk(s, actor, 'informants') ? 15 : 0;
+  return clamp(Math.round(35 + A.traits.cunning * 0.5 - T.traits.cunning * 0.35 + master + informants - T.traits.paranoia * 0.1), 5, 90);
 }
 
 function spy(s: GameState, actor: CharId, target: CharId, focus: SpyFocus): Outcome {
@@ -750,7 +794,8 @@ export function recruitDecision(s: GameState, owner: CharId, cand: CharId, p: Pl
 
 export function recruitOdds(s: GameState, owner: CharId, cand: CharId, p: Plot, o: Offer): number {
   const w = recruitWillingness(s, owner, cand, p, o);
-  return clamp(Math.round(50 + w * 1.6), 3, 97);
+  const debtors = hasPerk(s, owner, 'debtors') ? 10 : 0;
+  return clamp(Math.round(50 + w * 1.6 + debtors), 3, 97);
 }
 
 /** Pay what was promised (now) or record the pledge (later). */
@@ -943,6 +988,8 @@ export function blackmailFear(s: GameState, actor: CharId, target: CharId, secre
   const T = effective(s, target);
   let fear = sec.evidence * 0.5 + (capital(sec) ? 30 : 10) + (s.king ? opinion(s, s.king, actor) * 0.2 : 0) - T.boldness * 0.3 - T.wrath * 0.2;
   if (!sec.truth) fear -= 25;
+  if (hasPerk(s, actor, 'debtors')) fear += 8;
+  if (hasPerk(s, actor, 'debts')) fear += 12;
   return Math.round(fear);
 }
 
@@ -1021,7 +1068,13 @@ function petition(s: GameState, actor: CharId, it: Extract<Intent, { type: 'peti
   return applyPetition(s, actor, it, chance(s, pct));
 }
 
+/** The King's answer to a petition. Holding a district's grain makes him listen. */
 export function petitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { type: 'petition' }>): number {
+  const base = basePetitionOdds(s, actor, it);
+  return hasPerk(s, actor, 'leverage') && s.king ? clamp(base + 10, 3, 95) : base;
+}
+
+function basePetitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { type: 'petition' }>): number {
   const K = s.king;
   if (!K) return 0;
   const king = ch(s, K);

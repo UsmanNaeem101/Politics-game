@@ -153,7 +153,8 @@ export type SecretKind =
   | 'betrayal' // means to turn on an ally
   | 'slander' // bore false witness
   | 'ruin' // gathers charges to destroy someone at court
-  | 'affair'; // a secret love outside marriage
+  | 'affair' // a secret love outside marriage
+  | 'racket'; // secretly runs an illicit trade
 
 export interface Secret {
   id: SecretId;
@@ -178,6 +179,37 @@ export interface Secret {
   deed?: boolean;
   /** Week the King set his people to look into it (a dismissed charge, an unsolved murder). */
   inquiry?: number;
+  /** For a racket: the business it is about, and what kind. */
+  businessId?: string;
+  trade?: BusinessKind;
+}
+
+/** The parts of society whose regard a trade wins or loses. */
+export type Estate = 'crown' | 'nobility' | 'church' | 'guilds' | 'commons' | 'underworld';
+
+export type BusinessKind =
+  | 'estates'
+  | 'wool'
+  | 'mill'
+  | 'wine'
+  | 'moneylending'
+  | 'taxfarm'
+  | 'gambling'
+  | 'bathhouse'
+  | 'smuggling'
+  | 'forgery'
+  | 'apothecary';
+
+/** What a trade gives its owner for intrigue. */
+export type Perk = 'retainers' | 'factors' | 'leverage' | 'cellar' | 'debtors' | 'royal-ear' | 'debts' | 'informants' | 'cutthroats' | 'seals' | 'poisons';
+
+export interface Business {
+  id: string;
+  kind: BusinessKind;
+  owner: CharId;
+  since: number;
+  /** For a racket: the secret that the owner runs it. */
+  secretId?: SecretId;
 }
 
 export type KnowledgeSource = CharId | 'self' | 'spies' | 'rumour' | 'confession' | 'court';
@@ -364,6 +396,8 @@ export interface GameState {
   plots: Record<PlotId, Plot>;
   pledges: Pledge[];
   lands: Record<LandId, Land>;
+  /** Trades and rackets. Missing in saves from before businesses. */
+  businesses: Record<string, Business>;
   offices: Record<OfficeId, CharId | null>;
   king: CharId | null;
   interregnum: { since: number } | null;

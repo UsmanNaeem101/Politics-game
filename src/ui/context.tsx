@@ -6,6 +6,7 @@ export interface DeedSpec {
   target?: CharId;
   secretId?: string;
   plotId?: string;
+  businessId?: string;
 }
 
 export interface Ctx {

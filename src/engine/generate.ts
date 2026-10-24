@@ -22,11 +22,13 @@ import {
 import { chance, clamp, pick, roll, seedFrom, shuffle, weighted } from './rng';
 import { makeSecret, syncPlotSecret } from './secrets';
 import { emptyState } from './state';
+import { endowNewcomer, endowTrades } from './economy';
 import { names } from './text';
 import { addMod, adjustTrust, insightOf, learn, log, meetPersonalTies, rel, uid } from './world';
 import type {
   Acquaintance,
   Agenda,
+  BusinessKind,
   Character,
   CharId,
   GameState,
@@ -51,6 +53,8 @@ interface Gen {
 
 export interface GenerateOptions {
   playerName?: string;
+  /** The player's trade; drawn at random if not given. */
+  trade?: BusinessKind;
 }
 
 /** A fresh court. The same seed always gives the same court. */
@@ -447,6 +451,7 @@ function build(seed: number, attempt: number, opts: GenerateOptions): GameState 
   const history = writeHistory(g, king, greats, lessers, player);
   assignAgendas(g, king, captain, priest, greats);
   seedSituations(g, king, greats, lessers, player, history);
+  endowTrades(s, opts.trade);
   servantsOverhear(g);
   playerAcquaintance(g, player);
   for (const p of Object.values(s.plots)) syncPlotSecret(s, p);
@@ -946,6 +951,7 @@ export function arriveHouse(s: GameState): House {
     c.firstAgenda = { ...c.agenda };
   }
   if (arch === 'climber' || arch === 'rake') lord.agenda = { kind: 'rise', targets: [], summary: 'Make a name at court, quickly.' };
+  endowNewcomer(s, lord.id);
   if (lord.spouse && s.chars[lord.spouse].archetype === 'spur') s.chars[lord.spouse].agenda = { kind: 'raise-spouse', targets: [], summary: 'Drive her husband up the hall.' };
   if (lord.spouse && s.chars[lord.spouse].archetype === 'devoted') s.chars[lord.spouse].agenda = { kind: 'protect-spouse', targets: [lord.id], summary: 'Keep her husband out of trouble.' };
   for (const m of h.members) s.chars[m].firstAgenda = { ...s.chars[m].agenda };

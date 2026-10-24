@@ -6,6 +6,7 @@ import {
   newGame,
   perform,
   resolveAudience,
+  type BusinessKind,
   type GameState,
   type Intent,
   type Outcome,
@@ -46,8 +47,8 @@ export function App({ initial }: { initial?: GameState | null }) {
     saveGame(gameRef.current);
   }, []);
 
-  const start = (seed: number, name: string) => {
-    gameRef.current = newGame(seed, { playerName: name });
+  const start = (seed: number, name: string, trade?: BusinessKind) => {
+    gameRef.current = newGame(seed, { playerName: name, trade });
     setSelected(null);
     setTab('map');
     setScreen('game');

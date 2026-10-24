@@ -23,6 +23,7 @@ The generator writes a court's history first, then its motives, then its schemes
 - **Schemes**: murder plots need preparation and steady hands; ruin plots carry charges and witnesses to the King. Recruits may join sincerely or meaning to betray you, and you are never told which. Some schemes wait for a trigger ("when he holds an office").
 - **The King's justice**: proof, witnesses and trust decide whether the accused is dismissed, sent to the Tower or beheaded. Prisoners confess and name names. Treason and a murder actually done are hanging matters. A dismissed charge still muddies the accused before the whole hall, and for a grave one (or a lord found murdered) the King's people keep digging; if they find enough, the Guard comes weeks later.
 - **Strong wills**: a spouse can goad, restrain, or demand a deed. Heeding your wife's demand costs no time.
+- **Money and standing**: you run a trade, chosen at the start and changed later: estates, wool, a mill, wine, moneylending, a tax farm, an apothecary, or a racket (gambling house, bathhouse, smuggling, forgery). Each pays weekly and wins or loses standing with the Crown, the nobility, the Church, the guilds, the commons and the underworld, which colours how every character regards you. Each gives an edge in intrigue: retainers, foreign letters, a district's leverage, every feast's cellar, debtors, the King's ear, gamblers' debts, informants, cutthroats, forged seals, poisons. A racket is a secret: if it gets out, it is a scandal and a charge.
 - **The Witan**: when the throne falls empty it meets at the end of the following week. The Briefing shows how it would vote today. Being crowned is a triumph; you may then rule on.
 - **The truth**: when the game ends, everything hidden is revealed: every motive, every false oath, the real court, and everything that happened in the dark.
 
@@ -65,6 +66,7 @@ src/engine/        pure TypeScript simulation; no DOM
   generate.ts      the court generator: houses, history, motives, situations, newcomers
   content/         names, places and archetypes
   tensions.ts      seasonal feasts and fresh trouble
+  economy.ts       trades and rackets: income, trouble, leaks, inheritance (table in content/businesses.ts)
   secrets.ts       belief, proof, and how secrets travel
   plots.ts         murder and ruin plots, leaks, strikes
   court.ts         judgment, questioning, executions, inheritance, offices, the Witan

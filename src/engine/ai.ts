@@ -190,7 +190,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
       const sec = s.secrets[sid];
       if (!sec || sec.guilty.includes(me)) continue;
       if (!k.lie && k.credence < 50) continue;
-      if (!(sec.treason || sec.kind === 'theft' || sec.kind === 'slander' || sec.kind === 'murder')) continue;
+      if (!(sec.treason || sec.kind === 'theft' || sec.kind === 'slander' || sec.kind === 'murder' || sec.kind === 'racket')) continue;
       const odds = denounceOdds(s, me, { type: 'denounce', secretId: sid }).filter((o) => desire(s, me, o.accused) > -10);
       if (!odds.length) continue;
       for (const o of odds) {
@@ -277,7 +277,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (c.agenda.kind === 'destroy') {
     for (const g of c.agenda.targets) {
       if (!isFree(s, g) || myPlots.some((p) => p.targets.includes(g))) continue;
-      const charge = secretsAgainst(s, g, me, 50).find((x) => capital(x) || x.kind === 'theft' || x.kind === 'affair');
+      const charge = secretsAgainst(s, g, me, 50).find((x) => capital(x) || x.kind === 'theft' || x.kind === 'affair' || x.kind === 'racket');
       if (charge) add({ type: 'scheme', kind: 'ruin', targets: [g], charges: [charge.id] }, 22);
       // No charge to bring: a hot, unscrupulous man reaches for a knife instead.
       else if (g !== king) add({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
