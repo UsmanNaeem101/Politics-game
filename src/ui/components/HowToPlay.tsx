@@ -28,8 +28,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               call. Each season opens with a feast where the whole court gathers.
             </p>
             <p>
-              Time passes and people age. Children grow up and the old die, but you will not die of old age: only a blade, the axe or poison can
-              end you.
+              Time passes and people age. Children grow up and the old die, but you and your wife will not die of old age: only a blade, the axe
+              or poison can end you.
             </p>
           </section>
           <section>

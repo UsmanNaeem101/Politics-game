@@ -37,11 +37,16 @@ describe('time', () => {
     expect(calendar(10).season).toBe('Winter');
   });
 
-  it('everyone ages; the player never dies of it', () => {
-    const s = generateCourt(3);
+  it('everyone ages and the old die; the player and his wife never die of it', () => {
+    let s = generateCourt(3);
+    for (let seed = 3; !s.chars[s.player].spouse; seed++) s = generateCourt(seed);
     const P = s.player;
-    s.chars[P].age = 95;
-    const someone = s.order.find((id) => id !== P && s.chars[id].status === 'free' && s.chars[id].rank !== 'child')!;
+    const wife = s.chars[P].spouse!;
+    s.chars[P].age = 99;
+    s.chars[wife].age = 99;
+    const elders = s.order.filter((id) => id !== P && id !== wife && s.chars[id].status === 'free' && s.chars[id].rank !== 'child').slice(0, 3);
+    for (const id of elders) s.chars[id].age = 99;
+    const someone = s.order.find((id) => id !== P && !elders.includes(id) && s.chars[id].status === 'free' && s.chars[id].rank !== 'child')!;
     const age = s.chars[someone].age;
     for (let i = 0; i < 13 && s.phase === 'playing'; i++) {
       s.audiences = [];
@@ -49,7 +54,9 @@ describe('time', () => {
       endWeek(s);
     }
     if (s.chars[someone].status !== 'dead') expect(s.chars[someone].age).toBe(age + 1);
+    expect(elders.some((id) => /old age/.test(s.chars[id].fate ?? ''))).toBe(true);
     expect(s.chars[P].fate ?? '').not.toMatch(/old age/);
+    expect(s.chars[wife].fate ?? '').not.toMatch(/old age/);
   });
 });
 

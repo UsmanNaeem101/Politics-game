@@ -177,10 +177,11 @@ function mortality(s: GameState): void {
   if (s.turn > 1 && (s.turn - 1) % MONTHS_PER_YEAR === 0) {
     for (const c of Object.values(s.chars)) if (c.status === 'free' || c.status === 'imprisoned') c.age++;
   }
+  // You and your wife will not die in your beds; only a blade, the axe or poison can end you.
+  const spared = [s.player, s.chars[s.player]?.spouse];
   for (const id of s.order) {
     const c = ch(s, id);
-    // You will not die in your bed; only a blade, the axe or poison can end you.
-    if (c.status === 'dead' || c.status === 'fled' || c.age < 55 || id === s.player) continue;
+    if (c.status === 'dead' || c.status === 'fled' || c.age < 55 || spared.includes(id)) continue;
     const pct = ((c.age - 50) * (c.age - 50)) / 185;
     if (!chance(s, pct)) continue;
     const king = s.king === id;
