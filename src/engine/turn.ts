@@ -11,8 +11,8 @@ import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
-import { affairsAsSpies, annul, births, forgetCuckolding, matchmaking, widowsUpkeep } from './family';
-import { loversOf } from './love';
+import { affairsAsSpies, annul, births, forgetCuckolding, honestWoman, matchmaking, widowsUpkeep } from './family';
+import { loversOf, mistressOf } from './love';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -116,6 +116,13 @@ export function repairSave(s: GameState): void {
     const affair = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(w.id) && x.guilty.includes(s.player));
     const wedding = s.events.filter((e) => e.actors.includes(w.id) && e.actors.includes(h) && / were married\./.test(e.text)).at(-1);
     if (affair && wedding && wedding.turn >= affair.createdTurn) annul(s, h, w.id);
+  }
+  // A mistress since married, or gone: the scandal of keeping her is over.
+  for (const id of s.order) {
+    const wife = livingSpouse(s, id);
+    if (mistressOf(s, id)) continue;
+    const scandal = s.order.some((o) => s.relations[o]?.[id]?.mods.some((m) => m.key === 'mistress-scandal'));
+    if (scandal) honestWoman(s, id, wife ?? id);
   }
   // Marriages annulled before annulment took the wrongs of them away too.
   for (const e of s.events) {

@@ -172,7 +172,7 @@ function resolveAccused(s: GameState, a: Audience, optionId: string): Outcome {
   const plot = a.data.plotId ? s.plots[a.data.plotId as string] : undefined;
   if (!s.king) return { ok: true, text: 'With the throne empty, no one judges you.', tone: 'good' };
   if (!chargesFor(s, accuser, charges, a.data.only as CharId[] | undefined).length) {
-    return { ok: true, text: 'The King has judged that charge before, and will not hear it again without new proof.', tone: 'good' };
+    return { ok: true, text: 'The King has judged that charge before, and will not hear it again.', tone: 'good' };
   }
   let bonus = 0;
   if (optionId === 'flee') {

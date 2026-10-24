@@ -217,7 +217,7 @@ describe('a dismissed charge', () => {
 });
 
 describe('a charge once judged', () => {
-  it('is not heard again, from anyone, until new proof comes to light', () => {
+  it('is not heard again, from anyone, whatever comes to light after', () => {
     const s = fresh();
     const sid = 's-aldric-regicide';
     const other = s.order.find((id) => !['osric', 'aldric', 'anselm'].includes(id) && s.chars[id].rank !== 'servant' && chargesFor(s, id, [sid]).length > 0)!;
@@ -225,8 +225,8 @@ describe('a charge once judged', () => {
     applyJudgments(s, 'anselm', [{ accused: 'aldric', secretId: sid, verdict: 'dismiss', score: 45, forgeryFound: false }]);
     expect(chargesFor(s, other, [sid])).toEqual([]);
     expect(check(s, other, { type: 'denounce', secretId: sid })).toMatch(/already judged/);
-    s.secrets[sid].evidence += 15;
-    expect(chargesFor(s, other, [sid]).map((c) => c.accused)).toContain('aldric');
+    s.secrets[sid].evidence += 40;
+    expect(chargesFor(s, other, [sid])).toEqual([]);
   });
 
   it('a new scheme is a new charge, whatever he was judged for before', () => {

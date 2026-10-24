@@ -39,11 +39,12 @@ before changing anything substantial; it is the plan we are building toward.
 - Families: `family.ts` (children with rank `child`, births, coming of age, weddings, NPC matchmaking, outsiders from the
   provinces, the player's proposals). An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
 - Justice: a charge once judged is recorded by crime, not by letter (`GameState.judged`, keyed by `chargeKey()` in
-  `court.ts`); `alreadyJudged()` keeps it from being heard again without +15 proof. The UI keeps two earlier saves (`store.ts`: the start of this month, and
+  `court.ts`); `alreadyJudged()` keeps it from ever being heard again. The UI keeps two earlier saves (`store.ts`: the start of this month, and
   before the last month ended) so an ending, or a game in progress, can be turned back. A traced killing by the player
   is answered at a hearing (`hearingAccuser()` in `actions.ts`); mercy there sets `Imprisonment.spared`.
 - Births: `births()` in `family.ts`; a planned child (`try-child`) sets `Character.expecting` and is delivered nine months
-  on (`deliver()`), binding the mother to the father. Widows pay upkeep monthly (`widowsUpkeep()`).
+  on (`deliver()`), binding the mother to the father. `acknowledge()` owns a natural child (`Character.sire`), naming a son
+  `House.heir`; only children with the father among their `parents` inherit. Widows pay upkeep monthly (`widowsUpkeep()`).
 - Matches are courtships (`GameState.courtships`, `matchmaking()` in `family.ts`): suitors are announced and the answer
   comes after `DELIBERATION` months; no one is matched during `MOURNING`.
 - Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); ages tick yearly in `mortality()` (`turn.ts`),

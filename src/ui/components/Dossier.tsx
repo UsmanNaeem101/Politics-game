@@ -1,4 +1,5 @@
 import {
+  acknowledgeProblem,
   mistressProblem,
   tryProblem,
   akin,
@@ -70,7 +71,9 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   const out: DeedButton[] = [];
   const iAmKing = s.king === P;
   const jailed = me.status === 'imprisoned';
-  if (t.status === 'dead' || t.status === 'fled' || t.rank === 'child') return [];
+  if (t.status === 'dead' || t.status === 'fled') return [];
+  // A child is no part of anyone's deeds, save a father who would own him.
+  if (t.rank === 'child') return acknowledgeProblem(s, P, target) ? [] : [{ type: 'acknowledge' }];
   const lvl = acquaintance(s, target);
   const servant = t.rank === 'servant';
   const known = Object.entries(s.knowledge[P] ?? {}).filter(
@@ -123,6 +126,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (love === null || (love && /answer|already/.test(love))) out.push(gate({ type: 'seduce', why: love ?? undefined }));
   if (!nightProblem(s, P, target)) out.push({ type: 'night-kill' });
   // Your wife, or your lover: a child of yours.
+  if (!acknowledgeProblem(s, P, target)) out.push({ type: 'acknowledge' });
   const keeping = mistressProblem(s, P, target);
   if (keeping !== 'She is not your lover.') out.push({ type: 'take-mistress', why: keeping ?? undefined });
   const trying = tryProblem(s, P, target);

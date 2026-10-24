@@ -79,6 +79,7 @@ export function roleLabel(s: GameState, id: CharId): string {
   if (house?.head === id && house.rank !== 'royal' && house.rank !== 'church') return 'Head of house';
   if (c.spouse && house?.head === c.spouse) return c.gender === 'f' ? 'His wife' : 'Her husband';
   if (c.mistressOf && house?.head === c.mistressOf) return 'His mistress';
+  if (house?.heir === id) return 'Heir';
   if (c.rank === 'child' || c.parents?.some((p) => p === house?.head || s.chars[p]?.spouse === house?.head)) return c.gender === 'm' ? 'Son' : 'Daughter';
   if (c.siblings.length) return c.gender === 'm' ? 'Brother' : 'Sister';
   return c.title;

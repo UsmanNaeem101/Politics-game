@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMING_OF_AGE,
+  bastard,
   credence,
   becomeLovers,
   addMod,
@@ -355,5 +356,81 @@ describe('a lover is not married off', () => {
     expect(h.head).toBe(lady);
     expect(s.chars[brother].householdId).toBe(home);
     expect(s.chars[brother].name).toBe(oldName);
+  });
+});
+
+describe('owning a natural child', () => {
+  it('a natural son taken into your house under your name, and named your heir', () => {
+    const s = generateCourt(19);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    becomeLovers(s, wife, s.player);
+    const son = bastard(s, wife, s.player);
+    son.gender = 'm';
+    const home = s.houses[s.chars[s.player].householdId];
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'acknowledge', target: son.id })).toBeNull();
+    perform(s, s.player, { type: 'acknowledge', target: son.id });
+    expect(son.parents).toContain(s.player);
+    expect(son.householdId).toBe(home.id);
+    expect(son.name).toContain(home.name);
+    expect(home.heir).toBe(son.id);
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'acknowledge', target: son.id })).toMatch(/already/);
+  });
+
+  it('a married lover’s child: her husband learns it was never his', () => {
+    const s = generateCourt(19);
+    const { lord, wife } = couple(s);
+    becomeLovers(s, wife, s.player);
+    const child = bearChild(s, wife, lord, 0, s.player);
+    child.sire = s.player;
+    (s.chars[s.player].children ??= []).push(child.id);
+    s.ap = 3;
+    perform(s, s.player, { type: 'acknowledge', target: child.id });
+    expect(child.parents).not.toContain(lord);
+    expect(s.chars[lord].children ?? []).not.toContain(child.id);
+    expect(s.relations[lord][s.player].mods.some((m) => m.key === 'cuckold')).toBe(true);
+  });
+
+  it('a natural child never owned does not inherit; a named heir comes first', () => {
+    const s = generateCourt(20);
+    const { lord, wife } = couple(s);
+    const house = s.houses[s.chars[lord].householdId];
+    const legit = bearChild(s, wife, lord, 30);
+    legit.gender = 'm';
+    const other = s.order.find((id) => s.chars[id].gender === 'f' && id !== wife && s.chars[id].status === 'free' && s.chars[id].rank !== 'child')!;
+    const natural = bastard(s, other, lord);
+    natural.gender = 'm';
+    natural.age = 40;
+    natural.rank = 'knight';
+    // Living under his roof, but never owned: he does not inherit.
+    s.houses[natural.householdId].members = s.houses[natural.householdId].members.filter((m) => m !== natural.id);
+    house.members.push(natural.id);
+    natural.householdId = house.id;
+    house.heir = undefined;
+    kill(s, lord, 'Died', false);
+    expect(house.head).toBe(legit.id);
+  });
+});
+
+describe('marrying your mistress', () => {
+  it('ends the scandal of keeping her, and mends her family’s honour', () => {
+    const s = generateCourt(21);
+    const P = s.player;
+    const mine = s.chars[P].spouse;
+    if (mine) kill(s, mine, 'Died', false);
+    const { lord, wife: widow } = couple(s);
+    kill(s, lord, 'Died', false);
+    const priest = s.order.find((id) => s.chars[id].rank === 'clergy')!;
+    addMod(s, priest, P, 'mistress-scandal', 'Keeps his mistress under his roof', -8, 0.2);
+    const kin = s.chars[widow].siblings[0];
+    if (kin) addMod(s, kin, P, 'dishonour', 'Dishonoured our house', -30, 0.1);
+    s.chars[widow].mistressOf = P;
+    s.turn += 2;
+    wed(s, P, widow);
+    expect(s.relations[priest][P].mods.some((m) => m.key === 'mistress-scandal')).toBe(false);
+    if (kin) expect(s.relations[kin][P].mods.some((m) => m.key === 'dishonour')).toBe(false);
+    expect(s.chars[widow].mistressOf).toBeUndefined();
   });
 });

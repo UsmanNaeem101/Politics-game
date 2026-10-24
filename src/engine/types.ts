@@ -140,6 +140,8 @@ export interface House {
   motto?: string;
   /** Turn the house came to court (0 = from the start). */
   arrived: number;
+  /** A son named heir before his elders: an acknowledged natural son, say. */
+  heir?: CharId;
   /** The tier the court last counted this house in, to notice it rising or falling. */
   standing?: 'great' | 'lesser';
 }

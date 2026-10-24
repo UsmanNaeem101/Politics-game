@@ -239,6 +239,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return target ? { type, target } : null;
       case 'take-mistress':
         return target ? { type, target } : null;
+      case 'acknowledge':
+        return target ? { type, target } : null;
     }
   })();
 
@@ -1048,6 +1050,18 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
         lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
       };
+    case 'acknowledge': {
+      const T = ch(s, it.target);
+      const deceived = T.parents?.find((p) => s.chars[p]?.gender === 'm');
+      const wife = livingSpouse(s, P);
+      return {
+        lines: [
+          `${first(s, it.target)} comes into your house and takes your name.${T.gender === 'm' ? ' As a son, he is named your heir, before any other.' : ''}`,
+          deceived ? `${first(s, deceived)}, who believed the child his, will learn otherwise, and hate you for it.` : 'The secret of the birth is a secret no longer.',
+          `${wife && !T.parents?.includes(wife) ? `${first(s, wife)} will resent it. ` : ''}${T.gender === 'm' ? 'Your other sons will feel passed over, and honest men will think a little less of you.' : ''}`,
+        ],
+      };
+    }
     case 'take-mistress': {
       const wife = livingSpouse(s, P);
       return {

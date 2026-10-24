@@ -41,7 +41,7 @@ import { hearCredence, kindLabel, makeSecret, secretMatters, syncPlotSecret } fr
 import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
 import { tableTalk } from './talk';
-import { marriageable, matchProblem, propose, tryForChild, tryProblem, unwed } from './family';
+import { acknowledge, acknowledgeProblem, marriageable, matchProblem, propose, tryForChild, tryProblem, unwed } from './family';
 import { killInTheNight, mistressProblem, nightProblem, seduce, seduceProblem, takeMistress } from './love';
 import { TAIL_COST, setTail, tailProblem } from './tails';
 import { dineProblem, sendToDine } from './wives';
@@ -130,7 +130,8 @@ export type Intent =
   | { type: 'night-kill'; target: CharId }
   | { type: 'dine'; target: CharId }
   | { type: 'try-child'; target: CharId }
-  | { type: 'take-mistress'; target: CharId };
+  | { type: 'take-mistress'; target: CharId }
+  | { type: 'acknowledge'; target: CharId };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -179,6 +180,7 @@ export const COST: Record<IntentType, number> = {
   dine: 1,
   'try-child': 1,
   'take-mistress': 1,
+  acknowledge: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -215,6 +217,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
   seduce: { name: 'Woo as a lover', desc: 'Not marriage: make her your lover. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
+  acknowledge: { name: 'Acknowledge as your own', desc: 'Own your natural child before the world: into your house, under your name. A son becomes your heir. No secret after that.' },
   'take-mistress': { name: 'Bring her into your household', desc: 'Your lover comes to live under your roof as your mistress, for all the court to see. Your wife will not forgive it.' },
   'try-child': { name: 'Try for a child', desc: 'With your wife, or your lover. She is drawn closer to you for it; a child, if one comes, binds her to you as its father.' },
   dine: { name: 'Send your wife to dine with her', desc: 'Your wife dines with this lady and brings home what was said: gossip, what her husband wants, who sits in that house.' },
@@ -248,7 +251,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
   if (target !== undefined) {
     if (target === actor) return 'You cannot do that to yourself.';
     if (!s.chars[target]) return 'No such person.';
-    if (isChild(s, target)) return 'A child is no part of this.';
+    if (isChild(s, target) && it.type !== 'acknowledge') return 'A child is no part of this.';
     const needsPrisoner = it.type === 'execute' || it.type === 'release';
     if (needsPrisoner && ch(s, target).status !== 'imprisoned') return 'They are not in the Tower.';
     if (!needsPrisoner && it.type !== 'petition' && !isFree(s, target)) return 'They are not at court.';
@@ -309,7 +312,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       if (it.secretId && !usableCharge(s, actor, it.secretId)) return 'You do not believe that yourself.';
       if (!chargesFor(s, actor, charges, it.only).length) {
         const judged = charges.some((c) => s.secrets[c]?.guilty.some((g) => g !== actor && alreadyJudged(s, s.secrets[c], g)));
-        return judged ? 'The King has already judged that charge. Bring new proof, or let it lie.' : 'No one named in it stands free to be accused.';
+        return judged ? 'The King has already judged that charge. No one is tried twice for the same crime.' : 'No one named in it stands free to be accused.';
       }
       return null;
     }
@@ -396,6 +399,8 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return tryProblem(s, actor, it.target);
     case 'take-mistress':
       return mistressProblem(s, actor, it.target);
+    case 'acknowledge':
+      return acknowledgeProblem(s, actor, it.target);
     case 'plead':
       if (a.status !== 'imprisoned') return 'You are not in the Tower.';
       if (!s.king || it.target === s.king) return 'Write to someone who can reach the King.';
@@ -585,6 +590,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return tryForChild(s, actor, it.target);
     case 'take-mistress':
       return takeMistress(s, actor, it.target);
+    case 'acknowledge':
+      return acknowledge(s, actor, it.target);
   }
 }
 
@@ -1328,7 +1335,7 @@ export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, {
   // Mercy spares the neck, not the shame: a crime the King believes is still punished.
   const charges = (s.imprisoned[it.target!]?.charges ?? []).map((c) => s.secrets[c]).filter(Boolean);
   const proven = charges.find((sec) => capital(sec) && credence(s, K, sec.id) >= 60);
-  // And it settles the matter: no one may bring the same charge again without new proof.
+  // And it settles the matter: no one may bring the same charge again.
   for (const sec of charges) markJudged(s, sec, it.target!);
   release(s, it.target!, `${nm(s, actor)} begged mercy and the King granted it`);
   if (proven && isFree(s, it.target!)) disgrace(s, it.target!, proven);

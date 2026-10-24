@@ -81,12 +81,15 @@ export function succeedHouse(s: GameState, id: CharId): void {
   // Grown sons, eldest first; then brothers; then grown daughters, sisters, the widow; then a boy lord.
   const here = (k: CharId) => isFree(s, k) && ch(s, k).householdId === house.id;
   const byAge = (a: CharId, b: CharId) => ch(s, b).age - ch(s, a).age;
-  const kids = (c.children ?? []).filter(here).sort(byAge);
+  // His children before the world: born in wedlock, or acknowledged. A natural child he never owned does not inherit.
+  const kids = (c.children ?? []).filter((k) => here(k) && !!ch(s, k).parents?.includes(id)).sort(byAge);
   const grown = kids.filter((k) => ch(s, k).rank !== 'child');
   const young = kids.filter((k) => ch(s, k).rank === 'child');
   const male = (k: CharId) => ch(s, k).gender === 'm';
   const sibs = c.siblings.filter(here);
+  const named = house.heir && here(house.heir) ? [house.heir] : [];
   const kin = [
+    ...named,
     ...grown.filter(male),
     ...sibs.filter(male),
     ...grown.filter((k) => !male(k)),
@@ -398,10 +401,9 @@ function chargeKey(sec: Secret, accused: CharId): string {
   return `${accused}:${sec.kind}${sec.deed ? '!' : ''}:${sec.trade ?? ''}:${[...sec.victims].sort().join(',')}`;
 }
 
-/** Judged once on a charge, a man is not judged again on it unless new proof has come to light. */
+/** Judged once on a charge, a man is never judged on it again, whatever comes to light after. */
 export function alreadyJudged(s: GameState, sec: Secret, accused: CharId): boolean {
-  const then = s.judged?.[chargeKey(sec, accused)];
-  return then !== undefined && sec.evidence < then + 15;
+  return s.judged?.[chargeKey(sec, accused)] !== undefined;
 }
 
 export function markJudged(s: GameState, sec: Secret, accused: CharId): void {
@@ -524,7 +526,7 @@ export function pursueInquiries(s: GameState): void {
   const K = s.king;
   for (const sec of Object.values(s.secrets)) {
     if (sec.inquiry === undefined) continue;
-    const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K);
+    const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K && !alreadyJudged(s, sec, g));
     if (!K || !suspects.length || s.turn - sec.inquiry > 6) {
       delete sec.inquiry;
       continue;

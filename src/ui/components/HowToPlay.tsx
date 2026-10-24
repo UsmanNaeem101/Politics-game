@@ -119,8 +119,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               rather than the axe), accuse your accuser, or run. A denunciation is judged on proof, on witnesses, and on whom the King trusts. The accused may be dismissed, sent to the Tower, or sent
               to the block. Prisoners confess or name other names. Treason and a murder actually done are hanging matters. A charge the King
               dismisses is not forgotten: the hall heard it, the accused's name is muddied, and for a grave charge the King may set his people to
-              keep looking. A lord found murdered is looked into too. Once judged, a charge cannot be brought again unless new proof comes to
-              light. If you are thrown in the Tower, you can ask someone to <strong>plead your case</strong> before the King. A spouse or kin is
+              keep looking. A lord found murdered is looked into too. No one is tried twice for the same crime. If you are thrown in the Tower, you can ask someone to <strong>plead your case</strong> before the King. A spouse or kin is
               likelier to risk it.
             </p>
           </section>
@@ -146,7 +145,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <p>
               Couples have children, and lovers may too: a widow's or a maid's child by her lover is born into her house, and the father is
               told. <strong>Try for a child</strong> with your wife or your lover: it draws her closer, and a child (born nine months on)
-              binds her to you as its father. Children grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
+              binds her to you as its father. <strong>Acknowledge</strong> a natural child of yours (on the child's page) and they come
+              into your house under your name; a son is named your heir. Children grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
               schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
               mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole
               court hears of it, and she takes two months to answer: time enough to make your own offer. A woman who has a lover is not married off to anyone else; your lover will marry no one but you. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.

@@ -6,11 +6,11 @@ import { ARCHETYPES, type ArchetypeId } from './content/archetypes';
 import { EPITHETS, FEMALE_NAMES, HOUSE_NAMES, MALE_NAMES } from './content/names';
 import { succeedHouse } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
-import { makeSecret } from './secrets';
+import { makeSecret, publish } from './secrets';
 import { affairSpy } from './spies';
 import { loversOf } from './love';
 import { first, his, names, nm } from './text';
-import { acquaintance, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
+import { FAITHLESS_FADES, acquaintance, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
 
 export const COMING_OF_AGE = 16;
@@ -360,6 +360,76 @@ export function forgetCuckolding(s: GameState, man: CharId, woman: CharId): void
   for (const sp of Object.values(s.spies ?? {})) if (sp.affair && sp.agent === woman && sp.mark === man && sp.status === 'active') sp.status = 'ended';
 }
 
+/** Why he cannot acknowledge this child as his own, or null. */
+export function acknowledgeProblem(s: GameState, actor: CharId, target: CharId): string | null {
+  const T = ch(s, target);
+  if (T.sire !== actor) return 'They are not your natural child.';
+  if (T.parents?.includes(actor)) return 'You have acknowledged them already.';
+  if (gone(s, target)) return 'They are beyond your reach.';
+  return null;
+}
+
+/**
+ * His natural child, owned before the world: taken into his house and given his name, a son named his heir.
+ * A secret no longer; a husband who thought the child his learns otherwise.
+ */
+export function acknowledge(s: GameState, actor: CharId, target: CharId): { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' } {
+  const A = ch(s, actor);
+  const T = ch(s, target);
+  const mother = T.parents?.find((p) => s.chars[p]?.gender === 'f');
+  const deceived = T.parents?.find((p) => p !== mother);
+  // The secret of the birth is out.
+  for (const sec of Object.values(s.secrets)) {
+    if (sec.kind === 'affair' && sec.truth && sec.guilty.includes(actor) && sec.text.includes(nm(s, target))) publish(s, sec.id, 90, 'court');
+  }
+  if (deceived) {
+    T.parents = (T.parents ?? []).filter((p) => p !== deceived);
+    const D = ch(s, deceived);
+    D.children = (D.children ?? []).filter((k) => k !== target);
+    if (!gone(s, deceived)) {
+      addMod(s, deceived, actor, 'cuckold', 'Fathered a child on my wife', -60);
+      if (mother) addMod(s, deceived, mother, 'faithless', 'Faithless', -40, FAITHLESS_FADES);
+    }
+  }
+  T.parents = [...(T.parents ?? []), actor];
+  if (!A.children?.includes(target)) (A.children ??= []).push(target);
+  const home = s.houses[A.householdId];
+  if (T.householdId !== home.id) moveTo(s, target, home);
+  T.house = home.name;
+  T.heraldry = home.heraldry;
+  T.title = T.gender === 'm' ? `Son of House ${home.name}` : `Daughter of House ${home.name}`;
+  rename(s, target, isChild(s, target) ? `${T.short} ${home.name}` : `${T.gender === 'm' ? 'Sir' : 'Lady'} ${T.short} ${home.name}`);
+  const heir = T.gender === 'm';
+  if (heir) home.heir = target;
+  if (mother && !gone(s, mother)) addMod(s, mother, actor, 'acknowledged', 'Owned our child', 15, 0.1);
+  const wife = livingSpouse(s, actor);
+  if (wife && wife !== mother) addMod(s, wife, actor, 'bastard', 'Acknowledged his bastard', -20, 0.2);
+  if (heir) {
+    for (const k of A.children ?? []) {
+      const K = s.chars[k];
+      if (k !== target && K && !gone(s, k) && K.gender === 'm' && K.parents?.includes(actor)) addMod(s, k, actor, 'passed-over', 'Set his bastard above me', -30, 0.1);
+    }
+    for (const id of s.order) {
+      const c = ch(s, id);
+      if (id !== actor && isFree(s, id) && !isChild(s, id) && (c.rank === 'clergy' || c.traits.honor >= 65)) addMod(s, id, actor, 'bastard-heir', 'Made his bastard his heir', -4, 0.2);
+    }
+  }
+  const word = T.gender === 'm' ? 'son' : 'daughter';
+  log(s, `${nm(s, actor)} has acknowledged ${nm(s, target)} as his ${word}${heir ? ', and named him his heir' : ''}.`, 'all', 'court', [actor, target]);
+  return { ok: true, text: `${first(s, target)} is your ${word} before the world${heir ? ', and your heir' : ''}.`, tone: 'good' };
+}
+
+/** He marries the mistress he kept under his roof: the scandal is over, and her family's honour is mended. */
+export function honestWoman(s: GameState, man: CharId, woman: CharId): void {
+  const W = ch(s, woman);
+  const kin = new Set([...(W.parents ?? []), ...W.siblings]);
+  for (const [id, row] of Object.entries(s.relations)) {
+    const r = row[man];
+    if (!r) continue;
+    r.mods = r.mods.filter((m) => m.key !== 'mistress-scandal' && !(m.key === 'dishonour' && kin.has(id)));
+  }
+}
+
 /** A wedding. The bride joins her husband's house, unless she heads one and he does not. */
 export function wed(s: GameState, a: CharId, b: CharId): void {
   const man = ch(s, a).gender === 'm' ? ch(s, a) : ch(s, b);
@@ -368,6 +438,7 @@ export function wed(s: GameState, a: CharId, b: CharId): void {
   for (const c of [man, woman]) if (c.spouse && s.chars[c.spouse]?.spouse === c.id) s.chars[c.spouse].spouse = undefined;
   man.spouse = woman.id;
   woman.spouse = man.id;
+  if (woman.mistressOf === man.id) honestWoman(s, man.id, woman.id);
   woman.mistressOf = undefined;
   const hers = s.houses[woman.householdId];
   const his = s.houses[man.householdId];
