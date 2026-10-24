@@ -16,6 +16,8 @@ import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
 import {
+  COLD_FADES,
+  FAITHLESS_FADES,
   MONTHS_PER_SEASON,
   MONTHS_PER_YEAR,
   acquaintance,
@@ -105,6 +107,17 @@ export function repairSave(s: GameState): void {
     }
   }
   hearOfTheNamed(s);
+  // Cold marriages and unfaithfulness were once forever; now they thaw.
+  for (const row of Object.values(s.relations)) {
+    for (const r of Object.values(row)) {
+      for (const m of r.mods) {
+        if (m.key === 'cold' && !m.decay) m.decay = COLD_FADES;
+        if (m.key === 'faithless' && (m.decay ?? 0) < FAITHLESS_FADES) m.decay = FAITHLESS_FADES;
+        // ...but the man who bedded his wife is not forgiven, or the injury would be felt afresh.
+        if (m.key === 'cuckold') m.decay = 0;
+      }
+    }
+  }
   // Concealments made before they were tied to the treason they hide.
   for (const sec of Object.values(s.secrets)) {
     if (sec.kind !== 'concealment' || sec.about) continue;

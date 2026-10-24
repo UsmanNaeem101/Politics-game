@@ -25,7 +25,7 @@ import { emptyState } from './state';
 import { endowNewcomer, endowTrades } from './economy';
 import { affairsAsSpies, bearChild } from './family';
 import { names } from './text';
-import { addMod, adjustTrust, insightOf, learn, log, meetPersonalTies, rel, uid } from './world';
+import { COLD_FADES, addMod, adjustTrust, insightOf, learn, log, meetPersonalTies, rel, uid } from './world';
 import type {
   Acquaintance,
   Agenda,
@@ -368,7 +368,7 @@ function spouseFeelings(g: Gen, husband: Character, wife: Character): void {
     case 'unhappy':
       addMod(s, husband.id, wife.id, 'marriage', 'Spouse', 15, 0, true);
       addMod(s, wife.id, husband.id, 'marriage', 'Spouse', 10, 0, true);
-      addMod(s, wife.id, husband.id, 'cold', 'A cold marriage', -20);
+      addMod(s, wife.id, husband.id, 'cold', 'A cold marriage', -20, COLD_FADES);
       rel(s, husband.id, wife.id).trust = 70;
       rel(s, wife.id, husband.id).trust = 35;
       break;
@@ -614,7 +614,7 @@ function writeHistory(g: Gen, king: Character, greats: Character[], lessers: Cha
     addMod(s, wife.id, lover.id, 'lover', 'Her lover', 45);
     addMod(s, lover.id, wife.id, 'lover', 'His lover', 35);
     rel(s, wife.id, lover.id).trust = 75;
-    addMod(s, wife.id, husband.id, 'cold', 'A cold marriage', -10);
+    addMod(s, wife.id, husband.id, 'cold', 'A cold marriage', -10, COLD_FADES);
     wife.bio = `${wife.bio} She has taken ${lover.short} as her lover.`;
     hist.affairs.push({ wife, lover, husband, secretId: sec.id });
   }

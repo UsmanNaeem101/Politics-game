@@ -26,6 +26,7 @@ import { MOURNING, widowedFor } from './family';
 import { TAIL_COST } from './tails';
 import { dineProblem } from './wives';
 import {
+  FAITHLESS_FADES,
   addMod,
   adjustTrust,
   ch,
@@ -567,7 +568,7 @@ function reactToBetrayals(s: GameState): void {
       if (r?.mods.some((m) => m.key === 'cuckold')) continue;
       const [wife, lover] = sec.guilty;
       addMod(s, v, lover, 'cuckold', 'Lies with my wife', -60);
-      addMod(s, v, wife, 'faithless', 'Faithless', -40);
+      addMod(s, v, wife, 'faithless', 'Faithless', -40, FAITHLESS_FADES);
       adjustTrust(s, v, wife, -50);
       const c = ch(s, v);
       if (v !== s.player && c.traits.wrath >= 45 && isFree(s, lover) && c.agenda.kind !== 'keep-crown') {

@@ -9,7 +9,7 @@ import { akin } from './family';
 import { affairSpy } from './spies';
 import { chance, clamp, roll } from './rng';
 import { first, nm } from './text';
-import { addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rel } from './world';
+import { FAITHLESS_FADES, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rel } from './world';
 import type { CharId, GameState, Secret } from './types';
 
 type Result = { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' };
@@ -114,9 +114,10 @@ export function discoverAffair(s: GameState, husband: CharId, sec: Secret): void
   const wife = sec.guilty.find((g) => ch(s, g).gender === 'f');
   const lover = sec.guilty.find((g) => g !== wife);
   learn(s, husband, sec.id, 90, 'self');
-  if (lover) addMod(s, husband, lover, 'cuckold', 'Beds my wife', -50, 0.1);
+  // Who bedded his wife he never forgets; her, in time, he may forgive.
+  if (lover) addMod(s, husband, lover, 'cuckold', 'Beds my wife', -50);
   if (wife) {
-    addMod(s, husband, wife, 'faithless', 'Faithless', -35, 0.1);
+    addMod(s, husband, wife, 'faithless', 'Faithless', -35, FAITHLESS_FADES);
     adjustTrust(s, husband, wife, -40);
   }
 }

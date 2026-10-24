@@ -105,6 +105,27 @@ export function hearOfTheNamed(s: GameState): void {
   }
 }
 
+/** A cold marriage thaws over years; a wife's unfaithfulness is forgiven, slowly. Keeping company hastens both. */
+export const COLD_FADES = 0.25;
+export const FAITHLESS_FADES = 0.5;
+export const MARRIAGE_WOUNDS = ['cold', 'faithless'];
+
+/** Time spent together eases what lies between husband and wife, both ways. True if anything eased. */
+export function mendMarriage(s: GameState, a: CharId, b: CharId, amount: number): boolean {
+  let eased = false;
+  for (const [x, y] of [[a, b], [b, a]]) {
+    const r = s.relations[x]?.[y];
+    if (!r) continue;
+    for (const m of r.mods) {
+      if (!MARRIAGE_WOUNDS.includes(m.key) || m.value >= 0) continue;
+      m.value = Math.min(0, m.value + amount);
+      eased = true;
+    }
+    r.mods = r.mods.filter((m) => !MARRIAGE_WOUNDS.includes(m.key) || m.value <= -1);
+  }
+  return eased;
+}
+
 /** A husband or wife still living. A widow keeps a link to her late husband in `spouse`. */
 export const livingSpouse = (s: GameState, id: CharId): CharId | undefined => {
   const sp = s.chars[id]?.spouse;

@@ -48,6 +48,7 @@ import { dineProblem, sendToDine } from './wives';
 import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, recruitedSpies, sweepHousehold } from './spies';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
+  OFFICE_NAMES,
   acquaintance,
   addMod,
   adjustTrust,
@@ -66,7 +67,7 @@ import {
   knows,
   learn,
   log,
-  OFFICE_NAMES,
+  mendMarriage,
   officeOf,
   opinion,
   removeMod,
@@ -630,9 +631,10 @@ function converse(s: GameState, actor: CharId, target: CharId): Outcome {
   addMod(s, actor, target, 'company', 'Pleasant company', 3, 1);
   adjustTrust(s, target, actor, 3);
   adjustTrust(s, actor, target, 2);
+  const mended = (A.spouse === target || ch(s, target).spouse === actor) && mendMarriage(s, actor, target, 6);
   const place = vary(s, PLACES);
   log(s, `${nm(s, actor)} and ${nm(s, target)} talked ${place}.`, [actor, target], 'neutral', [actor, target]);
-  let extra = '';
+  let extra = mended ? ' The chill between you eases a little.' : '';
   if (actor === s.player) {
     s.company[target] = (s.company[target] ?? 0) + 1;
     if (s.company[target] >= 3 && hearOf(s, target, 4)) extra += ` You feel you know ${him(s, target)} now.`;

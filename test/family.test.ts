@@ -14,6 +14,7 @@ import {
   makeSecret,
   marriageable,
   matchmaking,
+  opinion,
   DELIBERATION,
   proposeOdds,
   perform,
@@ -198,5 +199,29 @@ describe('names', () => {
     expect(s.chars[bride].formerly).toContain(old);
     expect(sec.text).toContain(s.chars[bride].name);
     expect(sec.text).not.toContain(old);
+  });
+});
+
+describe('a marriage mends', () => {
+  it('keeping company with your wife eases a cold marriage, and time thaws it', () => {
+    let s = generateCourt(12);
+    for (let seed = 12; !s.chars[s.player].spouse; seed++) s = generateCourt(seed);
+    const P = s.player;
+    const wife = s.chars[P].spouse!;
+    s.known[wife] = 4;
+    addMod(s, wife, P, 'cold', 'A cold marriage', -20, 0.25);
+    addMod(s, P, wife, 'faithless', 'Faithless', -40, 0.5);
+    const before = opinion(s, wife, P);
+    s.ap = 3;
+    const r = perform(s, P, { type: 'converse', target: wife });
+    expect(r.text).toMatch(/chill/);
+    expect(s.relations[wife][P].mods.find((m) => m.key === 'cold')!.value).toBe(-14);
+    expect(s.relations[P][wife].mods.find((m) => m.key === 'faithless')!.value).toBe(-34);
+    expect(opinion(s, wife, P)).toBeGreaterThan(before);
+    for (let i = 0; i < 4; i++) {
+      s.ap = 3;
+      perform(s, P, { type: 'converse', target: wife });
+    }
+    expect(s.relations[wife][P].mods.some((m) => m.key === 'cold')).toBe(false);
   });
 });
