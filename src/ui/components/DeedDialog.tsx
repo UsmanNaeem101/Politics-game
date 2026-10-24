@@ -59,6 +59,9 @@ import {
   sellPrice,
   spyChance,
   strikeChance,
+  warnCredence,
+  warnFound,
+  warnable,
   type BusinessKind,
   type SpyHook,
   type CharId,
@@ -317,7 +320,9 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       );
       break;
     case 'whisper': {
-      const listOk = secrets.filter((k) => !k.sec.guilty.includes(P));
+      // A plot you were sworn into can be told only to those it is aimed at: a warning.
+      const sworn = (k: (typeof secrets)[number]) => (target ? !!warnable(s, P, target, k.sec) : !!betrayable(s, P, k.sec) && s.plots[k.sec.plotId!]?.owner !== P);
+      const listOk = secrets.filter((k) => !k.sec.guilty.includes(P) || sworn(k));
       fields = (
         <>
           {!spec.target && personPick('To whom', met(s))}
@@ -330,7 +335,9 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
                   <input type="radio" name="secret" checked={secretId === k.sec.id} onChange={() => setSecretId(k.sec.id)} />
                   <span>
                     {k.k.lie ? <span className="chip chip--info">Your forgery</span> : <span className="chip">{k.k.credence}% sure</span>} {k.text}
-                    {target && k.sec.guilty.includes(target) ? (
+                    {k.sec.guilty.includes(P) ? (
+                      <em className="muted"> You are sworn to it. Telling {target ? 'them' : 'its quarry'} is a warning, and takes you out of it.</em>
+                    ) : target && k.sec.guilty.includes(target) ? (
                       <em className="muted"> It is their own secret.</em>
                     ) : (
                       target && credence(s, target, k.sec.id) > 0 && <em className="muted"> They seem to know already.</em>
@@ -908,6 +915,17 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       const sec = s.secrets[it.secretId];
       if (sec.guilty.includes(it.target)) {
         return { lines: [sec.truth ? 'It is their own secret. They will learn that you know — and may fear you for it.' : 'It is a lie about them. They will know it, and know you are telling it.'] };
+      }
+      const plot = warnable(s, P, it.target, sec);
+      if (plot) {
+        return {
+          pct: warnCredence(s, P, it.target, sec),
+          lines: [
+            'How far they will believe you. You were sworn to it: you know its names and its means.',
+            `You leave “${plot.name}”, and your name goes out of it.${plot.kind === 'murder' ? ' They will be on their guard.' : ''}`,
+            `Chance ${first(s, plot.owner)} works out who talked: ${warnFound(s, plot.owner, it.target)}%.`,
+          ],
+        };
       }
       const c = hearCredence(s, it.target, P, sec);
       return { pct: c, lines: ['How far they will believe you.'] };

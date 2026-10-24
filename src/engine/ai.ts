@@ -286,6 +286,15 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     }
   }
 
+  // A false friend to a plot may warn its quarry, if he cares for them.
+  for (const p of Object.values(s.plots)) {
+    if (p.status !== 'active' || p.owner === me || !p.members.some((m) => m.id === me && !m.sincere)) continue;
+    for (const t of p.targets) {
+      if (!isFree(s, t) || credence(s, t, p.secretId) >= 50 || opinion(s, me, t) < 15) continue;
+      add({ type: 'whisper', target: t, secretId: p.secretId }, 10 + opinion(s, me, t) * 0.3 + c.traits.honor * 0.1);
+    }
+  }
+
   // ── Forgery ───────────────────────────────────────────────────────────────
   if (king && c.traits.honor < 50 && c.traits.cunning >= 50) {
     for (const g of others) {

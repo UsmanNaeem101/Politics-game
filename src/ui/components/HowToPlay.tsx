@@ -109,7 +109,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <p>
               You can betray a scheme yourself, whether you joined it or lead it: lay it before the King from your Secrets ("Betray it to the
               King"). Drawing a man into a plot against the King and then handing him over is a fine double-cross. Believed, you are pardoned;
-              disbelieved, everyone in it knows what you did.
+              disbelieved, everyone in it knows what you did. Or, if you were drawn into it, go to the one it is aimed at and{' '}
+              <strong>whisper</strong> it to them as a warning: they will believe you and be on their guard, you are out of the scheme and
+              your name goes out of it, but its leader may work out who talked.
             </p>
           </section>
           <section>

@@ -33,8 +33,11 @@ import {
   createPlot,
   isMember,
   joinPlot,
+  leavePlot,
   pledgeText,
   resolveStrike,
+  warnCredence,
+  warnable,
 } from './plots';
 import { chance, clamp, rand, roll } from './rng';
 import { hearCredence, kindLabel, makeSecret, secretMatters, syncPlotSecret } from './secrets';
@@ -263,7 +266,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
     case 'whisper': {
       const k = knows(s, actor, it.secretId);
       if (!k) return 'You do not know that.';
-      if (s.secrets[it.secretId].guilty.includes(actor)) return 'That would be confessing your own guilt.';
+      if (s.secrets[it.secretId].guilty.includes(actor) && !warnable(s, actor, it.target, s.secrets[it.secretId])) return 'That would be confessing your own guilt.';
       if (!secretMatters(s, s.secrets[it.secretId])) return 'That is old news: those it concerns are dead or gone.';
       if (a.status === 'imprisoned' && !isFree(s, it.target)) return 'Your letter cannot reach them.';
       return null;
@@ -753,6 +756,8 @@ function gift(s: GameState, actor: CharId, target: CharId, amount: number): Outc
 
 function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId): Outcome {
   const sec = s.secrets[secretId];
+  const sworn = warnable(s, actor, target, sec);
+  if (sworn) return warn(s, actor, target, sworn);
   const place = vary(s, PLACES);
   if (sec.guilty.includes(target)) {
     if (sec.truth) {
@@ -787,6 +792,45 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
     text: `${first(s, target)} ${verdict}${isNew ? '' : ' (it was not news to them)'}.`,
     tone: c >= 45 ? 'good' : 'neutral',
   };
+}
+
+/**
+ * Tell the quarry of a plot you were sworn to. You are out of it, and your name with you; they are on
+ * their guard; and those you left behind may work out who talked.
+ */
+function warn(s: GameState, actor: CharId, target: CharId, p: Plot): Outcome {
+  const sec = s.secrets[p.secretId];
+  const T = ch(s, target);
+  const c = warnCredence(s, actor, target, sec);
+  leavePlot(s, p, actor);
+  learn(s, target, sec.id, c, actor);
+  for (const g of sec.guilty) {
+    if (g === target) continue;
+    addMod(s, target, g, `belief-${sec.id}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * (capital(sec) ? 0.35 : 0.2)), 0.3);
+  }
+  const murder = p.kind === 'murder';
+  if (murder) T.guard = Math.max(T.guard, Math.min(60, T.guard + 20));
+  addMod(s, target, actor, 'warned', murder ? 'Warned me of a plot on my life' : 'Warned me of a plot against me', murder ? 25 : 15, 0.2);
+  adjustTrust(s, target, actor, 8);
+  log(s, `${nm(s, actor)} came to ${nm(s, target)} ${vary(s, PLACES)} and told ${him(s, target)} of “${p.name}”: ${sec.text}`, [actor, target], 'secret', [actor, target]);
+  const owner = p.owner;
+  const found = isFree(s, owner) && chance(s, warnFound(s, owner, target));
+  if (found) {
+    for (const o of [owner, ...p.members.map((m) => m.id)]) if (o !== actor && !gone(s, o)) addMod(s, o, actor, 'warned-quarry', 'Warned our quarry', -40);
+    log(s, `${nm(s, owner)} has worked out who warned ${nm(s, target)} of “${p.name}”: ${nm(s, actor)}.`, [owner, actor], 'bad', [owner, actor]);
+  }
+  const believed = c >= 65 ? 'believes every word' : 'is inclined to believe it';
+  return {
+    ok: true,
+    text: `${first(s, target)} ${believed}${murder ? `, and will be on guard` : ''}. You are no longer sworn to “${p.name}”.${found ? ` ${first(s, owner)} knows it was you.` : ''}`,
+    tone: found ? 'neutral' : 'good',
+  };
+}
+
+/** The chance the plot's leader learns who warned its quarry: his wits against the quarry's discretion. */
+export function warnFound(s: GameState, owner: CharId, target: CharId): number {
+  const O = ch(s, owner);
+  return clamp(Math.round(20 + O.traits.cunning * 0.25 + O.traits.paranoia * 0.2 - ch(s, target).traits.cunning * 0.15), 10, 60);
 }
 
 export function fabricateEvidence(s: GameState, actor: CharId): number {

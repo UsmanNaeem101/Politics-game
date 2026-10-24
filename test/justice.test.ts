@@ -137,6 +137,40 @@ describe('hired blades', () => {
   });
 });
 
+describe('a plot you were sworn into', () => {
+  function sworn(sincere: boolean) {
+    const s = fresh();
+    s.ap = 3;
+    const p = createPlot(s, 'gareth', 'murder', ['edmund']);
+    p.progress = 50;
+    joinPlot(s, p, 'anselm', sincere);
+    return { s, p };
+  }
+
+  it('cannot be told to just anyone: that is confessing', () => {
+    const { s, p } = sworn(false);
+    expect(check(s, 'anselm', { type: 'whisper', target: 'hugh', secretId: p.secretId })).toMatch(/confessing/);
+  });
+
+  it('can be told to its quarry as a warning, and takes you out of it', () => {
+    for (const sincere of [false, true]) {
+      const { s, p } = sworn(sincere);
+      const guard = s.chars.edmund.guard;
+      const before = opinion(s, 'edmund', 'anselm');
+      const it = { type: 'whisper' as const, target: 'edmund', secretId: p.secretId };
+      expect(check(s, 'anselm', it)).toBeNull();
+      const kill = strikeChance(s, p);
+      expect(perform(s, 'anselm', it).ok).toBe(true);
+      expect(p.members.some((m) => m.id === 'anselm')).toBe(false);
+      expect(s.secrets[p.secretId].guilty).not.toContain('anselm');
+      expect(credence(s, 'edmund', p.secretId)).toBeGreaterThanOrEqual(70);
+      expect(s.chars.edmund.guard).toBeGreaterThan(guard);
+      expect(strikeChance(s, p)).toBeLessThan(kill);
+      expect(opinion(s, 'edmund', 'anselm')).toBeGreaterThan(before);
+    }
+  });
+});
+
 describe('a strike retried after turning back', () => {
   it('draws fresh dice, rather than failing the same way again', () => {
     for (let seed = 1; seed <= 200; seed++) {

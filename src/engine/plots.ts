@@ -3,7 +3,7 @@
 
 import { kill, imprison } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
-import { deedDone, describe, makeSecret, publish, syncPlotSecret } from './secrets';
+import { deedDone, describe, hearCredence, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -204,6 +204,22 @@ export function betrayable(s: GameState, actor: CharId, sec: Secret): Plot | und
   const p = sec.plotId ? s.plots[sec.plotId] : undefined;
   // A sworn member may give it up; so may the man who leads it, having drawn others in to hand them over.
   return p && p.status === 'active' && (p.owner === actor || p.members.some((m) => m.id === actor)) ? p : undefined;
+}
+
+/** A plot this person was sworn into by someone else, and one it is aimed at: telling them is a warning. */
+export function warnable(s: GameState, actor: CharId, target: CharId, sec: Secret): Plot | undefined {
+  const p = betrayable(s, actor, sec);
+  return p && p.owner !== actor && p.targets.includes(target) ? p : undefined;
+}
+
+/** How far the quarry believes a warning. One who was sworn to it knows its names and its means. */
+export function warnCredence(s: GameState, actor: CharId, target: CharId, sec: Secret): number {
+  return Math.max(70, hearCredence(s, target, actor, sec));
+}
+
+export function leavePlot(s: GameState, p: Plot, who: CharId): void {
+  p.members = p.members.filter((m) => m.id !== who);
+  syncPlotSecret(s, p);
 }
 
 export function abandonPlot(s: GameState, p: Plot): void {
