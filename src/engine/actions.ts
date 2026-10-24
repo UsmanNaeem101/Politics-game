@@ -312,7 +312,8 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       if (s.king === actor) return 'You are the King.';
       const charges = denounceCharges(s, it);
       if (!charges.length) return 'Nothing to denounce.';
-      if (it.plotId && s.plots[it.plotId]?.owner !== actor) return 'You do not lead that scheme.';
+      // A ruin scheme may be laid before the King by its leader, or by any man sworn to it.
+      if (it.plotId && (!s.plots[it.plotId] || !isMember(s.plots[it.plotId], actor))) return 'You are not sworn to that scheme.';
       if (it.secretId && !usableCharge(s, actor, it.secretId)) return 'You do not believe that yourself.';
       if (!chargesFor(s, actor, charges, it.only).length) {
         const judged = charges.some((c) => s.secrets[c]?.guilty.some((g) => g !== actor && alreadyJudged(s, s.secrets[c], g)));
@@ -1119,6 +1120,11 @@ function denounce(s: GameState, actor: CharId, it: Extract<Intent, { type: 'deno
   const summary = applyJudgments(s, actor, judgments);
   const upheld = judgments.some((j) => j.verdict !== 'dismiss' && !j.forgeryFound);
   if (plot) plot.status = upheld ? 'succeeded' : 'foiled';
+  // A sworn man who lays his leader's scheme before the King answers to the leader for how it went.
+  if (plot && plot.owner !== actor && !gone(s, plot.owner)) {
+    if (upheld) addMod(s, plot.owner, actor, 'carried', 'Carried our scheme to the King', 12, 0.3);
+    else addMod(s, plot.owner, actor, 'spent', 'Spent our scheme, and lost it', -15, 0.5);
+  }
   const informer = turnInformer(s, actor, betrayed, upheld);
   return {
     ok: upheld,

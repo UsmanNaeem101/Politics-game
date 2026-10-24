@@ -279,7 +279,7 @@ export function readCase(s: GameState, accuser: CharId, secretId: SecretId, accu
   for (const w of s.order) {
     if (w === accuser || w === accused || w === K || !isFree(s, w)) continue;
     const k = s.knowledge[w]?.[secretId];
-    const inPlot = plot && plot.members.some((m) => m.id === w);
+    const inPlot = plot && (plot.owner === w || plot.members.some((m) => m.id === w));
     if (inPlot) {
       witnessesFor.push(w);
       forBonus += 9;

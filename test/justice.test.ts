@@ -3,6 +3,7 @@ import {
   alreadyJudged,
   addMod,
   candidates,
+  readCase,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -194,6 +195,32 @@ describe('a forged tale of treason', () => {
     }
     expect(exposed).toBeGreaterThan(0);
     expect(believed).toBeGreaterThan(0);
+  });
+});
+
+describe('a ruin scheme you were drawn into', () => {
+  function joined() {
+    const s = fresh();
+    s.ap = 3;
+    const p = createPlot(s, 'cedric', 'ruin', ['aldric'], ['s-aldric-regicide']);
+    p.progress = 100;
+    joinPlot(s, p, 'anselm', true);
+    return { s, p };
+  }
+
+  it('can be laid before the King by a sworn member, not by an outsider', () => {
+    const { s, p } = joined();
+    expect(check(s, 'anselm', { type: 'denounce', plotId: p.id })).toBeNull();
+    expect(check(s, 'hugh', { type: 'denounce', plotId: p.id })).toMatch(/not sworn/);
+  });
+
+  it('has its leader stand witness, and the leader judges the member by how it went', () => {
+    const { s, p } = joined();
+    expect(readCase(s, 'anselm', 's-aldric-regicide', 'aldric', p).witnessesFor).toContain('cedric');
+    perform(s, 'anselm', { type: 'denounce', plotId: p.id });
+    expect(['succeeded', 'foiled']).toContain(p.status);
+    const mod = s.relations.cedric?.anselm?.mods.find((m) => m.key === (p.status === 'succeeded' ? 'carried' : 'spent'));
+    expect(mod).toBeDefined();
   });
 });
 

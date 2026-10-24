@@ -187,6 +187,8 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
           const est = odds.reduce((m, o) => m + o.pct, 0) / odds.length;
           const want = odds.reduce((m, o) => m + desire(s, me, o.accused, dctx), 0) / odds.length;
           let u = want * 0.4 + (est - (100 - E.boldness) * 0.5) * 0.6 + (p.progress >= 50 ? 10 : 0);
+          // Fully prepared, a scheme only waits to be found out: patience runs short.
+          if (p.progress >= 90) u += Math.min(20, Math.max(0, s.turn - p.createdTurn - 6) * 1.5);
           if (delegated(s, p)) u -= 30;
           add({ type: 'denounce', plotId: p.id }, u);
         }

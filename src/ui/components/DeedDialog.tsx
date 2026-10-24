@@ -140,8 +140,9 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const secrets = useMemo(() => knownSecrets(s, P).filter((k) => secretMatters(s, k.sec)), [s, P]);
   const usable = secrets.filter((k) => k.k.lie || k.k.credence >= 40);
   const myPlots = Object.values(s.plots).filter((p) => p.status === 'active' && p.owner === P);
-  const myRuin = myPlots.filter((p) => p.kind === 'ruin');
   const workable = Object.values(s.plots).filter((p) => p.status === 'active' && (p.owner === P || p.members.some((m) => m.id === P)));
+  // Yours to lay before the King: those you lead, and those you are sworn to.
+  const myRuin = workable.filter((p) => p.kind === 'ruin');
   const myLands = landsOf(s, P).map((l) => s.lands[l]);
   const crownLands = s.king === P ? Object.values(s.lands).filter((l) => l.holder === null) : [];
 
@@ -522,7 +523,10 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       break;
     }
     case 'denounce': {
-      const sourceSecrets = usable.filter((k) => !k.sec.guilty.includes(P) || k.sec.guilty.length > 1);
+      // The same tale told twice is one charge: offer the copy you are surest of.
+      const swearable = usable.filter((k) => !k.sec.guilty.includes(P) || k.sec.guilty.length > 1);
+      const surer = (a: (typeof swearable)[number], b: (typeof swearable)[number]) => (a.k.lie !== b.k.lie ? a.k.lie : a.k.credence > b.k.credence);
+      const sourceSecrets = swearable.filter((k) => !swearable.some((x) => x !== k && x.text === k.text && (surer(x, k) || (!surer(k, x) && swearable.indexOf(x) < swearable.indexOf(k)))));
       const charges2 = source === 'plot' ? s.plots[plotId]?.charges ?? [] : secretId ? [secretId] : [];
       const accusable = chargesFor(s, P, charges2).map((c) => c.accused);
       const chosen = accused ?? accusable;
@@ -535,12 +539,18 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
                 <input type="radio" name="src" checked={source === 'secret'} onChange={() => (setSource('secret'), setAccused(null))} /> A single charge you can swear to
               </label>
               <label className="check">
-                <input type="radio" name="src" checked={source === 'plot'} onChange={() => (setSource('plot'), setAccused(null))} disabled={!myRuin.length} /> A ruin scheme you have prepared (charges, witnesses and all)
+                <input type="radio" name="src" checked={source === 'plot'} onChange={() => (setSource('plot'), setAccused(null))} disabled={!myRuin.length} /> A ruin scheme you lead or are sworn to (charges, witnesses and all)
               </label>
             </div>
           </fieldset>
           {source === 'plot'
-            ? pick('Which scheme', plotId, (v) => (setPlotId(v), setAccused(null)), myRuin.map((x) => ({ value: x.id, label: `“${x.name}” (${x.progress}%)` })), 'deed-plot')
+            ? pick(
+                'Which scheme',
+                plotId,
+                (v) => (setPlotId(v), setAccused(null)),
+                myRuin.map((x) => ({ value: x.id, label: `“${x.name}” (${x.progress}%${x.owner === P ? '' : `, led by ${first(s, x.owner)}`})` })),
+                'deed-plot',
+              )
             : (
               <fieldset className="field">
                 <legend>The charge</legend>
@@ -968,6 +978,9 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
           'Chance the King takes each accused into the Tower or worse:',
           ...reads.map((r) => `${first(s, r.accused)}: ${r.pct}%. ${r.notes.slice(-3).join(' · ')}`),
           'A failed charge costs you favour and earns the accused’s hatred.',
+          ...(it.plotId && s.plots[it.plotId] && s.plots[it.plotId].owner !== P
+            ? [`It is ${first(s, s.plots[it.plotId].owner)}’s scheme, and ${first(s, s.plots[it.plotId].owner)} stands witness with you. If it fails, you will not be thanked for spending it.`]
+            : []),
           ...(it.secretId && betrayable(s, P, s.secrets[it.secretId])
             ? ['You are sworn to this plot. You leave it now, whatever happens. If the King believes you, he pardons your part in it.']
             : []),
