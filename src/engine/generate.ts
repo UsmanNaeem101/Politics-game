@@ -23,7 +23,7 @@ import { chance, clamp, pick, roll, seedFrom, shuffle, weighted } from './rng';
 import { makeSecret, syncPlotSecret } from './secrets';
 import { emptyState } from './state';
 import { names } from './text';
-import { addMod, adjustTrust, insightOf, learn, log, rel, uid } from './world';
+import { addMod, adjustTrust, insightOf, learn, log, meetPersonalTies, rel, uid } from './world';
 import type {
   Acquaintance,
   Agenda,
@@ -921,6 +921,7 @@ function playerAcquaintance(g: Gen, player: Character): void {
     const sec = s.secrets[sid];
     for (const id of [...sec.guilty, ...sec.victims]) set(id, 1);
   }
+  meetPersonalTies(s);
   // You know your own wife's face, if not her heart.
   insightOf(s, player.id);
 }

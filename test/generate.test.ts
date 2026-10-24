@@ -7,6 +7,7 @@ import {
   crown,
   endWeek,
   generateCourt,
+  meetPersonalTies,
   perform,
   waitCleared,
   type GameState,
@@ -86,6 +87,34 @@ describe('the fog of war', () => {
     expect(acquaintance(s, s.king!)).toBe(2);
     const strangers = s.order.filter((id) => acquaintance(s, id) === 0);
     expect(strangers.length).toBeGreaterThan(5);
+  });
+
+  it('starts the player having met everyone they share a past with', () => {
+    let lovers = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const s = generateCourt(seed);
+      for (const sec of Object.values(s.secrets)) {
+        if (sec.kind !== 'affair' || !sec.guilty.includes(s.player)) continue;
+        const lover = sec.guilty.find((id) => id !== s.player)!;
+        expect(acquaintance(s, lover)).toBeGreaterThanOrEqual(4);
+        expect(check(s, s.player, { type: 'converse', target: lover })).toBeNull();
+        lovers++;
+      }
+      for (const [id, r] of Object.entries(s.relations[s.player] ?? {})) {
+        if (r.mods.some((m) => ['friend', 'dislike', 'saved', 'insult'].includes(m.key))) expect(acquaintance(s, id)).toBeGreaterThanOrEqual(3);
+      }
+    }
+    expect(lovers).toBeGreaterThan(5);
+  });
+
+  it('repairs an old save in which the player had never met their own lover', () => {
+    const s = Array.from({ length: 300 }, (_, i) => generateCourt(i + 1)).find((g) =>
+      Object.values(g.secrets).some((x) => x.kind === 'affair' && x.guilty.includes(g.player)),
+    )!;
+    const lover = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.guilty.includes(s.player))!.guilty.find((id) => id !== s.player)!;
+    s.known[lover] = 1;
+    meetPersonalTies(s);
+    expect(acquaintance(s, lover)).toBe(4);
   });
 
   it('will not let you deal with a stranger until you are introduced', () => {

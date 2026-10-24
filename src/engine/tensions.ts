@@ -92,7 +92,10 @@ function newAffair(s: GameState): boolean {
   const wife = wives.length ? pick(s, wives) : undefined;
   if (!wife) return false;
   if (Object.values(s.secrets).some((x) => x.kind === 'affair' && x.guilty[0] === wife.id)) return false;
-  const lovers = nobles(s).filter((c) => c.gender === 'm' && c.id !== wife.spouse && c.householdId !== wife.householdId && c.traits.honor < 60 && c.rank !== 'king');
+  // The player chooses their own sins; the feast never hands them a lover.
+  const lovers = nobles(s).filter(
+    (c) => c.gender === 'm' && c.id !== s.player && c.id !== wife.spouse && c.householdId !== wife.householdId && c.traits.honor < 60 && c.rank !== 'king',
+  );
   const lover = weighted(s, lovers, (c) => c.traits.charm);
   if (!lover) return false;
   const husband = wife.spouse!;

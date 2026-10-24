@@ -229,6 +229,27 @@ export function hearOf(s: GameState, id: CharId, lvl: Acquaintance): boolean {
   return true;
 }
 
+/** Personal ties that mean the player has met someone, and how well they know them. */
+const MET_THROUGH: Record<string, Acquaintance> = {
+  lover: 4,
+  friend: 3,
+  dislike: 3,
+  saved: 3,
+  insult: 3,
+  rivalry: 3,
+  betrothal: 3,
+  debt: 3,
+  debtor: 3,
+};
+
+/** You have met anyone you share a past with, in either direction: a lover, an old friend, a man who humiliated you. */
+export function meetPersonalTies(s: GameState): void {
+  for (const id of s.order) {
+    const mods = [...(s.relations[s.player]?.[id]?.mods ?? []), ...(s.relations[id]?.[s.player]?.mods ?? [])];
+    for (const m of mods) if (MET_THROUGH[m.key]) hearOf(s, id, MET_THROUGH[m.key]);
+  }
+}
+
 export const isServant = (s: GameState, id: CharId) => s.chars[id]?.rank === 'servant';
 export const isNoble = (s: GameState, id: CharId) => !!s.chars[id] && s.chars[id].rank !== 'servant';
 
