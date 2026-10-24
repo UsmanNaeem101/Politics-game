@@ -13,6 +13,7 @@ import {
 } from './actions';
 import {
   applyJudgments,
+  capital,
   chargesFor,
   claimants,
   crimeName,
@@ -119,7 +120,7 @@ function resolveJudgment(s: GameState, a: Audience, optionId: string): Outcome {
         if (!sec.truth) {
           for (const id of s.order) if (isFree(s, id) && id !== K && id !== accused) addMod(s, id, K, `butcher-${accused}`, `Beheaded ${first(s, accused)} on a lie`, -12, 0.3);
         }
-        if (sec.treason) execute(s, accused, crimeName(sec));
+        if (capital(sec)) execute(s, accused, crimeName(sec));
         else disgrace(s, accused, sec);
       }
       return { ok: true, text: `Judgment is given. ${names(s, list.map((l) => l.accused))} will trouble you no more.`, tone: 'dire' };

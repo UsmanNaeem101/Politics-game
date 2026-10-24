@@ -2,11 +2,12 @@
 // inheritance, appointments, and the Witan that chooses a king.
 
 import { chance, clamp, rand, roll } from './rng';
-import { makeSecret, publish, refreshText } from './secrets';
+import { kindLabel, makeSecret, publish, refreshText } from './secrets';
 import { He, His, first, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
   addMod,
+  adjustTrust,
   ch,
   credence,
   isAlive,
@@ -18,6 +19,9 @@ import {
   trust,
 } from './world';
 import type { CharId, GameState, OfficeId, Plot, Secret, SecretId } from './types';
+
+/** Crimes the King may punish with death: treason, and a murder actually done. */
+export const capital = (sec: Secret): boolean => sec.treason || (sec.kind === 'murder' && !!sec.deed);
 
 // ── Death, prison and inheritance ───────────────────────────────────────────
 
@@ -170,7 +174,7 @@ function scaffoldSpeech(s: GameState, id: CharId): void {
   const options = Object.entries(row)
     .filter(([sid, k]) => !k.lie && k.credence >= 55 && s.secrets[sid]?.truth && !s.secrets[sid].guilty.includes(id))
     .map(([sid]) => s.secrets[sid])
-    .filter((sec) => sec.guilty.some((g) => isAlive(s, g)) && (sec.treason || sec.kind === 'theft' || sec.kind === 'slander'))
+    .filter((sec) => sec.guilty.some((g) => isAlive(s, g)) && (capital(sec) || sec.kind === 'theft' || sec.kind === 'slander'))
     .sort((a, b) => hate(s, id, b) - hate(s, id, a));
   if (!options.length || !chance(s, 55)) return;
   const sec = options[0];
@@ -225,7 +229,7 @@ export function readCase(s: GameState, accuser: CharId, secretId: SecretId, accu
   const para = (king.traits.paranoia - 50) * 0.3;
   score += para;
   if (Math.abs(para) >= 1) notes.push(`The King's suspicion: ${signed(para)}`);
-  score += sec.treason ? 5 : -10;
+  score += capital(sec) ? 5 : -10;
 
   const witnessesFor: CharId[] = [];
   const witnessesAgainst: CharId[] = [];
@@ -284,7 +288,7 @@ export type VerdictKind = 'execute' | 'imprison' | 'disgrace' | 'dismiss';
 
 export function verdictFor(s: GameState, sec: Secret, score: number): VerdictKind {
   const king = ch(s, s.king!);
-  if (sec.treason) {
+  if (capital(sec)) {
     if (score >= TREASON_EXECUTE) return king.traits.wrath >= 45 ? 'execute' : 'imprison';
     if (score >= TREASON_IMPRISON) return 'imprison';
     return 'dismiss';
@@ -398,12 +402,15 @@ export function applyJudgments(s: GameState, accuser: CharId, judgments: Judgmen
         disgrace(s, j.accused, sec);
         lines.push(`${first(s, j.accused)} disgraced`);
         break;
-      case 'dismiss':
+      case 'dismiss': {
         addMod(s, K, accuser, 'baseless', 'Brought me baseless charges', j.score < 25 ? -15 : -8, 0.5);
-        addMod(s, K, j.accused, 'accused', 'Accused of treason', j.score >= 35 ? -10 : -3, 1);
+        const looking = markDismissed(s, j.accused, sec, j.score);
         log(s, `The King heard the charge against ${nm(s, j.accused)} and dismissed it. ${He(s, accuser)} left the hall with fewer friends.`, 'all', 'court', [accuser, j.accused]);
-        lines.push(`charge against ${first(s, j.accused)} dismissed`);
+        lines.push(
+          `charge against ${first(s, j.accused)} dismissed, but the hall heard every word${looking ? ', and the King called his Master of Whispers to him afterwards' : ''}`,
+        );
         break;
+      }
     }
   }
   for (const sid of forged) {
@@ -414,17 +421,84 @@ export function applyJudgments(s: GameState, accuser: CharId, judgments: Judgmen
   return lines.join('; ');
 }
 
+/**
+ * A dismissed charge is not a forgotten one. The hall heard it, the accused's
+ * name is muddied, and the King half-believes what he could not prove. A grave
+ * charge he sets his people to look into. Returns whether he did.
+ */
+function markDismissed(s: GameState, accused: CharId, sec: Secret, score: number): boolean {
+  const K = s.king!;
+  const doubt = clamp(score, 0, 100);
+  const grave = capital(sec);
+  addMod(s, K, accused, 'accused', grave ? 'Accused of a hanging crime' : 'Accused before me', -Math.round(5 + doubt / 5), grave ? 0.25 : 0.5);
+  if (doubt >= 35) adjustTrust(s, K, accused, -Math.round(doubt / 5));
+  const A = ch(s, accused);
+  A.prestige = Math.max(0, A.prestige - Math.round(3 + doubt / 10));
+  hallHears(s, sec, Math.round(doubt * 0.6));
+  if (!grave || doubt < 30) return false;
+  sec.inquiry ??= s.turn;
+  return true;
+}
+
+/** Everyone in the hall heard the charge: each believes it a little, and thinks a little less of the accused. */
+function hallHears(s: GameState, sec: Secret, cred: number): void {
+  if (cred <= 0) return;
+  for (const id of s.order) {
+    if (!isFree(s, id) || id === s.king || sec.guilty.includes(id) || ch(s, id).rank === 'servant') continue;
+    if (credence(s, id, sec.id) >= cred) continue;
+    learn(s, id, sec.id, cred, 'court');
+    for (const g of sec.guilty) {
+      addMod(s, id, g, `belief-${sec.id}`, `Heard it charged: ${kindLabel(sec).toLowerCase()}`, -Math.round(cred * (capital(sec) ? 0.3 : 0.15)), 0.3);
+    }
+  }
+}
+
+/**
+ * The King's people dig into what he could not prove: a charge he dismissed, a
+ * lord found murdered. More proof may turn up, and with enough of it the Guard
+ * comes. A season without a find, and the matter is let drop.
+ */
+export function pursueInquiries(s: GameState): void {
+  const K = s.king;
+  for (const sec of Object.values(s.secrets)) {
+    if (sec.inquiry === undefined) continue;
+    const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K);
+    if (!K || !suspects.length || s.turn - sec.inquiry > 13) {
+      delete sec.inquiry;
+      continue;
+    }
+    const spy = s.offices.spymaster;
+    const digger = spy && isFree(s, spy) && !sec.guilty.includes(spy) ? spy : undefined;
+    if (!chance(s, 15 + (digger ? ch(s, digger).traits.cunning * 0.3 : 0))) continue;
+    if (!sec.truth) {
+      // There is nothing to find, and finding nothing cools the King.
+      const k = s.knowledge[K]?.[sec.id];
+      if (k && !k.lie) k.credence = Math.max(0, k.credence - 10);
+      continue;
+    }
+    sec.evidence = clamp(sec.evidence + roll(s, 5, 12), 0, 95);
+    learn(s, K, sec.id, credence(s, K, sec.id) + roll(s, 10, 18), digger ?? 'spies');
+    if (digger) learn(s, digger, sec.id, credence(s, K, sec.id), 'spies');
+    log(s, `${digger ? nm(s, digger) : 'The King’s people'} found more: ${sec.text}`, digger ? [K, digger] : [K], 'secret', suspects);
+    // A king who is the player judges for himself.
+    if (K === s.player || credence(s, K, sec.id) < 70) continue;
+    for (const g of suspects) imprison(s, g, [sec.id], digger);
+    log(s, `The Guard came for ${names(s, suspects)}. The King’s people had been asking questions, and found answers.`, 'all', 'court', suspects);
+    delete sec.inquiry;
+  }
+}
+
 export function crimeName(sec: Secret): string {
   switch (sec.kind) {
     case 'regicide':
     case 'pact':
-      return 'plotting the King’s murder';
+      return sec.deed ? 'the murder of the King' : 'plotting the King’s murder';
     case 'usurpation':
       return 'conspiring to usurp the crown';
     case 'concealment':
       return 'concealing treason from the King';
     case 'murder':
-      return 'conspiracy to murder';
+      return sec.deed ? 'murder' : 'conspiracy to murder';
     case 'theft':
       return 'forgery and theft of an inheritance';
     case 'slander':
@@ -543,7 +617,7 @@ export function questionPrisoner(s: GameState, id: CharId): boolean {
   const tellable = Object.entries(row)
     .filter(([sid, k]) => !k.lie && k.credence >= 55 && s.secrets[sid] && !s.secrets[sid].guilty.includes(id))
     .map(([sid]) => s.secrets[sid])
-    .filter((sec) => sec.treason && sec.guilty.some((g) => isFree(s, g) && g !== K) && credence(s, K, sec.id) < 70)
+    .filter((sec) => capital(sec) && sec.guilty.some((g) => isFree(s, g) && g !== K) && credence(s, K, sec.id) < 70)
     .filter((sec) => hate(s, id, sec) >= 10 || guiltyHere)
     .sort((a, b) => hate(s, id, b) - hate(s, id, a));
   const sec = tellable[0];
@@ -574,7 +648,7 @@ export function decidePrisoners(s: GameState): void {
     // A favourite needs more proof before the King will kill him.
     const bar = 75 + Math.max(0, opinion(s, K, id)) * 0.3;
     if (best >= bar && worst) {
-      if (worst.treason) execute(s, id, crimeName(worst));
+      if (capital(worst)) execute(s, id, crimeName(worst));
       else {
         release(s, id, 'the King judged the crime unworthy of the axe');
         disgrace(s, id, worst);
@@ -582,7 +656,7 @@ export function decidePrisoners(s: GameState): void {
     } else if (best <= 30) {
       release(s, id, 'the King found no proof against them');
     } else if (rec.questioned >= 4) {
-      if (best >= 65 && king.traits.wrath >= 60 && worst?.treason) execute(s, id, crimeName(worst));
+      if (best >= 65 && king.traits.wrath >= 60 && worst && capital(worst)) execute(s, id, crimeName(worst));
       else if (best < 65) release(s, id, 'nothing more could be wrung from them');
     }
   }

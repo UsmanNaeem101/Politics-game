@@ -174,6 +174,10 @@ export interface Secret {
   exposed: boolean;
   /** Hand-written statement; not regenerated when names change. */
   fixedText?: boolean;
+  /** The plotted killing was done: no longer a plan but a murder committed. */
+  deed?: boolean;
+  /** Week the King set his people to look into it (a dismissed charge, an unsolved murder). */
+  inquiry?: number;
 }
 
 export type KnowledgeSource = CharId | 'self' | 'spies' | 'rumour' | 'confession' | 'court';

@@ -11,6 +11,7 @@ import {
   imprison,
   officeEligible,
   appoint,
+  capital,
   CRIME_GUILTY,
   TREASON_EXECUTE,
   TREASON_IMPRISON,
@@ -32,7 +33,7 @@ import {
   resolveStrike,
 } from './plots';
 import { chance, clamp, rand, roll } from './rng';
-import { hearCredence, makeSecret, SECRET_KIND_LABEL } from './secrets';
+import { hearCredence, kindLabel, makeSecret } from './secrets';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -572,8 +573,8 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
   learn(s, target, secretId, c, actor);
   for (const g of sec.guilty) {
     if (g === target) continue;
-    const sev = sec.treason ? 0.35 : 0.2;
-    addMod(s, target, g, `belief-${secretId}`, `Believes: ${SECRET_KIND_LABEL[sec.kind].toLowerCase()}`, -Math.round(c * sev), 0.3);
+    const sev = capital(sec) ? 0.35 : 0.2;
+    addMod(s, target, g, `belief-${secretId}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * sev), 0.3);
   }
   if (c >= 50) {
     addMod(s, target, actor, 'confided', 'Confided in me', 4, 0.5);
@@ -874,7 +875,7 @@ export function denounceOdds(s: GameState, actor: CharId, it: Extract<Intent, { 
   return chargesFor(s, actor, charges, it.only).map(({ secretId, accused }) => {
     const read = readCase(s, actor, secretId, accused, plot);
     const sec = s.secrets[secretId];
-    const threshold = sec.treason ? TREASON_IMPRISON : CRIME_GUILTY;
+    const threshold = capital(sec) ? TREASON_IMPRISON : CRIME_GUILTY;
     let pct = clamp(Math.round(((read.score - threshold + 12) / 24) * 100), 2, 98);
     if (!sec.truth) {
       const det = forgeryDetection(s, sec);
@@ -940,7 +941,7 @@ function accusedAudience(s: GameState, accuser: CharId, charges: SecretId[], plo
 export function blackmailFear(s: GameState, actor: CharId, target: CharId, secretId: SecretId): number {
   const sec = s.secrets[secretId];
   const T = effective(s, target);
-  let fear = sec.evidence * 0.5 + (sec.treason ? 30 : 10) + (s.king ? opinion(s, s.king, actor) * 0.2 : 0) - T.boldness * 0.3 - T.wrath * 0.2;
+  let fear = sec.evidence * 0.5 + (capital(sec) ? 30 : 10) + (s.king ? opinion(s, s.king, actor) * 0.2 : 0) - T.boldness * 0.3 - T.wrath * 0.2;
   if (!sec.truth) fear -= 25;
   return Math.round(fear);
 }
@@ -1037,6 +1038,7 @@ export function petitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { 
   }
   const charges = s.imprisoned[it.target!]?.charges ?? [];
   const belief = charges.reduce((m, c) => Math.max(m, credence(s, K, c)), 0);
+  const hanging = charges.some((c) => s.secrets[c] && capital(s.secrets[c]));
   return clamp(
     Math.round(
       15 +
@@ -1044,7 +1046,7 @@ export function petitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { 
         ch(s, actor).traits.charm * 0.2 +
         (officeOf(s, actor) === 'confessor' ? 15 : 0) +
         (ch(s, actor).spouse === it.target ? 15 : 0) -
-        belief * 0.4 +
+        belief * (hanging ? 0.6 : 0.4) +
         (100 - king.traits.wrath) * 0.25,
     ),
     3,
@@ -1077,9 +1079,14 @@ export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, {
     appoint(s, actor, it.office!);
     return { ok: true, text: `You are named ${OFFICE_NAMES[it.office!]}.`, tone: 'good' };
   }
+  // Mercy spares the neck, not the shame: a crime the King believes is still punished.
+  const proven = (s.imprisoned[it.target!]?.charges ?? [])
+    .map((c) => s.secrets[c])
+    .find((sec) => sec && capital(sec) && credence(s, K, sec.id) >= 60);
   release(s, it.target!, `${nm(s, actor)} begged mercy and the King granted it`);
+  if (proven && isFree(s, it.target!)) disgrace(s, it.target!, proven);
   addMod(s, it.target!, actor, 'saved', 'Saved my life', 40, 0.2);
-  return { ok: true, text: `${first(s, it.target!)} is spared.`, tone: 'good' };
+  return { ok: true, text: proven ? `${first(s, it.target!)} is spared the axe, but not the shame.` : `${first(s, it.target!)} is spared.`, tone: 'good' };
 }
 
 function petitionAudience(s: GameState, actor: CharId, it: Extract<Intent, { type: 'petition' }>): Audience {

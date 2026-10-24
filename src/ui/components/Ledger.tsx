@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SECRET_KIND_LABEL, credenceWord, evidenceWord, first, knownSecrets, nm, type KnownSecret } from '../../engine';
+import { credenceWord, evidenceWord, first, kindLabel, knownSecrets, nm, type KnownSecret } from '../../engine';
 import { useGame } from '../context';
 
 type Group = 'treason' | 'crimes' | 'forged' | 'rumours' | 'own';
@@ -49,7 +49,7 @@ export function Ledger() {
               {items.map((k) => (
                 <li key={k.sec.id} className={`secret secret--${g.id} ${k.sec.exposed ? 'is-exposed' : ''}`}>
                   <div className="secret-top">
-                    <span className="chip">{SECRET_KIND_LABEL[k.sec.kind]}</span>
+                    <span className="chip">{kindLabel(k.sec)}</span>
                     {k.sec.exposed && <span className="chip chip--warn">Proven at court</span>}
                     {k.k.lie && <span className="chip chip--info">Forged by you</span>}
                   </div>
@@ -106,7 +106,11 @@ export function Ledger() {
                       {(k.k.lie || k.k.credence >= 40) && k.sec.guilty.some((x) => x !== P && s.chars[x].status === 'free') && (
                         <button
                           className="btn btn--sm"
-                          onClick={() => openDeed({ type: 'blackmail', secretId: k.sec.id, target: k.sec.guilty.find((x) => x !== P && s.chars[x].status === 'free') })}
+                          onClick={() => {
+                            // When the secret names several people, the player chooses whom to threaten.
+                            const named = k.sec.guilty.filter((x) => x !== P && s.chars[x].status === 'free');
+                            openDeed({ type: 'blackmail', secretId: k.sec.id, target: named.length === 1 ? named[0] : undefined });
+                          }}
                           disabled={s.ap < 1}
                         >
                           Blackmail…

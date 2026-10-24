@@ -3,10 +3,11 @@
 
 import { evolveAgendas, expireDirectives, npcTurn } from './ai';
 import { witanAudience } from './audiences';
-import { decidePrisoners, fillOffices, holdWitan, kill, questionPrisoner } from './court';
+import { decidePrisoners, fillOffices, holdWitan, kill, pursueInquiries, questionPrisoner } from './court';
 import { arriveHouse, generateCourt, type GenerateOptions } from './generate';
 import { evaluate } from './objectives';
 import { leakPlots, spymasterHears } from './plots';
+import { deedDone } from './secrets';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -16,6 +17,7 @@ import {
   acquaintance,
   addMod,
   ch,
+  credence,
   decayMods,
   hearOf,
   incomeOf,
@@ -24,12 +26,29 @@ import {
   isServant,
   learn,
   log,
+  meetPersonalTies,
   opinion,
 } from './world';
 import type { Ending, GameState } from './types';
 
 export function newGame(seed: number, opts: GenerateOptions = {}): GameState {
   return generateCourt(seed, opts);
+}
+
+/** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
+export function repairSave(s: GameState): void {
+  meetPersonalTies(s);
+  // A murder done before murders were recorded as deeds: the plan becomes the crime.
+  for (const p of Object.values(s.plots)) {
+    const sec = s.secrets[p.secretId];
+    if (!sec || sec.deed || p.kind !== 'murder' || p.status !== 'succeeded') continue;
+    if (!p.targets.every((t) => s.chars[t]?.status === 'dead')) continue;
+    deedDone(s, sec);
+    // A King who has already heard of it and let it lie still has his people ask.
+    if (s.king && s.king !== s.player && credence(s, s.king, sec.id) >= 30 && sec.guilty.some((g) => isFree(s, g) && g !== s.king)) {
+      sec.inquiry = s.turn;
+    }
+  }
 }
 
 /** Can the player end the week right now? */
@@ -81,6 +100,7 @@ function worldTurns(s: GameState): void {
   }
   leakPlots(s);
   spymasterHears(s);
+  pursueInquiries(s);
   if (s.interregnum && s.interregnum.since < s.turn) {
     holdWitan(s, s.witanVote);
     s.witanVote = undefined;

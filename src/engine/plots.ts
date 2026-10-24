@@ -3,7 +3,7 @@
 
 import { kill, imprison } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
-import { describe, makeSecret, publish, syncPlotSecret } from './secrets';
+import { deedDone, describe, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
 import { OFFICE_NAMES, addMod, ch, credence, isAlive, isFree, isRemoved, knows, learn, log, officeOf, opinion, uid } from './world';
 import type { CharId, GameState, Offer, Plot, PlotCondition, PlotKind, SecretId } from './types';
@@ -200,6 +200,7 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
       'a pillow, in the small hours',
     ]);
     kill(s, target, `Murdered, week ${s.turn} — ${how}`, false);
+    deedDone(s, sec);
     log(s, `You struck. ${nm(s, target)} is dead by ${how}.`, insiders, 'secret', insiders);
     if (traced) {
       sec.evidence = 90;
@@ -211,6 +212,8 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
       seize(s, owner, sec.id, wasKing);
     } else {
       log(s, `${nm(s, target)} was found dead — ${how}. No one has been named.`, 'all', 'dire', [target]);
+      // A murdered lord is the King's business: his people start asking questions.
+      if (!wasKing && s.king) sec.inquiry = s.turn;
       // Suspicion settles on whoever was already suspected.
       for (const id of s.order) {
         if (!isAlive(s, id) || insiders.includes(id)) continue;

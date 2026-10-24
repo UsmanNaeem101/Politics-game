@@ -18,7 +18,7 @@ import {
 import { canStrike, isMember, strikeChance, waitCleared } from './plots';
 import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
-import { claimants } from './court';
+import { capital, claimants } from './court';
 import {
   addMod,
   adjustTrust,
@@ -27,6 +27,7 @@ import {
   log,
   credence,
   effective,
+  isAlive,
   isFree,
   knows,
   knowsAgenda,
@@ -214,9 +215,9 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   // ── Whispers ──────────────────────────────────────────────────────────────
   for (const [sid, k] of Object.entries(myRow)) {
     const sec = s.secrets[sid];
-    if (!sec || sec.guilty.includes(me)) continue;
+    if (!sec || sec.guilty.includes(me) || !sec.guilty.some((g) => isAlive(s, g))) continue;
     if (!k.lie && k.credence < 50) continue;
-    if (sec.plotId && s.plots[sec.plotId]?.status !== 'active' && !sec.treason) continue;
+    if (sec.plotId && s.plots[sec.plotId]?.status !== 'active' && !capital(sec)) continue;
     if (k.lie && c.traits.honor >= 60) continue;
     const protects = sec.guilty.some((g) => c.spouse === g || (c.siblings.includes(g) && opinion(s, me, g) > 0) || desire(s, me, g) < -10);
     if (protects) continue;
@@ -276,7 +277,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (c.agenda.kind === 'destroy') {
     for (const g of c.agenda.targets) {
       if (!isFree(s, g) || myPlots.some((p) => p.targets.includes(g))) continue;
-      const charge = secretsAgainst(s, g, me, 50).find((x) => x.treason || x.kind === 'theft' || x.kind === 'affair');
+      const charge = secretsAgainst(s, g, me, 50).find((x) => capital(x) || x.kind === 'theft' || x.kind === 'affair');
       if (charge) add({ type: 'scheme', kind: 'ruin', targets: [g], charges: [charge.id] }, 22);
       // No charge to bring: a hot, unscrupulous man reaches for a knife instead.
       else if (g !== king) add({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
@@ -350,7 +351,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (threats.length && c.gold >= 20 && c.guard < 30) add({ type: 'guard' }, 12 + c.traits.paranoia * 0.15);
   if (king) {
     const doom = Object.values(s.secrets)
-      .filter((sec) => sec.guilty.includes(me) && sec.treason)
+      .filter((sec) => sec.guilty.includes(me) && capital(sec))
       .reduce((m, sec) => Math.max(m, credence(s, king, sec.id)), 0);
     if (doom >= 70 && chance(s, c.traits.paranoia * 0.6)) {
       const canKill = myPlots.some((p) => p.kind === 'murder' && p.targets.includes(king) && canStrike(s, p).ok && strikeChance(s, p) >= 40);

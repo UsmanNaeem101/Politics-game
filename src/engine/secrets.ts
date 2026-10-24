@@ -19,10 +19,11 @@ export const SECRET_KIND_LABEL: Record<SecretKind, string> = {
   affair: 'Secret love',
 };
 
-export function describe(s: GameState, kind: SecretKind, guilty: CharId[], victims: CharId[]): string {
+export function describe(s: GameState, kind: SecretKind, guilty: CharId[], victims: CharId[], deed = false): string {
   const g = names(s, guilty);
   const v = names(s, victims);
   const plural = guilty.length > 1;
+  if (deed) return `${g} murdered ${v}.`;
   switch (kind) {
     case 'regicide':
       return `${g} ${plural ? 'plot' : 'plots'} to murder ${v}.`;
@@ -86,7 +87,26 @@ export function makeSecret(
 /** Rewrite a secret's statement after names change (a knight crowned, say). */
 export function refreshText(s: GameState, sec: Secret): void {
   if (sec.fixedText) return;
-  sec.text = describe(s, sec.kind, sec.guilty, sec.victims);
+  sec.text = describe(s, sec.kind, sec.guilty, sec.victims, sec.deed);
+}
+
+/** What kind of secret this is, as the ledger names it. */
+export function kindLabel(sec: Secret): string {
+  if (sec.deed) return sec.kind === 'murder' ? 'Murder' : 'Regicide';
+  return SECRET_KIND_LABEL[sec.kind];
+}
+
+/**
+ * The plotted killing was done. The plan becomes a murder, and the body lends
+ * weight to anyone who heard of the plan beforehand.
+ */
+export function deedDone(s: GameState, sec: Secret): void {
+  if (sec.deed) return;
+  sec.deed = true;
+  if (sec.kind === 'betrayal') sec.kind = 'murder';
+  sec.fixedText = false;
+  sec.evidence = clamp(sec.evidence + 15, 0, 95);
+  refreshText(s, sec);
 }
 
 /** Keep a plot's describing secret in step with its members and preparations. */
@@ -165,7 +185,7 @@ export function fullText(s: GameState, sec: Secret): string {
 }
 
 export function secretLabel(sec: Secret): string {
-  return `${SECRET_KIND_LABEL[sec.kind]}: ${sec.text}`;
+  return `${kindLabel(sec)}: ${sec.text}`;
 }
 
 export const victimsText = (s: GameState, sec: Secret) => sec.victims.map((v) => nm(s, v)).join(', ');

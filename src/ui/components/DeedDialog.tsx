@@ -487,7 +487,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       const owed = Object.values(s.lands).some((l) => l.holder === target && l.rightful === P);
       fields = (
         <>
-          {!spec.target && personPick('Whom', met(s))}
+          {!spec.target && personPick('Whom', spec.secretId ? (id) => met(s)(id) && !!s.secrets[spec.secretId!]?.guilty.includes(id) : met(s))}
           <fieldset className="field">
             <legend>What you hold over them</legend>
             <div className="secret-choices">

@@ -1,7 +1,7 @@
 // Saving and restoring a game in this browser. Every access is guarded: storage
 // can be missing or blocked, and the game must still run without it.
 
-import { meetPersonalTies, type GameState } from '../engine';
+import { repairSave, type GameState } from '../engine';
 
 const KEY = 'crown-of-whispers/save/v2';
 const PREFS = 'crown-of-whispers/prefs/v1';
@@ -21,8 +21,7 @@ export function loadGame(): GameState | null {
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
     if (!s || s.version !== 2 || s.phase !== 'playing') return null;
-    // Saves from before this rule began could leave the player a stranger to their own lover.
-    meetPersonalTies(s);
+    repairSave(s);
     return s;
   } catch {
     return null;

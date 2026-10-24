@@ -70,7 +70,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <h3>The King’s justice</h3>
             <p>
               A denunciation is judged on proof, on witnesses, and on whom the King trusts. The accused may be dismissed, sent to the Tower, or sent
-              to the block. Prisoners confess or name other names.
+              to the block. Prisoners confess or name other names. Treason and a murder actually done are hanging matters. A charge the King
+              dismisses is not forgotten: the hall heard it, the accused's name is muddied, and for a grave charge the King may set his people to
+              keep looking. A lord found murdered is looked into too.
             </p>
           </section>
           <section>

@@ -21,7 +21,7 @@ The generator writes a court's history first, then its motives, then its schemes
 - **Servants** hear what is said behind closed doors and may let it slip.
 - **Secrets have belief and proof.** Whisper truths or forge lies. Clever forgers' seals are hard to see through.
 - **Schemes**: murder plots need preparation and steady hands; ruin plots carry charges and witnesses to the King. Recruits may join sincerely or meaning to betray you, and you are never told which. Some schemes wait for a trigger ("when he holds an office").
-- **The King's justice**: proof, witnesses and trust decide whether the accused is dismissed, sent to the Tower or beheaded. Prisoners confess and name names.
+- **The King's justice**: proof, witnesses and trust decide whether the accused is dismissed, sent to the Tower or beheaded. Prisoners confess and name names. Treason and a murder actually done are hanging matters. A dismissed charge still muddies the accused before the whole hall, and for a grave one (or a lord found murdered) the King's people keep digging; if they find enough, the Guard comes weeks later.
 - **Strong wills**: a spouse can goad, restrain, or demand a deed. Heeding your wife's demand costs no time.
 - **The Witan**: when the throne falls empty it meets at the end of the following week. The Briefing shows how it would vote today. Being crowned is a triumph; you may then rule on.
 - **The truth**: when the game ends, everything hidden is revealed: every motive, every false oath, the real court, and everything that happened in the dark.

@@ -824,7 +824,7 @@ function seedSituations(g: Gen, king: Character, greats: Character[], lessers: C
       ],
       secret: {
         kind: 'betrayal',
-        text: `${names(s, t.brothers.map((b) => b.id))} mean to let ${t.thief.name} rise, then kill him and take back their lands.`,
+        text: `${names(s, t.brothers.map((b) => b.id))} ${t.brothers.length > 1 ? 'mean' : 'means'} to let ${t.thief.name} rise, then kill him and take back ${t.brothers.length > 1 ? 'their' : 'his'} lands.`,
         evidence: 5,
         treason: false,
       },
