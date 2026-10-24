@@ -288,7 +288,7 @@ export function matchProblem(s: GameState, a: CharId, b: CharId): string | null 
 }
 
 /** Move someone (and their young children) into another household. */
-function moveTo(s: GameState, id: CharId, to: House): void {
+export function moveTo(s: GameState, id: CharId, to: House): void {
   const c = ch(s, id);
   const from = s.houses[c.householdId];
   if (from === to) return;
@@ -321,6 +321,7 @@ export function annul(s: GameState, a: CharId, b: CharId): void {
     const r = s.relations[x]?.[y];
     if (r) r.mods = r.mods.filter((m) => m.key !== 'marriage');
   }
+  forgetCuckolding(s, man.id, woman.id);
   const shared = s.houses[man.householdId];
   if (shared?.head === man.id && woman.householdId === shared.id && man.formerly?.length) {
     // He had married into her house: she keeps it again, and he goes home.
@@ -348,6 +349,17 @@ export function annul(s: GameState, a: CharId, b: CharId): void {
   log(s, `The marriage of ${nm(s, man.id)} and ${nm(s, woman.id)} was annulled.`, 'all', 'court', [man.id, woman.id]);
 }
 
+/** A marriage that never was leaves no wrong behind: his grudges against her and her lovers go, and so does her spying. */
+export function forgetCuckolding(s: GameState, man: CharId, woman: CharId): void {
+  const her = s.relations[man]?.[woman];
+  if (her) her.mods = her.mods.filter((m) => m.key !== 'faithless');
+  for (const lover of loversOf(s, woman)) {
+    const r = s.relations[man]?.[lover];
+    if (r) r.mods = r.mods.filter((m) => m.key !== 'cuckold');
+  }
+  for (const sp of Object.values(s.spies ?? {})) if (sp.affair && sp.agent === woman && sp.mark === man && sp.status === 'active') sp.status = 'ended';
+}
+
 /** A wedding. The bride joins her husband's house, unless she heads one and he does not. */
 export function wed(s: GameState, a: CharId, b: CharId): void {
   const man = ch(s, a).gender === 'm' ? ch(s, a) : ch(s, b);
@@ -356,6 +368,7 @@ export function wed(s: GameState, a: CharId, b: CharId): void {
   for (const c of [man, woman]) if (c.spouse && s.chars[c.spouse]?.spouse === c.id) s.chars[c.spouse].spouse = undefined;
   man.spouse = woman.id;
   woman.spouse = man.id;
+  woman.mistressOf = undefined;
   const hers = s.houses[woman.householdId];
   const his = s.houses[man.householdId];
   if (hers?.head === woman.id && his?.head !== man.id) {
@@ -456,8 +469,9 @@ export function widowsUpkeep(s: GameState): void {
     if (widowedFor(s, w.id) === undefined) continue;
     const cost = w.prestige >= 40 ? 6 : 4;
     const head = s.houses[w.householdId]?.head;
-    const host = head && head !== w.id && isFree(s, head) && opinion(s, head, w.id) >= 10 ? ch(s, head) : undefined;
-    const share = host ? Math.min(host.gold, Math.floor(cost / 2)) : 0;
+    const host = head && head !== w.id && isFree(s, head) && (opinion(s, head, w.id) >= 10 || w.mistressOf === head) ? ch(s, head) : undefined;
+    // A kind host bears half; the man who keeps her as his mistress bears it all.
+    const share = host ? Math.min(host.gold, w.mistressOf === head ? cost : Math.floor(cost / 2)) : 0;
     if (host) host.gold -= share;
     w.gold = Math.max(0, w.gold - (cost - share));
   }

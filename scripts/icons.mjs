@@ -38,7 +38,7 @@ const MAP = {
   // families
   child: 'baby-face', propose: 'linked-rings', plead: 'envelope',
   // love, tails and the night
-  seduce: 'love-letter', track: 'footsteps', 'night-kill': 'candle-skull', dine: 'teapot', 'try-child': 'baby-bottle',
+  seduce: 'love-letter', track: 'footsteps', 'night-kill': 'candle-skull', dine: 'teapot', 'try-child': 'baby-bottle', 'take-mistress': 'heart-key',
   // parts of society
   nobility: 'knight-banner', church: 'church', guilds: 'anvil', commons: 'farmer', underworld: 'hood',
 };

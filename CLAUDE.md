@@ -50,7 +50,7 @@ before changing anything substantial; it is the plan we are building toward.
   which never takes the player or the player's spouse.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
-  roof). Having someone followed: `tails.ts`, places in `content/haunts.ts`.
+  roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.
 - `test/fixtures/osric.ts` is the original fixed court, kept only for mechanics tests.
 
 ## Engineering rules

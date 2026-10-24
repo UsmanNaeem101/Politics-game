@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMod,
+  widowsUpkeep,
   becomeLovers,
   calendar,
   check,
@@ -32,6 +33,17 @@ function lady(s: GameState): { wife: string; husband: string } {
   }
   throw new Error('no lady');
 }
+
+const lady_ = (s: GameState) => {
+  for (const id of s.order) {
+    const c = s.chars[id];
+    if (c.gender !== 'f' || !c.spouse || c.spouse === s.player || c.rank === 'queen' || c.status !== 'free' || c.rank === 'child') continue;
+    if (s.chars[c.spouse].status !== 'free' || c.householdId === s.chars[s.player].householdId) continue;
+    s.known[id] = 2;
+    return { wife: id, husband: c.spouse };
+  }
+  throw new Error('no lady');
+};
 
 describe('time', () => {
   it('a turn is a month, and a year is twelve of them', () => {
@@ -252,5 +264,48 @@ describe('a wife dines out', () => {
     perform(s, P, { type: 'dine', target: lady });
     s.ap = 3;
     expect(check(s, P, { type: 'dine', target: lady })).toMatch(/already dined/);
+  });
+});
+
+describe('a mistress under your roof', () => {
+  it('a widowed lover comes to live in your house; the court knows, and your wife will not forgive it', () => {
+    let s = generateCourt(18);
+    for (let seed = 18; !s.chars[s.player].spouse; seed++) s = generateCourt(seed);
+    const P = s.player;
+    const wife = s.chars[P].spouse!;
+    const { wife: widow, husband } = lady_(s);
+    kill(s, husband, 'Died', false);
+    s.known[widow] = 4;
+    const sec = becomeLovers(s, widow, P);
+    expect(check(s, P, { type: 'take-mistress', target: widow })).toBeNull();
+    addMod(s, widow, P, 'adores', 'Adores him', 90);
+    let came = false;
+    for (let i = 0; i < 20 && !came; i++) {
+      s.ap = 3;
+      came = perform(s, P, { type: 'take-mistress', target: widow }).ok;
+    }
+    expect(came).toBe(true);
+    expect(s.chars[widow].householdId).toBe(s.chars[P].householdId);
+    expect(s.chars[widow].mistressOf).toBe(P);
+    expect(s.secrets[sec.id].exposed).toBe(true);
+    expect(s.relations[wife][P].mods.some((m) => m.key === 'mistress')).toBe(true);
+    s.ap = 3;
+    expect(check(s, P, { type: 'take-mistress', target: widow })).toMatch(/already/);
+    // You keep her: her upkeep comes out of your purse.
+    s.chars[P].gold = 100;
+    s.chars[widow].gold = 10;
+    widowsUpkeep(s);
+    expect(s.chars[widow].gold).toBe(10);
+    expect(s.chars[P].gold).toBeLessThan(100);
+  });
+
+  it('not a married woman, and not one who is not your lover', () => {
+    const s = generateCourt(18);
+    const { wife } = lady_(s);
+    s.known[wife] = 4;
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'take-mistress', target: wife })).toMatch(/not your lover/);
+    becomeLovers(s, wife, s.player);
+    expect(check(s, s.player, { type: 'take-mistress', target: wife })).toMatch(/husband/);
   });
 });

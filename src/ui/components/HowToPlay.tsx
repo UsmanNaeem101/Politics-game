@@ -162,6 +162,11 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               him. Other men court other men's wives, yours among them.
             </p>
             <p>
+              A widowed or unmarried lover can be <strong>brought into your household</strong> as your mistress. She is devoted and you
+              keep her, but the affair is no secret after that: your wife will not forgive it (and may turn on her), honest men and the
+              Church think less of you, and her kin feel dishonoured.
+            </p>
+            <p>
               <strong>Track their movements</strong> to have someone followed for a month: where they go, whom they dine with, and where they slip
               away to after dark. It is how a husband finds his wife's lover, and how a jealous husband may find you. Someone under your own roof
               you can <strong>kill in the night</strong>. It is easily done and hard to explain. A widower may <strong>seek a match</strong> from the

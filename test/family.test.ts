@@ -347,7 +347,10 @@ describe('a lover is not married off', () => {
     s.turn += 2;
     wed(s, brother, lady);
     expect(h.head).toBe(brother);
+    // He had found her letters, and hated you for it.
+    addMod(s, brother, s.player, 'cuckold', 'Beds my wife', -50);
     repairSave(s);
+    expect(s.relations[brother][s.player].mods.some((m) => m.key === 'cuckold')).toBe(false);
     expect(s.chars[lady].spouse === brother).toBe(false);
     expect(h.head).toBe(lady);
     expect(s.chars[brother].householdId).toBe(home);

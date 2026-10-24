@@ -1,4 +1,5 @@
 import {
+  mistressProblem,
   tryProblem,
   akin,
   dineProblem,
@@ -122,6 +123,8 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (love === null || (love && /answer|already/.test(love))) out.push(gate({ type: 'seduce', why: love ?? undefined }));
   if (!nightProblem(s, P, target)) out.push({ type: 'night-kill' });
   // Your wife, or your lover: a child of yours.
+  const keeping = mistressProblem(s, P, target);
+  if (keeping !== 'She is not your lover.') out.push({ type: 'take-mistress', why: keeping ?? undefined });
   const trying = tryProblem(s, P, target);
   if (trying !== 'She is neither your wife nor your lover.') out.push({ type: 'try-child', why: trying ?? undefined });
   // Your wife dines with ladies; their husbands' business comes home with her.

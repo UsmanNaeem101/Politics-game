@@ -90,6 +90,8 @@ export interface Character {
   traits: Traits;
   status: Status;
   statusTurn?: number;
+  /** The man whose household she lives in as his acknowledged mistress. */
+  mistressOf?: CharId;
   /** Men she has turned away, and the month she did. */
   refused?: Record<CharId, number>;
   /** A child she is carrying: whose, and the month it is due. */

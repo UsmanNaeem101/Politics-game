@@ -11,7 +11,7 @@ import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
-import { affairsAsSpies, annul, births, matchmaking, widowsUpkeep } from './family';
+import { affairsAsSpies, annul, births, forgetCuckolding, matchmaking, widowsUpkeep } from './family';
 import { loversOf } from './love';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
@@ -116,6 +116,13 @@ export function repairSave(s: GameState): void {
     const affair = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(w.id) && x.guilty.includes(s.player));
     const wedding = s.events.filter((e) => e.actors.includes(w.id) && e.actors.includes(h) && / were married\./.test(e.text)).at(-1);
     if (affair && wedding && wedding.turn >= affair.createdTurn) annul(s, h, w.id);
+  }
+  // Marriages annulled before annulment took the wrongs of them away too.
+  for (const e of s.events) {
+    if (!/ was annulled\./.test(e.text) || e.actors.length < 2) continue;
+    const [a, b] = e.actors;
+    const man = s.chars[a]?.gender === 'm' ? a : b;
+    forgetCuckolding(s, man, man === a ? b : a);
   }
   // Schemes that still named members who died before the dead were struck from them.
   for (const p of Object.values(s.plots)) {

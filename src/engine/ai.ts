@@ -21,7 +21,7 @@ import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
 import { alreadyJudged, capital, claimants, officeEligible } from './court';
 import { accessTo, recruitedSpies, spyOdds } from './spies';
-import { loversOf, seduceOdds, seduceProblem } from './love';
+import { loversOf, mistressProblem, nightProblem, seduceOdds, seduceProblem } from './love';
 import { MOURNING, widowedFor } from './family';
 import { TAIL_COST } from './tails';
 import { dineProblem } from './wives';
@@ -348,6 +348,17 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     if (suspicion >= 15 && suspicion < 80 && c.gold >= TAIL_COST) add({ type: 'track', target: wife }, 15 + E.paranoia * 0.2 + suspicion * 0.2);
     else if (!suspicion && E.paranoia >= 70 && opinion(s, me, wife) < 0 && c.gold >= TAIL_COST) add({ type: 'track', target: wife }, 6);
     if (suspicion >= 80 && E.wrath >= 65 && c.traits.honor < 45) add({ type: 'night-kill', target: wife }, (E.wrath - 50) * 0.4 + (50 - c.traits.honor) * 0.3 - 5);
+  }
+  // Someone she means to be rid of, under her own roof: a wife and her husband's mistress, say.
+  if (c.agenda.kind === 'destroy') {
+    for (const g of c.agenda.targets) {
+      if (isFree(s, g) && ch(s, g).householdId === c.householdId && !nightProblem(s, me, g)) add({ type: 'night-kill', target: g }, (E.wrath - c.traits.honor) * 0.3 + 4);
+    }
+  }
+  // A great lord without scruple brings his widowed lover home.
+  if (c.gender === 'm' && (c.rank === 'great' || c.prestige >= 45) && c.traits.honor < 40) {
+    const lover = loversOf(s, me).find((l) => !mistressProblem(s, me, l));
+    if (lover) add({ type: 'take-mistress', target: lover }, 5 + (40 - c.traits.honor) * 0.1);
   }
 
   // ── Spies ─────────────────────────────────────────────────────────────────

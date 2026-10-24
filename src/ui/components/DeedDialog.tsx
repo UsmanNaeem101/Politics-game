@@ -3,6 +3,7 @@ import {
   ACTION_INFO,
   TAIL_COST,
   conceiveOdds,
+  mistressOdds,
   fertilityWord,
   incomeOf,
   meansWord,
@@ -235,6 +236,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'dine':
         return target ? { type, target } : null;
       case 'try-child':
+        return target ? { type, target } : null;
+      case 'take-mistress':
         return target ? { type, target } : null;
     }
   })();
@@ -1045,6 +1048,17 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
         lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
       };
+    case 'take-mistress': {
+      const wife = livingSpouse(s, P);
+      return {
+        pct: mistressOdds(s, P, it.target),
+        lines: [
+          'Her love for you counts, and a child of yours; her honour, and a house of her own to keep, count against.',
+          'Under your roof she is devoted to you and easily kept company with, and you pay her keep. Her children by you grow up in your house.',
+          `The affair is no secret after this.${wife ? ` ${first(s, wife)} will not forgive it, and may turn on her.` : ''} Honest men and the Church will think less of you; her kin will feel dishonoured.`,
+        ],
+      };
+    }
     case 'try-child': {
       const husband = livingSpouse(s, it.target);
       return {

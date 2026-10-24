@@ -3,9 +3,9 @@
 // may have her followed, and a husband who knows may do worse. And a man may
 // rid himself of a wife under his own roof, at night, if he can bear the questions.
 
-import { deedDone, makeSecret } from './secrets';
+import { deedDone, makeSecret, publish } from './secrets';
 import { kill } from './court';
-import { MOURNING, akin, widowedFor } from './family';
+import { MOURNING, akin, moveTo, widowedFor } from './family';
 import { affairSpy } from './spies';
 import { chance, clamp, roll } from './rng';
 import { first, nm } from './text';
@@ -171,6 +171,75 @@ export function discoverAffair(s: GameState, husband: CharId, sec: Secret): void
     addMod(s, husband, wife, 'faithless', 'Faithless', -35, FAITHLESS_FADES);
     adjustTrust(s, husband, wife, -40);
   }
+}
+
+// ── A mistress under his roof ───────────────────────────────────────────────
+
+/** His lover, living in his household for all to see. */
+export const mistressOf = (s: GameState, man: CharId): CharId | undefined =>
+  s.order.find((id) => s.chars[id].mistressOf === man && !gone(s, id));
+
+/** Why she cannot come to live in his house as his mistress, or null. */
+export function mistressProblem(s: GameState, actor: CharId, target: CharId): string | null {
+  const T = ch(s, target);
+  if (!loversOf(s, target).includes(actor)) return 'She is not your lover.';
+  if (livingSpouse(s, target)) return 'She has a husband to keep her.';
+  if (T.mistressOf === actor) return 'She lives under your roof already.';
+  if (T.householdId === ch(s, actor).householdId) return 'She lives under your roof already.';
+  if (!isFree(s, target) || !isFree(s, actor)) return 'Neither of you can move house from the Tower.';
+  if (mistressOf(s, actor)) return 'You keep a mistress already.';
+  return null;
+}
+
+/** Will she come? Her love for him, a child of his, against her honour and a house of her own to keep. */
+export function mistressOdds(s: GameState, actor: CharId, target: CharId): number {
+  const T = ch(s, target);
+  const child = T.children?.some((k) => s.chars[k]?.sire === actor || T.expecting?.father === actor) || T.expecting?.father === actor;
+  const keeps = s.houses[T.householdId]?.head === target;
+  return clamp(Math.round(35 + opinion(s, target, actor) * 0.6 + (child ? 20 : 0) - (keeps ? 25 : 0) - T.traits.honor * 0.2), 5, 95);
+}
+
+export function takeMistress(s: GameState, actor: CharId, target: CharId): Result {
+  const A = ch(s, actor);
+  const T = ch(s, target);
+  if (!chance(s, mistressOdds(s, actor, target))) {
+    addMod(s, target, actor, 'kept-woman', 'Would make a kept woman of me', -8, 0.5);
+    return { ok: false, text: `${first(s, target)} will be your lover, not your kept woman.`, tone: 'bad' };
+  }
+  const home = s.houses[A.householdId];
+  const was = s.houses[T.householdId];
+  moveTo(s, target, home);
+  T.mistressOf = actor;
+  addMod(s, target, actor, 'kept', 'Keeps me in his house', 15);
+  adjustTrust(s, target, actor, 15);
+  // No longer a secret: the whole court knows what she is to him.
+  for (const sec of Object.values(s.secrets)) {
+    if (sec.kind === 'affair' && sec.truth && sec.guilty.includes(target) && sec.guilty.includes(actor)) publish(s, sec.id, 90, 'court');
+  }
+  // His wife will not forgive it.
+  const wife = livingSpouse(s, actor);
+  if (wife) {
+    addMod(s, wife, actor, 'mistress', 'Brought his mistress under our roof', -45, 0.1);
+    adjustTrust(s, wife, actor, -30);
+    addMod(s, wife, target, 'rival', 'His mistress, in my house', -60, 0.05);
+    addMod(s, target, wife, 'rival', 'His wife', -20, 0.05);
+    const W = ch(s, wife);
+    if (wife !== s.player && W.traits.wrath >= 55 && W.traits.honor < 55) {
+      W.agenda = { kind: 'destroy', targets: [target], summary: `Be rid of ${T.short}, whom her husband keeps under her own roof.` };
+    }
+  }
+  // Honest men and the Church think less of him; a great lord is forgiven more.
+  const great = A.rank === 'great' || s.king === actor;
+  for (const id of s.order) {
+    const c = ch(s, id);
+    if (id === actor || id === target || !isFree(s, id) || isChild(s, id) || isServant(s, id)) continue;
+    if (c.rank === 'clergy' || c.traits.honor >= 60) addMod(s, id, actor, 'mistress-scandal', 'Keeps his mistress under his roof', great ? -3 : -8, 0.2);
+  }
+  // Her family's name is in the gutter.
+  const kin = new Set([...(T.parents ?? []), ...T.siblings, ...(was?.head && was.head !== target ? [was.head] : [])]);
+  for (const k of kin) if (isFree(s, k) && k !== actor) addMod(s, k, actor, 'dishonour', 'Dishonoured our house', -30, 0.1);
+  log(s, `${nm(s, actor)} has brought ${nm(s, target)} into his household as his mistress. The court talks of nothing else.`, 'all', 'court', [actor, target]);
+  return { ok: true, text: `${first(s, target)} has come to live under your roof.${wife ? ` ${first(s, wife)} will not forgive it.` : ''}`, tone: 'good' };
 }
 
 // ── A death in the night ────────────────────────────────────────────────────
