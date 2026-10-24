@@ -38,6 +38,12 @@ export function newGame(seed: number, opts: GenerateOptions = {}): GameState {
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   meetPersonalTies(s);
+  // Your wife's friends' husbands, whom you dined with but the old rules left strangers.
+  for (const lady of s.order) {
+    const husband = ch(s, lady).spouse;
+    if (!s.relations[lady]?.[s.player]?.mods.some((m) => m.key === 'wife-friend') || acquaintance(s, lady) < 3) continue;
+    if (husband && husband !== s.king && husband !== s.player && isFree(s, husband)) hearOf(s, husband, 3);
+  }
   // A murder done before murders were recorded as deeds: the plan becomes the crime.
   for (const p of Object.values(s.plots)) {
     const sec = s.secrets[p.secretId];
@@ -162,8 +168,11 @@ function dawn(s: GameState): void {
   addMod(s, wife, lady, 'friends', 'Friends', 10, 0.3);
   addMod(s, lady, wife, 'friends', 'Friends', 10, 0.3);
   addMod(s, lady, P, 'wife-friend', 'Her friend’s husband', 5, 0.3);
+  // The two households dine together: you meet her husband too, unless he is the King.
   const husband = ch(s, lady).spouse;
-  if (husband && isFree(s, husband)) hearOf(s, husband, 2);
+  const metHusband = !!husband && isFree(s, husband) && husband !== s.king;
+  if (metHusband) hearOf(s, husband!, 3);
+  else if (husband && isFree(s, husband)) hearOf(s, husband, 2);
   let gossip = '';
   if (opinion(s, wife, P) >= 0 && chance(s, 40)) {
     const pool = Object.entries(s.knowledge[lady] ?? {}).filter(([sid, k]) => !k.lie && k.credence >= 40 && !s.secrets[sid].guilty.includes(lady) && !s.knowledge[P]?.[sid]);
@@ -174,7 +183,10 @@ function dawn(s: GameState): void {
       gossip = ` Over the embroidery frames, ${first(s, lady)} told her: “${s.secrets[sid].text}”`;
     }
   }
-  log(s, `Your wife ${first(s, wife)} has befriended ${nm(s, lady)}, and through her you are now acquainted.${gossip}`, [P, wife], gossip ? 'secret' : 'good', [lady]);
+  const met = metHusband
+    ? `, and the two houses dined together: you are now acquainted with her and with ${nm(s, husband!)}.`
+    : ', and through her you are now acquainted.';
+  log(s, `Your wife ${first(s, wife)} has befriended ${nm(s, lady)}${met}${gossip}`, [P, wife], gossip ? 'secret' : 'good', metHusband ? [lady, husband!] : [lady]);
 }
 
 function checkEnd(s: GameState): boolean {

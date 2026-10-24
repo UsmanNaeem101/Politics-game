@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   acquaintance,
+  addMod,
   check,
   continueReign,
   courtProblems,
@@ -9,6 +10,8 @@ import {
   generateCourt,
   meetPersonalTies,
   perform,
+  repairSave,
+  resolveAudience,
   waitCleared,
   type GameState,
 } from '../src/engine';
@@ -115,6 +118,37 @@ describe('the fog of war', () => {
     s.known[lover] = 1;
     meetPersonalTies(s);
     expect(acquaintance(s, lover)).toBe(4);
+  });
+
+  it('your wife\'s new friend brings her husband to your table too', () => {
+    let seen = 0;
+    for (let seed = 1; seed <= 30 && seen < 3; seed++) {
+      const s = generateCourt(seed);
+      for (let w = 0; w < 30 && s.phase === 'playing'; w++) {
+        while (s.audiences.length) resolveAudience(s, s.audiences[0].id, s.audiences[0].options[0].id);
+        s.ap = 0;
+        endWeek(s);
+        const e = s.events.find((x) => x.text.includes('the two houses dined together'));
+        if (!e) continue;
+        const [lady, husband] = e.actors!;
+        expect(acquaintance(s, lady)).toBeGreaterThanOrEqual(3);
+        expect(acquaintance(s, husband)).toBeGreaterThanOrEqual(3);
+        seen++;
+        break;
+      }
+    }
+    expect(seen).toBe(3);
+  });
+
+  it('repairs an old save in which a wife\'s friend\'s husband was left a stranger', () => {
+    const s = generateCourt(5);
+    const lady = s.order.find((id) => s.chars[id].rank === 'lady' && s.chars[id].spouse && s.chars[id].spouse !== s.king && s.chars[id].householdId !== s.chars[s.player].householdId)!;
+    const husband = s.chars[lady].spouse!;
+    s.known[lady] = 3;
+    s.known[husband] = 2;
+    addMod(s, lady, s.player, 'wife-friend', 'Her friend’s husband', 5, 0.3);
+    repairSave(s);
+    expect(acquaintance(s, husband)).toBe(3);
   });
 
   it('will not let you deal with a stranger until you are introduced', () => {
