@@ -40,9 +40,10 @@ function check(s: GameState, tag: string) {
   for (const sp of Object.values(s.spies)) {
     if (sp.status !== 'active') continue;
     if (sp.agent === sp.mark || sp.agent === sp.master) bad(`spy ${sp.id} watches itself`);
-    spyCount[sp.master] = (spyCount[sp.master] ?? 0) + 1;
+    // A lover who spies for love is not one of the three a master may recruit.
+    if (!sp.affair) spyCount[sp.master] = (spyCount[sp.master] ?? 0) + 1;
   }
-  for (const [m, n] of Object.entries(spyCount)) if (n > 3) bad(`${m} keeps ${n} spies`);
+  for (const [m, n] of Object.entries(spyCount)) if (n > 3) bad(`${m} keeps ${n} recruited spies`);
   for (const c of Object.values(s.chars)) {
     if (c.rank === 'child' && c.age >= 17) bad(`${c.id} still a child at ${c.age}`);
     if (c.rank === 'child' && (c.spouse || Object.values(s.plots).some((p) => p.status === 'active' && (p.owner === c.id || p.targets.includes(c.id) || p.members.some((m) => m.id === c.id)))))
