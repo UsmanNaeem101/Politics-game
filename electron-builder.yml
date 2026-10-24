@@ -1,0 +1,39 @@
+# Desktop packages: a Windows installer and a macOS disk image.
+# Built by .github/workflows/desktop.yml (a .dmg can only be made on a Mac).
+appId: com.usmannaeem.crownofwhispers
+productName: Crown of Whispers
+copyright: Copyright © 2026 Usman Naeem
+directories:
+  output: release
+  buildResources: build
+files:
+  - electron/**
+  - dist-desktop/**
+  - package.json
+  # The game is bundled by Vite; the app needs no node_modules at run time.
+  - "!node_modules/**"
+publish: null
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: true
+  perMachine: false
+  artifactName: Crown-of-Whispers-Setup-${version}.exe
+
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.strategy-games
+  # No Apple certificate: sign ad hoc so the app runs on Apple silicon.
+  identity: "-"
+  hardenedRuntime: false
+dmg:
+  artifactName: Crown-of-Whispers-${version}-mac.dmg
+
+linux:
+  target: [AppImage]
+  category: Game

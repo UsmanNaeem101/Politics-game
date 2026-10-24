@@ -34,7 +34,16 @@ npm run dev            # play at http://localhost:5173
 npm test               # engine tests, including full random seasons for every character
 npm run build          # static site in dist/
 npm run build:single   # one self-contained HTML file in dist-single/
+npm run app            # the desktop app, run from source (Electron)
 ```
+
+### Desktop apps
+
+The game also ships as a desktop app that runs offline: a Windows installer (.exe) and a macOS disk image (.dmg). GitHub Actions builds both on every push that touches the game (`.github/workflows/desktop.yml`), launches each one and plays a week, then publishes them to the [desktop release](https://github.com/UsmanNaeem101/Politics-game/releases/tag/desktop).
+
+The apps are not signed with a paid certificate. On Windows, click *More info* then *Run anyway* the first time. On a Mac, open the app once, then go to *System Settings → Privacy & Security* and click *Open Anyway*.
+
+`electron/main.cjs` is the whole desktop shell; `electron-builder.yml` describes the packages; `npm run build:desktop` bundles the fonts so nothing is fetched from the web. A .dmg can only be built on a Mac, and a Windows installer needs Windows (or Wine). `node scripts/app-icon.mjs` redraws `build/icon.png`.
 
 Tools for tuning the simulation:
 

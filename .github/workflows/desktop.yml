@@ -1,0 +1,92 @@
+# Builds the desktop apps (Windows installer, macOS disk image), checks each one
+# launches and plays a week, then publishes both to the "desktop" release:
+# https://github.com/UsmanNaeem101/Politics-game/releases/tag/desktop
+name: Desktop apps
+
+on:
+  push:
+    paths:
+      - src/**
+      - electron/**
+      - build/**
+      - index.html
+      - package.json
+      - package-lock.json
+      - vite.config.ts
+      - electron-builder.yml
+      - scripts/desktop-smoke.cjs
+      - .github/workflows/desktop.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+            package: release/*.exe
+            app: release/win-unpacked/Crown of Whispers.exe
+          - os: macos-latest
+            target: --mac
+            package: release/*.dmg
+            app: release/mac-universal/Crown of Whispers.app/Contents/MacOS/Crown of Whispers
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:desktop
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Launch the app and play a week
+        run: node scripts/desktop-smoke.cjs "${{ matrix.app }}" release
+      - if: runner.os == 'macOS'
+        run: |
+          lipo -archs "${{ matrix.app }}"
+          codesign --verify --deep --strict --verbose=2 "release/mac-universal/Crown of Whispers.app"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ runner.os }}
+          path: |
+            ${{ matrix.package }}
+            release/desktop-*.png
+          if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Publish to the "desktop" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete desktop --cleanup-tag --yes || true
+          gh release create desktop out/*.exe out/*.dmg \
+            --target "$GITHUB_SHA" \
+            --title "Crown of Whispers — desktop" \
+            --latest \
+            --notes "Built from ${GITHUB_SHA::7}.
+
+          **Windows:** download the .exe and run it. Windows may warn that the app is unrecognised: click *More info*, then *Run anyway*.
+
+          **Mac:** download the .dmg, open it and drag Crown of Whispers into Applications. The first time, macOS will refuse to open it because it is not from a registered developer: open *System Settings → Privacy & Security*, scroll down and click *Open Anyway*."

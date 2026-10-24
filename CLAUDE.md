@@ -47,3 +47,9 @@ before changing anything substantial; it is the plan we are building toward.
 
 The published page is https://claude.ai/artifact/KQZsENkaYDgd8Go729tuUj — republish from
 `dist-single/crown-of-whispers.html` after `npm run build:single`.
+
+Desktop apps (Electron, `electron/main.cjs`): `npm run app` runs one from source. The Windows .exe and
+macOS .dmg are built only by `.github/workflows/desktop.yml` (a .dmg needs a Mac), which also launches
+each app with `scripts/desktop-smoke.cjs` and publishes both to the `desktop` GitHub release. They are
+unsigned (ad-hoc on macOS). The desktop build bundles its fonts (`virtual:fonts` in vite.config.ts) so it
+runs offline; keep it free of network requests, the smoke test fails on any.

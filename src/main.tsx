@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { GameState } from './engine';
 import { App } from './ui/App';
+import 'virtual:fonts';
 import './ui/styles.css';
 
 function start(data?: unknown) {
