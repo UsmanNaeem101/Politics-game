@@ -100,7 +100,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>Schemes</h3>
             <p>
-              A <strong>murder</strong> scheme needs preparation and steady hands; even a clean kill may be traced. A <strong>ruin</strong> scheme
+              A <strong>murder</strong> scheme needs preparation and steady hands; even a clean kill may be traced. Your cunning and preparation
+              hide you, every conspirator is another mouth, and <strong>hired blades</strong> (bought with gold as you work on the scheme) strike
+              harder and do it while you are seen elsewhere. A <strong>ruin</strong> scheme
               gathers charges and witnesses to lay before the King. When you draw someone in, offer a carrot. They may join sincerely, or meaning to
               betray you. You will not be told which.
             </p>

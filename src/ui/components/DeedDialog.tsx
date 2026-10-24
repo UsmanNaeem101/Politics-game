@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
   TAIL_COST,
+  traceChance,
   livingSpouse,
   nightOdds,
   seduceOdds,
@@ -425,7 +426,9 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
           {pick('Which scheme', plotId, setPlotId, workable.map((x) => ({ value: x.id, label: `“${x.name}” (${x.progress}%)` })), 'deed-plot')}
           {p?.kind === 'murder' && p.owner === P && (
             <label className="field">
-              <span>Crowns for hired blades (20 each, up to 4; you have {me.gold})</span>
+              <span>
+                Crowns for hired blades (20 each, up to 4; you have {me.gold}). They strike harder, and do it while you are seen elsewhere. {p.hiredBlades ? `${p.hiredBlades} hired so far.` : ''}
+              </span>
               <input id="deed-blades" type="range" min={0} max={Math.min(80, me.gold - (me.gold % 20))} step={20} value={Math.min(amount - (amount % 20), me.gold)} onChange={(e) => setAmount(Number(e.target.value))} />
               <span className="num">{Math.min(amount - (amount % 20), me.gold)}</span>
             </label>
@@ -915,7 +918,15 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     }
     case 'strike': {
       const p = s.plots[it.plotId];
-      return { pct: strikeChance(s, p), lines: [`Even if you succeed, you may be traced (your cunning helps, more conspirators hurt).`] };
+      return {
+        pct: strikeChance(s, p),
+        lines: [
+          `If it succeeds, the chance it is traced to you: ${traceChance(s, p)}%. Your cunning and preparation hide you; every conspirator is another mouth.`,
+          p.hiredBlades
+            ? `${p.hiredBlades} hired blade${p.hiredBlades > 1 ? 's' : ''} will do the work while you are seen elsewhere.`
+            : 'No hired blades: your own hands will be on it. Work on the scheme with gold to hire some.',
+        ],
+      };
     }
     case 'blackmail': {
       const fear = blackmailFear(s, P, it.target, it.secretId);

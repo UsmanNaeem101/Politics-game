@@ -19,12 +19,27 @@ import {
   pursueInquiries,
   repairSave,
   resolveStrike,
+  strikeChance,
+  traceChance,
   verdictFor,
   type GameState,
 } from '../src/engine';
 import { createScenario } from './fixtures/osric';
 
 const fresh = (seed = 7): GameState => createScenario(seed, 'anselm');
+
+describe('hired blades', () => {
+  it('strike harder, and keep your own hands out of it', () => {
+    const s = fresh();
+    const p = createPlot(s, 'gareth', 'murder', ['edmund']);
+    p.progress = 40;
+    const kill0 = strikeChance(s, p);
+    const trace0 = traceChance(s, p);
+    p.hiredBlades = 4;
+    expect(strikeChance(s, p)).toBeGreaterThan(kill0);
+    expect(traceChance(s, p)).toBeLessThan(trace0);
+  });
+});
 
 describe('a murder done', () => {
   it('is no longer a plan but a hanging crime, and the body lends the charge weight', () => {

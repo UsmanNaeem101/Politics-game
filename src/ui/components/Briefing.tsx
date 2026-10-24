@@ -17,6 +17,7 @@ import {
   opinionWord,
   plotViews,
   strikeChance,
+  traceChance,
   visibleEvents,
   dateLabel,
   witanForecast,
@@ -230,7 +231,7 @@ export function Briefing() {
                 </button>{' '}
                 <span className="muted">
                   {role === 'owner' ? 'yours' : `sworn to ${first(s, plot.owner)}`} · {plot.kind === 'murder' ? 'murder of' : 'ruin of'} {plot.targets.map((t) => first(s, t)).join(', ')} · {plot.progress}% ready
-                  {plot.kind === 'murder' && role === 'owner' ? ` · strike ${strikeChance(s, plot)}%` : ''}
+                  {plot.kind === 'murder' && role === 'owner' ? ` · strike ${strikeChance(s, plot)}%, traced ${traceChance(s, plot)}%` : ''}
                 </span>
               </li>
             ))}

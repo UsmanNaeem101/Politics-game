@@ -7,6 +7,7 @@ import {
   offerLabel,
   plotViews,
   strikeChance,
+  traceChance,
   waitCleared,
   conditionMet,
   dateLabel,
@@ -120,7 +121,8 @@ function PlotCard({ v }: { v: PlotView }) {
       )}
       {owner && plot.kind === 'murder' && active && (
         <p className="small">
-          Strike now: <strong>{strikeChance(s, plot)}%</strong> to kill. Hired blades: {plot.hiredBlades}.
+          Strike now: <strong>{strikeChance(s, plot)}%</strong> to kill, <strong>{traceChance(s, plot)}%</strong> to be traced if it works. Hired
+          blades: {plot.hiredBlades}.
         </p>
       )}
       {odds.length > 0 && (

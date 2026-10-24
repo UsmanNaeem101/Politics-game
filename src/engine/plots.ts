@@ -86,6 +86,15 @@ export function strikeChance(s: GameState, p: Plot): number {
   return clamp(Math.round(strikePower(s, p) - strikeDefence(s, target, p.owner) + 20), 5, 92);
 }
 
+/**
+ * If the strike succeeds, the chance it is traced to the leader. Cunning and careful preparation hide
+ * him; every sworn member is another mouth; hired blades do the work while he is seen elsewhere.
+ */
+export function traceChance(s: GameState, p: Plot): number {
+  const quiet = hasPerk(s, p.owner, 'cutthroats') ? 12 : 0;
+  return clamp(Math.round(55 - ch(s, p.owner).traits.cunning * 0.4 + p.members.length * 6 - p.progress * 0.15 - p.hiredBlades * 7 - quiet), 5, 85);
+}
+
 export function canStrike(s: GameState, p: Plot): { ok: boolean; reason?: string } {
   if (p.kind !== 'murder') return { ok: false, reason: 'Only a murder plot can strike.' };
   if (p.status !== 'active') return { ok: false, reason: 'The plot is no longer active.' };
@@ -217,8 +226,7 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
   const wasKing = s.king === target;
 
   if (success) {
-    const quiet = hasPerk(s, owner, 'cutthroats') ? 12 : 0;
-    const traced = chance(s, clamp(55 - ch(s, owner).traits.cunning * 0.4 + p.members.length * 6 - p.progress * 0.15 - quiet, 5, 85));
+    const traced = chance(s, traceChance(s, p));
     p.status = 'succeeded';
     const how = vary(s, [
       'a crossbow bolt from the trees during the hunt',
