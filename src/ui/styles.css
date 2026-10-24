@@ -2759,3 +2759,30 @@ details > summary {
 .fortune-cell--trade .trade-card {
   margin-bottom: 0.3rem;
 }
+
+.roster-dead {
+  margin-top: 1rem;
+  opacity: 0.8;
+}
+
+.roster-dead summary {
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.spy-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.spy-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.spy-line svg {
+  color: var(--gold);
+  vertical-align: -0.2em;
+}

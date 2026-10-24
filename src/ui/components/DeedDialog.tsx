@@ -1,6 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
+  betrayable,
+  SPY_HOOKS,
+  SPY_HOOK_KINDS,
+  accessTo,
+  hookProblem,
+  marksFor,
+  spyOdds,
   BUSINESSES,
   BUSINESS_KINDS,
   COST,
@@ -24,6 +31,7 @@ import {
   investProblem,
   acquaintance,
   knownSecrets,
+  secretMatters,
   landsOf,
   nm,
   officeEligible,
@@ -35,6 +43,7 @@ import {
   spyChance,
   strikeChance,
   type BusinessKind,
+  type SpyHook,
   type CharId,
   type DirectiveSpec,
   type FabricateKind,
@@ -98,8 +107,12 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const [accused, setAccused] = useState<CharId[] | null>(null);
   const [bizKind, setBizKind] = useState<BusinessKind | ''>('');
   const [businessId, setBusinessId] = useState<string>(spec.businessId ?? '');
+  const [mark, setMark] = useState<CharId>('');
+  const [hook, setHook] = useState<SpyHook>('gold');
+  const [wage, setWage] = useState<number>(4);
 
-  const secrets = useMemo(() => knownSecrets(s, P), [s, P]);
+  // Secrets about the dead and the done are no use to anyone.
+  const secrets = useMemo(() => knownSecrets(s, P).filter((k) => secretMatters(s, k.sec)), [s, P]);
   const usable = secrets.filter((k) => k.k.lie || k.k.credence >= 40);
   const myPlots = Object.values(s.plots).filter((p) => p.status === 'active' && p.owner === P);
   const myRuin = myPlots.filter((p) => p.kind === 'ruin');
@@ -183,6 +196,12 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return bizKind ? { type, kind: bizKind } : null;
       case 'divest':
         return businessId ? { type, businessId } : null;
+      case 'plant':
+        return target && mark ? { type, target, mark, hook, wage, secretId: hook === 'blackmail' ? secretId || undefined : undefined } : null;
+      case 'dismiss-spy':
+        return spec.spyId ? { type, spyId: spec.spyId } : null;
+      case 'sweep':
+        return { type };
     }
   })();
 
@@ -338,7 +357,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       break;
     case 'scheme': {
       const cands = others(s, free(s), schemeKind === 'murder' ? 2 : 1);
-      const relevant = usable.filter((k) => k.sec.guilty.some((g) => targets.includes(g)) && !k.sec.guilty.includes(P));
+      const relevant = usable.filter((k) => k.sec.guilty.some((g) => targets.includes(g)) && (!k.sec.guilty.includes(P) || !!betrayable(s, P, k.sec)));
       fields = (
         <>
           <fieldset className="field">
@@ -644,6 +663,67 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         </fieldset>
       );
       break;
+    case 'plant': {
+      const marks = target ? marksFor(s, P, target) : [];
+      const hold = usable.filter((k) => k.sec.guilty.includes(target));
+      fields = (
+        <>
+          {!spec.target && personPick('Whom to recruit', met(s))}
+          {target && marks.length === 0 && <p className="muted">They cannot get close to anyone worth watching.</p>}
+          {marks.length > 0 &&
+            pick(
+              'To watch',
+              mark,
+              setMark,
+              marks.map((m) => ({ value: m, label: `${nm(s, m)} (${accessTo(s, target, m) === 'household' ? 'in the same house' : 'close to them'})` })),
+              'deed-mark',
+            )}
+          <fieldset className="field">
+            <legend>What you offer</legend>
+            <div className="secret-choices">
+              {SPY_HOOK_KINDS.map((k) => {
+                const why = target && mark ? hookProblem(s, P, target, mark, k, wage, k === 'blackmail' ? secretId || hold[0]?.sec.id : undefined) : null;
+                const blocked = !!why;
+                return (
+                  <label key={k} className={`secret-choice ${hook === k ? 'is-on' : ''} ${blocked ? 'is-off' : ''}`}>
+                    <input
+                      type="radio"
+                      name="hook"
+                      checked={hook === k}
+                      disabled={blocked}
+                      onChange={() => {
+                        setHook(k);
+                        if (k === 'blackmail' && !secretId && hold[0]) setSecretId(hold[0].sec.id);
+                      }}
+                    />
+                    <span>
+                      <strong>{SPY_HOOKS[k].name}</strong> <span className="muted">{SPY_HOOKS[k].desc}</span>
+                      {why && <small className="trade-why">{why}</small>}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          {hook === 'gold' && (
+            <label className="field">
+              <span>Wage, crowns a week</span>
+              <input type="number" min={1} max={15} value={wage} onChange={(e) => setWage(Math.max(1, Math.min(15, Number(e.target.value) || 1)))} />
+            </label>
+          )}
+          {hook === 'blackmail' &&
+            hold.length > 0 &&
+            pick(
+              'What you hold over them',
+              secretId,
+              setSecretId,
+              hold.map((k) => ({ value: k.sec.id, label: k.text })),
+              'deed-hold',
+            )}
+        </>
+      );
+      break;
+    }
     case 'divest':
       fields = (
         <fieldset className="field">
@@ -774,6 +854,9 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
           'Chance the King takes each accused into the Tower or worse:',
           ...reads.map((r) => `${first(s, r.accused)}: ${r.pct}%. ${r.notes.slice(-3).join(' · ')}`),
           'A failed charge costs you favour and earns the accused’s hatred.',
+          ...(it.secretId && betrayable(s, P, s.secrets[it.secretId])
+            ? ['You are sworn to this plot. You leave it now, whatever happens. If the King believes you, he pardons your part in it.']
+            : []),
         ],
       };
     }
@@ -822,6 +905,19 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       const b = s.businesses[it.businessId];
       return { lines: [`You will get ${sellPrice(b)} crowns, and lose ${BUSINESSES[b.kind].income} a week.`] };
     }
+    case 'plant': {
+      const def = SPY_HOOKS[it.hook];
+      return {
+        pct: spyOdds(s, P, it.target, it.mark, it.hook, it.wage, it.secretId),
+        lines: [
+          it.hook === 'gold' ? `Two weeks' wages now (${it.wage * 2} crowns), then ${it.wage} a week.` : 'It costs you no gold.',
+          `If they refuse, they may tell ${first(s, it.mark)}.`,
+          `If caught, a spy who serves for ${def.name.toLowerCase()} names you ${def.names >= 60 ? 'readily' : def.names >= 30 ? 'sometimes' : 'rarely'}, and is ${def.turns >= 50 ? 'easily' : 'rarely'} turned.`,
+        ],
+      };
+    }
+    case 'sweep':
+      return { lines: ['You may find someone else’s spy among your people. Then you choose: send them away, or turn them.'] };
     default:
       return { lines: [] };
   }

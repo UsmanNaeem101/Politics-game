@@ -4,6 +4,7 @@
 import { BUSINESSES } from './content/businesses';
 import { chance, clamp, rand, roll } from './rng';
 import { kindLabel, makeSecret, publish, refreshText } from './secrets';
+import { unmaskTurned } from './spies';
 import { He, His, first, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -211,8 +212,11 @@ export function readCase(s: GameState, accuser: CharId, secretId: SecretId, accu
   const sec = s.secrets[secretId];
   const A = ch(s, accused);
   const notes: string[] = [];
-  let score = sec.evidence * 0.5;
-  notes.push(`Proof: ${Math.round(sec.evidence * 0.5)}`);
+  // One of the plotters themselves, turned informer, can name the place, the hour and the men.
+  const informer = sec.guilty.includes(accuser);
+  const proof = informer ? Math.max(sec.evidence, 45) : sec.evidence;
+  let score = proof * 0.5;
+  notes.push(`Proof: ${Math.round(proof * 0.5)}${informer && proof > sec.evidence ? ' (an informer knows the details)' : ''}`);
   if (plot) {
     score += plot.progress * 0.2;
     notes.push(`Preparation: +${Math.round(plot.progress * 0.2)}`);
@@ -225,6 +229,10 @@ export function readCase(s: GameState, accuser: CharId, secretId: SecretId, accu
   const accuserStanding = opinion(s, K, accuser) * 0.2 + (trust(s, K, accuser) - 40) * 0.2;
   score += accuserStanding;
   notes.push(`${first(s, accuser)}'s standing with the King: ${signed(accuserStanding)}`);
+  if (informer) {
+    score += 18;
+    notes.push(`${first(s, accuser)} was sworn to it, and bears witness: +18`);
+  }
   if (hasPerk(s, accuser, 'royal-ear')) {
     score += 6;
     notes.push(`${first(s, accuser)} farms the King's taxes: +6`);
@@ -557,6 +565,7 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
 
 /** A forgery comes to light: the forger is disgraced, the accused cleared. */
 export function exposeForgery(s: GameState, sec: Secret, accuser: CharId): void {
+  unmaskTurned(s, sec);
   const K = s.king;
   if (!K) return;
   const k = s.knowledge[K]?.[sec.id];

@@ -24,6 +24,7 @@ import {
   officeEligible,
   rollJudgments,
 } from './court';
+import { answerCaughtSpy } from './spies';
 import { chance, clamp } from './rng';
 import { makeSecret } from './secrets';
 import { first, names, nm } from './text';
@@ -37,6 +38,8 @@ export function resolveAudience(s: GameState, audienceId: string, optionId: stri
   s.audiences.splice(idx, 1);
   const P = s.player;
   switch (a.kind) {
+    case 'caught-spy':
+      return answerCaughtSpy(s, a.data.spyId as string, !!a.data.named, optionId);
     case 'recruit': {
       const plot = s.plots[a.data.plotId as string];
       if (!plot || plot.status !== 'active' || !isFree(s, plot.owner)) return { ok: false, text: 'The scheme has already collapsed.', tone: 'neutral' };

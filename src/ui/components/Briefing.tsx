@@ -1,4 +1,8 @@
 import {
+  MAX_SPIES,
+  SPY_HOOKS,
+  spiesOf,
+  type SpyHook,
   OFFICE_NAMES,
   PLAYER_AIM,
   acquaintance,
@@ -22,10 +26,12 @@ import { GIcon, type GIName } from '../icons/GIcon';
 import { Person } from './Roster';
 import { StandingList, TradeLine, racketStatus } from './Trade';
 
+const HOOK_ICON: Record<SpyHook, GIName> = { gold: 'gold', blackmail: 'blackmail', devotion: 'love', grudge: 'hate' };
+
 const TONE_ICON: Record<string, GIName> = { neutral: 'neutral', good: 'good', bad: 'bad', dire: 'dire', secret: 'secret', court: 'court' };
 
 export function Briefing() {
-  const { s, setTab, openDeed } = useGame();
+  const { s, setTab, openDeed, select } = useGame();
   const P = s.player;
   const me = ch(s, P);
   const king = s.king;
@@ -38,6 +44,7 @@ export function Briefing() {
   const latest = visibleEvents(s, P).slice(-8).reverse();
   const household = s.houses[me.householdId].members.filter((m) => m !== P && ch(s, m).status !== 'dead');
   const trades = businessesOf(s, P);
+  const mySpies = spiesOf(s, P);
 
   return (
     <div className="briefing">
@@ -107,6 +114,46 @@ export function Briefing() {
         </h3>
         <StandingList s={s} id={P} />
         <p className="muted small">What each part of society makes of your trade. It colours how every lord, priest and servant regards you.</p>
+      </section>
+
+      <section className="card">
+        <h3 className="card-title">
+          <GIcon name="agent" size={16} /> Your spies
+          <span className="muted small">
+            {mySpies.length} of {MAX_SPIES}
+          </span>
+        </h3>
+        {mySpies.length === 0 ? (
+          <p className="muted">
+            No one watches for you. A maid in a lord's house, a brother, a lover, a friend: recruit someone close to the person you want watched,
+            from their page.
+          </p>
+        ) : (
+          <ul className="spy-list">
+            {mySpies.map((sp) => (
+              <li key={sp.id}>
+                <span className="spy-line">
+                  <GIcon name={HOOK_ICON[sp.hook]} size={16} />{' '}
+                  <button className="link" onClick={() => select(sp.agent)}>
+                    {first(s, sp.agent)}
+                  </button>{' '}
+                  watches{' '}
+                  <button className="link" onClick={() => select(sp.mark)}>
+                    {nm(s, sp.mark)}
+                  </button>
+                  <br />
+                  <small className="muted">
+                    {sp.hook === 'gold' ? `${sp.wage} crowns a week` : `for ${SPY_HOOKS[sp.hook].name.toLowerCase()}`} · {sp.reports} {sp.reports === 1 ? 'report' : 'reports'} since{' '}
+                    {weekLabel(sp.since)}
+                  </small>
+                </span>
+                <button className="btn btn--sm" onClick={() => openDeed({ type: 'dismiss-spy', spyId: sp.id })}>
+                  Dismiss
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="card">

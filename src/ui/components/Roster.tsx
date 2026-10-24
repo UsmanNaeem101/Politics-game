@@ -2,6 +2,8 @@ import {
   ACQUAINTANCE,
   acquaintance,
   ch,
+  gone,
+  houseTier,
   knowsAgenda,
   knownThreats,
   opinion,
@@ -19,7 +21,9 @@ import { Shield } from './Shield';
 const HOUSE_ORDER = { royal: 0, church: 1, great: 2, lesser: 3 } as const;
 
 export function housesInOrder(s: GameState): House[] {
-  return Object.values(s.houses).sort((a, b) => HOUSE_ORDER[a.rank] - HOUSE_ORDER[b.rank] || a.arrived - b.arrived || a.name.localeCompare(b.name));
+  return Object.values(s.houses).sort(
+    (a, b) => HOUSE_ORDER[houseTier(s, a)] - HOUSE_ORDER[houseTier(s, b)] || a.arrived - b.arrived || a.name.localeCompare(b.name),
+  );
 }
 
 export function Marks({ id }: { id: CharId }) {
@@ -69,8 +73,9 @@ export function Person({ id, compact = false }: { id: CharId; compact?: boolean 
 
 export function Roster() {
   const { s } = useGame();
-  const known = s.order.filter((id) => acquaintance(s, id) >= 2).length;
-  const heard = s.order.filter((id) => acquaintance(s, id) === 1).length;
+  const known = s.order.filter((id) => acquaintance(s, id) >= 2 && !gone(s, id)).length;
+  const heard = s.order.filter((id) => acquaintance(s, id) === 1 && !gone(s, id)).length;
+  const dead = s.order.filter((id) => acquaintance(s, id) >= 1 && gone(s, id) && id !== s.player);
   return (
     <div className="roster">
       <h2 className="panel-title">
@@ -80,9 +85,10 @@ export function Roster() {
         You know {known} faces, and {heard} more by name only.
       </p>
       {housesInOrder(s).map((h) => {
-        const members = h.members.filter((m) => acquaintance(s, m) >= 1);
+        const living = h.members.filter((m) => !gone(s, m));
+        const members = living.filter((m) => acquaintance(s, m) >= 1);
         if (!members.length) return null;
-        const hidden = h.members.length - members.length;
+        const hidden = living.length - members.length;
         return (
           <section key={h.id} className="roster-house">
             <h3 className="roster-house-title">
@@ -99,6 +105,20 @@ export function Roster() {
           </section>
         );
       })}
+      {dead.length > 0 && (
+        <details className="roster-dead">
+          <summary className="muted small">
+            <GIcon name="dead" size={13} /> The dead and the gone ({dead.length})
+          </summary>
+          <ul>
+            {dead.map((id) => (
+              <li key={id}>
+                <Person id={id} compact />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

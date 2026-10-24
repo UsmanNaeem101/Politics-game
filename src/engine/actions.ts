@@ -23,6 +23,7 @@ import {
   vacate,
 } from './court';
 import {
+  betrayable,
   abandonPlot,
   advancePlot,
   canStrike,
@@ -33,10 +34,11 @@ import {
   resolveStrike,
 } from './plots';
 import { chance, clamp, rand, roll } from './rng';
-import { hearCredence, kindLabel, makeSecret } from './secrets';
+import { hearCredence, kindLabel, makeSecret, secretMatters, syncPlotSecret } from './secrets';
 import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
 import { tableTalk } from './talk';
+import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, spiesOf, sweepHousehold } from './spies';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -63,6 +65,7 @@ import {
 } from './world';
 import type {
   BusinessKind,
+  SpyHook,
   Audience,
   CharId,
   Directive,
@@ -105,7 +108,10 @@ export type Intent =
   | { type: 'release'; target: CharId }
   | { type: 'appoint'; target: CharId; office: OfficeId }
   | { type: 'invest'; kind: BusinessKind }
-  | { type: 'divest'; businessId: string };
+  | { type: 'divest'; businessId: string }
+  | { type: 'plant'; target: CharId; mark: CharId; hook: SpyHook; wage: number; secretId?: SecretId }
+  | { type: 'dismiss-spy'; spyId: string }
+  | { type: 'sweep' };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -143,6 +149,9 @@ export const COST: Record<IntentType, number> = {
   appoint: 0,
   invest: 1,
   divest: 1,
+  plant: 1,
+  'dismiss-spy': 0,
+  sweep: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -151,7 +160,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   gift: { name: 'Give a gift', desc: 'Gold buys goodwill, especially from the greedy.' },
   whisper: { name: 'Whisper a secret', desc: 'Tell them something you know, or something you have invented. They decide whether to believe it.' },
   fabricate: { name: 'Forge a lie', desc: 'Invent a treason and the letters to prove it. Lies can be spread, and laid before the King.' },
-  spy: { name: 'Set spies on', desc: 'Learn their true motive, the secrets they carry, or the schemes they are part of.' },
+  spy: { name: 'Have them watched', desc: 'Pay a stable boy or a tavern girl to watch them for a week: one look, no more. A recruited spy does better, and keeps at it.' },
   scheme: { name: 'Begin a scheme', desc: 'Start a murder plot, or gather charges to destroy someone before the King.' },
   advance: { name: 'Work on a scheme', desc: 'Prepare. Murder plots strike harder; ruin plots carry more proof.' },
   recruit: { name: 'Draw into a scheme', desc: 'Offer a carrot. They may join sincerely, join only to betray you, or refuse and know everything.' },
@@ -172,6 +181,9 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   appoint: { name: 'Appoint to office', desc: 'Fill a vacant great office.' },
   invest: { name: 'Set up a trade', desc: 'Put money into a business, or a racket. What you run decides how the court sees you.' },
   divest: { name: 'Sell a trade', desc: 'Sell up for half what it cost. The court soon forgets an honest trade; a scandal lingers.' },
+  plant: { name: 'Recruit as a spy', desc: 'Have them watch someone they can get close to. Offer a wage, use what you know, or ask a favour.' },
+  'dismiss-spy': { name: 'Dismiss a spy', desc: 'End their service.' },
+  sweep: { name: 'Search your household', desc: 'Look for someone else’s spy among your people.' },
 };
 
 const KING_ONLY: IntentType[] = ['arrest', 'question', 'execute', 'release', 'appoint'];
@@ -213,6 +225,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       const k = knows(s, actor, it.secretId);
       if (!k) return 'You do not know that.';
       if (s.secrets[it.secretId].guilty.includes(actor)) return 'That would be confessing your own guilt.';
+      if (!secretMatters(s, s.secrets[it.secretId])) return 'That is old news: those it concerns are dead or gone.';
       if (a.status === 'imprisoned' && !isFree(s, it.target)) return 'Your letter cannot reach them.';
       return null;
     }
@@ -268,6 +281,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
     case 'blackmail': {
       const sec = s.secrets[it.secretId];
       if (!sec || !sec.guilty.includes(it.target)) return 'That secret does not touch them.';
+      if (!secretMatters(s, sec)) return 'That is old news.';
       if (!usableCharge(s, actor, it.secretId)) return 'You do not know that well enough.';
       if (it.demand === 'restitution' && !Object.values(s.lands).some((l) => l.holder === it.target && l.rightful === actor)) return 'They hold nothing that is rightfully yours.';
       if (it.demand === 'join') {
@@ -318,6 +332,15 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return null;
     case 'invest':
       return investProblem(s, actor, it.kind);
+    case 'plant': {
+      if (spiesOf(s, actor).length >= MAX_SPIES) return `You can keep no more than ${MAX_SPIES} spies.`;
+      if (isServant(s, it.mark) || !marksFor(s, actor, it.target).includes(it.mark)) return 'They cannot get close enough to watch them.';
+      return hookProblem(s, actor, it.target, it.mark, it.hook, it.wage, it.secretId);
+    }
+    case 'dismiss-spy': {
+      const sp = s.spies?.[it.spyId];
+      return sp && sp.status === 'active' && sp.master === actor ? null : 'They are not your spy.';
+    }
     case 'divest':
       return s.businesses?.[it.businessId]?.owner === actor ? null : 'That is not yours to sell.';
     default:
@@ -326,7 +349,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
 }
 
 /** Deeds that need you to have been introduced (servants need only be seen). */
-export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant'];
+export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant', 'plant'];
 
 /** The player cannot deal with people they do not know. */
 function fogProblem(s: GameState, it: Intent): string | null {
@@ -465,6 +488,15 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return invest(s, actor, it.kind);
     case 'divest':
       return divest(s, actor, it.businessId);
+    case 'plant':
+      return recruitSpy(s, actor, it.target, it.mark, it.hook, it.wage, it.secretId);
+    case 'dismiss-spy': {
+      const sp = s.spies[it.spyId];
+      endSpy(s, sp);
+      return { ok: true, text: `${first(s, sp.agent)} watches ${first(s, sp.mark)} for you no longer.`, tone: 'neutral' };
+    }
+    case 'sweep':
+      return sweepHousehold(s, actor);
   }
 }
 
@@ -903,14 +935,35 @@ function denounce(s: GameState, actor: CharId, it: Extract<Intent, { type: 'deno
     pushAudience(s, accusedAudience(s, actor, charges, plot, it.only));
     return { ok: true, text: 'The accused has been summoned.', tone: 'neutral' };
   }
+  // Betraying a plot you were sworn into: you are out of it now, whatever the King decides.
+  const betrayed = charges.map((c) => betrayable(s, actor, s.secrets[c])).filter((p): p is Plot => !!p);
   const judgments = rollJudgments(s, actor, charges, plot, {}, it.only);
   const summary = applyJudgments(s, actor, judgments);
-  if (plot) plot.status = judgments.some((j) => j.verdict !== 'dismiss' && !j.forgeryFound) ? 'succeeded' : 'foiled';
+  const upheld = judgments.some((j) => j.verdict !== 'dismiss' && !j.forgeryFound);
+  if (plot) plot.status = upheld ? 'succeeded' : 'foiled';
+  const informer = turnInformer(s, actor, betrayed, upheld);
   return {
-    ok: judgments.some((j) => j.verdict !== 'dismiss' && !j.forgeryFound),
-    text: `The King has judged: ${summary || 'nothing came of it'}.`,
+    ok: upheld,
+    text: `The King has judged: ${summary || 'nothing came of it'}.${informer}`,
     tone: judgments.some((j) => j.verdict === 'execute') ? 'dire' : 'neutral',
   };
+}
+
+/** The informer leaves the plot. Believed, they are pardoned for bringing it; disbelieved, they have made enemies for nothing. */
+function turnInformer(s: GameState, actor: CharId, plots: Plot[], upheld: boolean): string {
+  if (!plots.length) return '';
+  for (const p of plots) {
+    p.members = p.members.filter((m) => m.id !== actor);
+    syncPlotSecret(s, p);
+    if (upheld) p.status = 'foiled';
+  }
+  const aimedAtKing = plots.some((p) => s.king && p.targets.includes(s.king));
+  if (upheld) {
+    if (s.king) addMod(s, s.king, actor, 'informer', aimedAtKing ? 'Brought me the plot against my life' : 'Turned informer', aimedAtKing ? 20 : 10, 0.2);
+    log(s, `${nm(s, actor)} turned informer against ${his(s, actor)} fellow plotters, and the King pardoned ${him(s, actor)} for it.`, 'all', 'court', [actor]);
+    return ' You turned informer, and the King pardoned your part in it.';
+  }
+  return ' The King did not believe it, and your fellow plotters know what you tried.';
 }
 
 function uniqueTexts(s: GameState, ids: SecretId[]): string {

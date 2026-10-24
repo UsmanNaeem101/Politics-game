@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { credenceWord, evidenceWord, first, kindLabel, knownSecrets, nm, type KnownSecret } from '../../engine';
+import { betrayable, credenceWord, evidenceWord, first, kindLabel, knownSecrets, nm, secretMatters, type GameState, type KnownSecret } from '../../engine';
 import { useGame } from '../context';
 
-type Group = 'treason' | 'crimes' | 'forged' | 'rumours' | 'own';
+type Group = 'treason' | 'crimes' | 'forged' | 'rumours' | 'own' | 'old';
 
-function groupOf(k: KnownSecret, me: string): Group {
+function groupOf(s: GameState, k: KnownSecret, me: string): Group {
+  if (!secretMatters(s, k.sec)) return 'old';
   if (k.k.lie) return 'forged';
   if (k.sec.guilty.includes(me)) return 'own';
   if (k.k.credence < 45) return 'rumours';
@@ -17,6 +18,7 @@ const GROUPS: { id: Group; title: string; note: string }[] = [
   { id: 'forged', title: 'Your forgeries', note: 'Lies of your own making. Spread them, or bring them before the King — if the seals hold.' },
   { id: 'own', title: 'Your own guilt', note: 'Secrets that would hang you. Others may know them too.' },
   { id: 'rumours', title: 'Rumours', note: 'Things you have heard but do not quite believe.' },
+  { id: 'old', title: 'Old news', note: 'About the dead and the done. No use to anyone now.' },
 ];
 
 export function Ledger() {
@@ -39,7 +41,7 @@ export function Ledger() {
       </header>
       {all.length === 0 && <p className="muted">You know nothing yet. Keep company, set spies, listen.</p>}
       {GROUPS.filter((g) => filter === 'all' || filter === g.id).map((g) => {
-        const items = all.filter((k) => groupOf(k, P) === g.id);
+        const items = all.filter((k) => groupOf(s, k, P) === g.id);
         if (!items.length) return null;
         return (
           <section key={g.id} className="ledger-group">
@@ -93,7 +95,14 @@ export function Ledger() {
                       </span>
                     ))}
                   </p>
-                  {s.phase === 'playing' && g.id !== 'own' && (
+                  {s.phase === 'playing' && g.id === 'own' && s.king && s.king !== P && betrayable(s, P, k.sec) && (
+                    <div className="row-actions">
+                      <button className="btn btn--sm" onClick={() => openDeed({ type: 'denounce', secretId: k.sec.id })} disabled={s.ap < 2}>
+                        Betray it to the King…
+                      </button>
+                    </div>
+                  )}
+                  {s.phase === 'playing' && g.id !== 'own' && g.id !== 'old' && (
                     <div className="row-actions">
                       <button className="btn btn--sm" onClick={() => openDeed({ type: 'whisper', secretId: k.sec.id })} disabled={s.ap < 1}>
                         Whisper it…

@@ -93,6 +93,19 @@ export function refreshText(s: GameState, sec: Secret): void {
   sec.text = describe(s, sec.kind, sec.guilty, sec.victims, sec.deed);
 }
 
+const PLOT_LIKE = ['regicide', 'murder', 'pact', 'betrayal', 'ruin', 'usurpation'];
+
+/**
+ * Is this secret still about anything? Not when everyone it accuses is dead or
+ * gone, nor when the plot it tells of is over, nor a plan against the dead.
+ */
+export function secretMatters(s: GameState, sec: Secret): boolean {
+  if (!sec.guilty.some((g) => isAlive(s, g) && s.chars[g]?.status !== 'fled')) return false;
+  if (sec.plotId && !sec.deed && s.plots[sec.plotId]?.status !== 'active') return false;
+  if (!sec.deed && PLOT_LIKE.includes(sec.kind) && sec.victims.length && sec.victims.every((v) => !isAlive(s, v))) return false;
+  return true;
+}
+
 /** What kind of secret this is, as the ledger names it. */
 export function kindLabel(sec: Secret): string {
   if (sec.deed) return sec.kind === 'murder' ? 'Murder' : 'Regicide';

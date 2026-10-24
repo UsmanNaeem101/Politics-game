@@ -9,6 +9,7 @@ import { evaluate } from './objectives';
 import { leakPlots, spymasterHears } from './plots';
 import { deedDone } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
+import { runSpies } from './spies';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -21,6 +22,7 @@ import {
   credence,
   decayMods,
   hearOf,
+  houseTier,
   incomeOf,
   isAlive,
   isFree,
@@ -36,8 +38,30 @@ export function newGame(seed: number, opts: GenerateOptions = {}): GameState {
   return generateCourt(seed, opts);
 }
 
+/** A house that climbs among the great, or falls from them, is noticed. */
+function noteRisingHouses(s: GameState): void {
+  for (const h of Object.values(s.houses)) {
+    const tier = houseTier(s, h);
+    if (tier !== 'great' && tier !== 'lesser') continue;
+    const was = h.standing;
+    h.standing = tier;
+    if (!was || was === tier || !h.head) continue;
+    const mine = h.head === s.player;
+    const text =
+      tier === 'great'
+        ? mine
+          ? `House ${h.name} is counted among the great houses of the realm now. You have risen.`
+          : `House ${h.name} has risen to stand among the great houses.`
+        : mine
+          ? `House ${h.name} has fallen from among the great houses.`
+          : `House ${h.name} no longer stands among the great.`;
+    log(s, text, 'all', mine ? (tier === 'great' ? 'good' : 'bad') : 'court', [h.head]);
+  }
+}
+
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
+  s.spies ??= {};
   // Trades came after this save was made: every house takes one up now.
   if (!s.businesses) {
     s.businesses = {};
@@ -115,6 +139,8 @@ function worldTurns(s: GameState): void {
   spymasterHears(s);
   pursueInquiries(s);
   runBusinesses(s);
+  runSpies(s);
+  noteRisingHouses(s);
   if (s.interregnum && s.interregnum.since < s.turn) {
     holdWitan(s, s.witanVote);
     s.witanVote = undefined;

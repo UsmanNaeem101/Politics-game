@@ -123,6 +123,8 @@ export interface House {
   motto?: string;
   /** Turn the house came to court (0 = from the start). */
   arrived: number;
+  /** The tier the court last counted this house in, to notice it rising or falling. */
+  standing?: 'great' | 'lesser';
 }
 
 /** How well the player knows a person. */
@@ -199,6 +201,25 @@ export type BusinessKind =
   | 'smuggling'
   | 'forgery'
   | 'apothecary';
+
+/** Why a spy serves: it decides how far they can be trusted, and what they will do when caught. */
+export type SpyHook = 'gold' | 'blackmail' | 'devotion' | 'grudge';
+
+/** A person recruited to watch someone they can get close to. */
+export interface Spy {
+  id: string;
+  agent: CharId;
+  master: CharId;
+  mark: CharId;
+  hook: SpyHook;
+  /** Crowns a week, for a paid spy. */
+  wage: number;
+  since: number;
+  status: 'active' | 'ended';
+  /** Caught and turned by this person: now carries their lies to the master. */
+  turnedBy?: CharId;
+  reports: number;
+}
 
 /** What a trade gives its owner for intrigue. */
 export type Perk = 'retainers' | 'factors' | 'leverage' | 'cellar' | 'debtors' | 'royal-ear' | 'debts' | 'informants' | 'cutthroats' | 'seals' | 'poisons';
@@ -304,6 +325,7 @@ export interface GameEvent {
 }
 
 export type AudienceKind =
+  | 'caught-spy'
   | 'recruit'
   | 'blackmail'
   | 'counsel'
@@ -400,6 +422,8 @@ export interface GameState {
   lands: Record<LandId, Land>;
   /** Trades and rackets. Missing in saves from before businesses. */
   businesses: Record<string, Business>;
+  /** Recruited spies, everyone's. Missing in saves from before spies. */
+  spies: Record<string, Spy>;
   offices: Record<OfficeId, CharId | null>;
   king: CharId | null;
   interregnum: { since: number } | null;

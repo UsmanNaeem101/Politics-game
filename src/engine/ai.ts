@@ -15,10 +15,12 @@ import {
   recruitOdds,
   type Intent,
 } from './actions';
-import { canStrike, isMember, strikeChance, waitCleared } from './plots';
+import {
+  betrayable, canStrike, isMember, strikeChance, waitCleared } from './plots';
 import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
 import { capital, claimants } from './court';
+import { accessTo, spiesOf, spyOdds } from './spies';
 import {
   addMod,
   adjustTrust,
@@ -35,7 +37,7 @@ import {
   officeOf,
   trust,
 } from './world';
-import type { CharId, GameState, Offer, Plot } from './types';
+import type { SpyHook, CharId, GameState, Offer, Plot } from './types';
 
 interface Candidate {
   intent: Intent;
@@ -188,7 +190,10 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (king && !s.interregnum) {
     for (const [sid, k] of Object.entries(myRow)) {
       const sec = s.secrets[sid];
-      if (!sec || sec.guilty.includes(me)) continue;
+      if (!sec) continue;
+      // One sworn only to betray the plot does it here, before the King.
+      const traitor = sec.guilty.includes(me) && betrayable(s, me, sec)?.members.some((m) => m.id === me && !m.sincere);
+      if (sec.guilty.includes(me) && !traitor) continue;
       if (!k.lie && k.credence < 50) continue;
       if (!(sec.treason || sec.kind === 'theft' || sec.kind === 'slander' || sec.kind === 'murder' || sec.kind === 'racket')) continue;
       const odds = denounceOdds(s, me, { type: 'denounce', secretId: sid }).filter((o) => desire(s, me, o.accused) > -10);
@@ -200,6 +205,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
           if (c.traits.honor >= 60) want += 10;
         }
         if (biding(s, me, o.accused)) want -= 40;
+        if (traitor) want += 20;
         // A traitor's lands go to the crown. An heir wants him dead some other way.
         if (sec.treason && Object.values(s.lands).some((l) => l.holder === o.accused && (l.rightful === me || c.siblings.includes(o.accused)))) want -= 30;
         if (Object.values(s.plots).some((p) => p.status === 'active' && p.owner === me && p.kind === 'ruin' && p.targets.includes(o.accused))) {
@@ -298,7 +304,24 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (spyTarget) {
     const u = 4 + c.traits.cunning * 0.1 + c.traits.paranoia * 0.06 + spyTarget.v * 0.2 + (officeOf(s, me) === 'spymaster' ? 8 : 0);
     add({ type: 'spy', target: spyTarget.g, focus: 'schemes' }, u);
+    // Better still, someone placed close to them, for as long as it lasts.
+    // Weighed every third week, in turn: finding the right person to suborn takes time.
+    if ((s.turn + me.length) % 3 === 0 && spiesOf(s, me).length < 2) {
+      const wage = 4;
+      const best = s.order
+        .filter((a) => a !== me && accessTo(s, a, spyTarget.g) && ch(s, a).householdId !== c.householdId)
+        .map((a) => {
+          const hook: SpyHook = opinion(s, a, spyTarget.g) <= -25 ? 'grudge' : opinion(s, a, me) >= 40 ? 'devotion' : 'gold';
+          return { a, hook, odds: spyOdds(s, me, a, spyTarget.g, hook, wage) };
+        })
+        .sort((x, y) => y.odds - x.odds)[0];
+      if (best && best.odds >= 35 && (best.hook !== 'gold' || c.gold >= 40)) {
+        add({ type: 'plant', target: best.a, mark: spyTarget.g, hook: best.hook, wage }, u + 3 + best.odds * 0.05);
+      }
+    }
   }
+  // The wary search their own houses now and then.
+  if (c.traits.paranoia >= 55) add({ type: 'sweep' }, 2 + c.traits.paranoia * 0.04);
 
   // ── Spouse ────────────────────────────────────────────────────────────────
   const sp = c.spouse;

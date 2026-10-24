@@ -36,6 +36,13 @@ function check(s: GameState, tag: string) {
   const counts: Record<string, number> = {};
   for (const b of Object.values(s.businesses)) counts[b.owner] = (counts[b.owner] ?? 0) + 1;
   for (const [o, n] of Object.entries(counts)) if (n > 2) bad(`${o} runs ${n} trades`);
+  const spyCount: Record<string, number> = {};
+  for (const sp of Object.values(s.spies)) {
+    if (sp.status !== 'active') continue;
+    if (sp.agent === sp.mark || sp.agent === sp.master) bad(`spy ${sp.id} watches itself`);
+    spyCount[sp.master] = (spyCount[sp.master] ?? 0) + 1;
+  }
+  for (const [m, n] of Object.entries(spyCount)) if (n > 3) bad(`${m} keeps ${n} spies`);
 }
 let games = 0;
 const t0 = Date.now();

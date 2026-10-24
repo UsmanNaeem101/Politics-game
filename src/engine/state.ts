@@ -23,6 +23,7 @@ export function emptyState(seed: number, player: CharId = ''): GameState {
     pledges: [],
     lands: {},
     businesses: {},
+    spies: {},
     offices: { marshal: null, chancellor: null, spymaster: null, captain: null, confessor: null },
     king: null,
     interregnum: null,

@@ -28,6 +28,12 @@ before changing anything substantial; it is the plan we are building toward.
 - Trades and rackets: the table is `content/businesses.ts`; `economy.ts` opens, runs and endows them. Standing is not
   stored: `tradeRegard()` in `world.ts` adds each trade's effect into `opinion()` by the viewer's estate, and a racket's
   `ifKnown` only for those who know its secret (kind `racket`). Perks are looked up with `hasPerk()` where they apply.
+- Spies: `spies.ts` (access, odds, recruiting, weekly `runSpies`, capture, turning, planted lies, household
+  searches); why a spy serves is the table in `content/spies.ts`. The old one-off "spy" deed survives as
+  "Have them watched". `secretMatters()` in `secrets.ts` decides what is old news (the dead, finished plots);
+  deed lists and validation use it. A plot member can betray it to the King (`betrayable()` in `plots.ts`,
+  `turnInformer` in `actions.ts`).
+- Houses rise and fall: `houseTier()` in `world.ts` places them on the map by the head's prestige and office.
 - `test/fixtures/osric.ts` is the original fixed court, kept only for mechanics tests.
 
 ## Engineering rules

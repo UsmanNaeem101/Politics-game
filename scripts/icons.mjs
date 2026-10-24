@@ -33,6 +33,8 @@ const MAP = {
   estates: 'wheat', wool: 'wool', mill: 'water-mill', wine: 'wine-bottle', moneylending: 'money-stack', taxfarm: 'receive-money',
   gambling: 'rolling-dices', bathhouse: 'bathtub', smuggling: 'barrel', forgery: 'stamper', apothecary: 'potion-ball',
   racket: 'robber', invest: 'shop', divest: 'sell-card', trade: 'swap-bag',
+  // spies
+  plant: 'eye-target', 'dismiss-spy': 'cancel', sweep: 'secret-door', agent: 'domino-mask',
   // parts of society
   nobility: 'knight-banner', church: 'church', guilds: 'anvil', commons: 'farmer', underworld: 'hood',
 };

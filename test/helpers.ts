@@ -1,5 +1,6 @@
 import {
   BUSINESS_KINDS,
+  spiesOf,
   businessesOf,
   COST,
   check,
@@ -60,7 +61,10 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
     { type: 'appoint', target: t(), office: pickOf(r, offices)! },
     { type: 'escape' },
     { type: 'invest', kind: pickOf(r, BUSINESS_KINDS)! },
+    { type: 'sweep' },
+    { type: 'plant', target: t(), mark: t(), hook: pickOf(r, ['gold', 'devotion', 'grudge'] as const)!, wage: 3 },
   ];
+  for (const sp of spiesOf(s, P)) out.push({ type: 'dismiss-spy', spyId: sp.id });
   for (const b of businessesOf(s, P)) out.push({ type: 'divest', businessId: b.id });
   if (secrets.length) {
     const sid = pickOf(r, secrets)!;

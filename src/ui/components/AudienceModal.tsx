@@ -3,6 +3,7 @@ import { useGame } from '../context';
 import { Shield } from './Shield';
 
 const KIND_LABEL: Record<Audience['kind'], string> = {
+  'caught-spy': 'Caught',
   recruit: 'A proposal',
   blackmail: 'A threat',
   counsel: 'Your spouse',

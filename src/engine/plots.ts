@@ -6,7 +6,7 @@ import { chance, clamp, pick, roll, weighted } from './rng';
 import { deedDone, describe, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
 import { OFFICE_NAMES, addMod, ch, credence, hasPerk, isAlive, isFree, isRemoved, knows, learn, log, officeOf, opinion, uid } from './world';
-import type { CharId, GameState, Offer, Plot, PlotCondition, PlotKind, SecretId } from './types';
+import type { CharId, GameState, Offer, Plot, PlotCondition, PlotKind, Secret, SecretId } from './types';
 
 const ADJ = ['Silent', 'Red', 'Long', 'Crooked', 'Hollow', 'Winter', 'Last', 'Gilded', 'Black', 'Quiet'];
 const NOUN = ['Cup', 'Feast', 'Stair', 'Glove', 'Bell', 'Hunt', 'Letter', 'Candle', 'Ledger', 'Bargain'];
@@ -171,6 +171,12 @@ export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): num
   }
   syncPlotSecret(s, p);
   return gain;
+}
+
+/** A plot this person was sworn into by someone else, and could betray to the King. */
+export function betrayable(s: GameState, actor: CharId, sec: Secret): Plot | undefined {
+  const p = sec.plotId ? s.plots[sec.plotId] : undefined;
+  return p && p.status === 'active' && p.owner !== actor && p.members.some((m) => m.id === actor) ? p : undefined;
 }
 
 export function abandonPlot(s: GameState, p: Plot): void {

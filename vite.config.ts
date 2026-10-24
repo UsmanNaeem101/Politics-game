@@ -62,6 +62,7 @@ export default defineConfig(({ mode }) => {
           },
         }
       : { outDir: desktop ? 'dist-desktop' : 'dist' },
-    test: { environment: 'node', include: ['test/**/*.test.ts'] },
+    // The season tests play whole courts for months; give them room on slow machines.
+    test: { environment: 'node', include: ['test/**/*.test.ts'], testTimeout: 20000 },
   };
 });

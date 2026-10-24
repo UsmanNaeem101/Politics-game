@@ -1,4 +1,9 @@
 import {
+  betrayable,
+  MAX_SPIES,
+  marksFor,
+  spiesOf,
+  secretMatters,
   heardFeeling,
   BUSINESSES,
   businessesOf,
@@ -54,7 +59,14 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (t.status === 'dead' || t.status === 'fled') return [];
   const lvl = acquaintance(s, target);
   const servant = t.rank === 'servant';
-  const known = Object.entries(s.knowledge[P] ?? {}).filter(([sid, k]) => (k.lie || k.credence >= 1) && s.secrets[sid] && !s.secrets[sid].guilty.includes(P));
+  const known = Object.entries(s.knowledge[P] ?? {}).filter(
+    ([sid, k]) =>
+      (k.lie || k.credence >= 1) &&
+      s.secrets[sid] &&
+      // A plot you were sworn into by someone else is still theirs to answer for.
+      (!s.secrets[sid].guilty.includes(P) || !!betrayable(s, P, s.secrets[sid])) &&
+      secretMatters(s, s.secrets[sid]),
+  );
   const against = known.filter(([sid, k]) => (k.lie || k.credence >= 40) && s.secrets[sid].guilty.includes(target));
   const myPlots = Object.values(s.plots).filter((p) => p.status === 'active' && p.owner === P);
   const needIntro = (type: IntentType) => CONTACT.includes(type) && lvl < (servant ? 2 : 3);
@@ -64,7 +76,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
     if (jailed) return [{ type: 'escape' }];
     out.push({ type: 'scheme' }, { type: 'fabricate' }, { type: 'guard', why: me.gold < 20 ? 'You need 20 crowns.' : undefined });
     if (!iAmKing && s.king) out.push({ type: 'petition' });
-    out.push({ type: 'invest' });
+    out.push({ type: 'invest' }, { type: 'sweep' });
     if (businessesOf(s, P).length) out.push({ type: 'divest' });
     out.push({ type: 'flee' });
     return out;
@@ -80,6 +92,13 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
     return out;
   }
   if (lvl === 2 && !servant) out.push({ type: 'introduce' });
+  // A maid, a brother, a lover, a friend: anyone close to someone worth watching.
+  out.push(
+    gate({
+      type: 'plant',
+      why: spiesOf(s, P).length >= MAX_SPIES ? `You keep ${MAX_SPIES} spies already.` : marksFor(s, P, target).length ? undefined : 'They cannot get close to anyone worth watching.',
+    }),
+  );
   out.push({ type: 'spy', why: lvl < 1 ? 'You know nothing of them.' : undefined });
   out.push(gate({ type: 'converse' }));
   out.push(gate({ type: 'gift', why: me.gold <= 0 ? 'Your purse is empty.' : undefined }));
@@ -138,6 +157,9 @@ export function Dossier() {
   const myView = isMe ? null : opinion(s, P, id);
   const myMods = isMe ? [] : visibleMods(s, P, P, id);
   const theirMods = isMe || lvl < 3 ? [] : visibleMods(s, P, id, P);
+  const mySpies = spiesOf(s, P);
+  const myAgentOn = mySpies.filter((sp) => sp.agent === id);
+  const watchedBy = mySpies.filter((sp) => sp.mark === id);
   // Feelings this person has spoken of in your hearing.
   const spoken = isMe ? [] : s.order.filter((o) => heardFeeling(s, P, id, o)).map((o) => ({ o, v: opinion(s, id, o) })).filter((x) => Math.abs(x.v) >= 15);
   const known = secretsAbout(s, P, id);
@@ -200,6 +222,31 @@ export function Dossier() {
               <GIcon name="motive" size={12} /> True design
             </dt>
             <dd className={motive ? 'reveal' : 'muted'}>{motive ? c.agenda.summary : 'Hidden. Set spies on them (motive) to learn it.'}</dd>
+          </>
+        )}
+        {(myAgentOn.length > 0 || watchedBy.length > 0) && (
+          <>
+            <dt>
+              <GIcon name="agent" size={12} /> Spies
+            </dt>
+            <dd className="links">
+              {myAgentOn.map((sp) => (
+                <span key={sp.id}>
+                  Your spy, watching{' '}
+                  <button className="link" onClick={() => select(sp.mark)}>
+                    {nm(s, sp.mark)}
+                  </button>
+                </span>
+              ))}
+              {watchedBy.map((sp) => (
+                <span key={sp.id}>
+                  Watched for you by{' '}
+                  <button className="link" onClick={() => select(sp.agent)}>
+                    {nm(s, sp.agent)}
+                  </button>
+                </span>
+              ))}
+            </dd>
           </>
         )}
         {spoken.length > 0 && (

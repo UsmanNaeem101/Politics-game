@@ -11,6 +11,7 @@ import type {
   EventTone,
   GameEvent,
   GameState,
+  House,
   Knowledge,
   KnowledgeSource,
   LandId,
@@ -76,6 +77,22 @@ export function incomeOf(s: GameState, id: CharId): number {
 }
 
 // ── Trades and standing ─────────────────────────────────────────────────────
+
+/** Dead, or gone from court for good. */
+export const gone = (s: GameState, id: CharId) => !s.chars[id] || s.chars[id].status === 'dead' || s.chars[id].status === 'fled';
+
+/**
+ * Where a house stands in the court's eyes now, by its head's prestige and
+ * office rather than the rank it started with: houses rise and fall.
+ */
+export function houseTier(s: GameState, h: House): House['rank'] {
+  if (h.rank === 'royal' || h.rank === 'church') return h.rank;
+  const head = h.head ? s.chars[h.head] : undefined;
+  if (!head || gone(s, head.id)) return h.rank;
+  const off = officeOf(s, head.id);
+  const great = off === 'marshal' || off === 'chancellor' || off === 'spymaster' ? 20 : 0;
+  return head.prestige + great >= 45 ? 'great' : 'lesser';
+}
 
 export function businessesOf(s: GameState, id: CharId): Business[] {
   return Object.values(s.businesses ?? {}).filter((b) => b.owner === id);

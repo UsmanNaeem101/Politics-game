@@ -13,6 +13,9 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
+  spiesOf,
+  gone,
+  houseTier,
   heardFeeling,
   OFFICE_NAMES,
   acquaintance,
@@ -72,7 +75,7 @@ export function roleLabel(s: GameState, id: CharId): string {
   if (c.rank === 'queen') return 'Queen';
   const house = s.houses[c.householdId];
   if (house?.head === id && house.rank !== 'royal' && house.rank !== 'church') return 'Head of house';
-  if (c.spouse && house?.head === c.spouse) return 'His wife';
+  if (c.spouse && house?.head === c.spouse) return c.gender === 'f' ? 'His wife' : 'Her husband';
   if (c.siblings.length) return 'Brother';
   return c.title;
 }
@@ -151,6 +154,7 @@ function HouseNode({ data }: NodeProps<Node<HouseData>>) {
 const nodeTypes = { person: PersonNode, house: HouseNode };
 
 interface Layers {
+  spies: boolean;
   schemes: boolean;
   feelings: boolean;
   lovers: boolean;
@@ -160,7 +164,8 @@ interface Layers {
 /** Lay out the court as tiers: the Crown, then great houses, then lesser houses. */
 function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node[]; edges: Edge[] } {
   const P = s.player;
-  const visible = (id: CharId) => truth || acquaintance(s, id) >= 1;
+  // The living court: the dead and the fled are gone from it (the truth at the end shows them all).
+  const visible = (id: CharId) => truth || (acquaintance(s, id) >= 1 && !gone(s, id));
   const nodes: Node[] = [];
   const pos = new Map<CharId, { x: number; y: number }>();
 
@@ -169,7 +174,7 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
   const crownSet = new Set<CharId>(king0 ? [king0, ...(ch(s, king0).spouse && ch(s, ch(s, king0).spouse!).status !== 'dead' ? [ch(s, king0).spouse!] : [])] : []);
   const royalHouse = Object.values(s.houses).find((h) => h.rank === 'royal');
   const membersOf = (h: House) => {
-    const own = h.members.filter((m) => s.chars[m] && (!crownSet.has(m) || h === royalHouse));
+    const own = h.members.filter((m) => s.chars[m] && (truth || !gone(s, m)) && (!crownSet.has(m) || h === royalHouse));
     return h === royalHouse ? [...crownSet].filter((m) => !own.includes(m)).concat(own) : own;
   };
   const houseBox = (h: House, x: number, y: number) => {
@@ -215,10 +220,11 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
     return { width, height };
   };
 
-  const houses = Object.values(s.houses);
+  // A house with no one left alive is gone from the map; the rest sit where their standing puts them now.
+  const houses = Object.values(s.houses).filter((h) => truth || h.rank === 'royal' || h.rank === 'church' || membersOf(h).length > 0);
   const royal = houses.filter((h) => h.rank === 'royal' || h.rank === 'church');
-  const greats = houses.filter((h) => h.rank === 'great');
-  const lessers = houses.filter((h) => h.rank === 'lesser').sort((a, b) => a.arrived - b.arrived);
+  const greats = houses.filter((h) => houseTier(s, h) === 'great');
+  const lessers = houses.filter((h) => houseTier(s, h) === 'lesser').sort((a, b) => a.arrived - b.arrived);
   const measure = (h: House) => {
     const shown = membersOf(h).filter((m) => visible(m));
     const rows = new Set(shown.map((m) => (m === h.head ? 0 : ch(s, m).rank === 'servant' ? 2 : ch(s, m).spouse === h.head ? 0 : 1)));
@@ -307,6 +313,18 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
       }
     }
   }
+  if (layers.spies && !truth) {
+    for (const sp of spiesOf(s, P)) {
+      if (!has(sp.agent) || !has(sp.mark)) continue;
+      edges.push({
+        id: `spy-${sp.id}`,
+        source: sp.agent,
+        target: sp.mark,
+        style: { stroke: 'var(--gold)', strokeWidth: 1.5, strokeDasharray: '2 4' },
+        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--gold)', width: 14, height: 14 },
+      });
+    }
+  }
   if (layers.feelings) {
     const seen = new Set<string>();
     for (const a of pos.keys()) {
@@ -337,11 +355,12 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
 
 export function CourtMap({ truth = false }: { truth?: boolean }) {
   const { s, tick, select } = useGame();
-  const [layers, setLayers] = useState<Layers>({ schemes: true, feelings: false, lovers: true, fealty: true });
+  const [layers, setLayers] = useState<Layers>({ spies: true, schemes: true, feelings: false, lovers: true, fealty: true });
   const { nodes, edges } = useMemo(() => buildGraph(s, layers, truth), [s, tick, layers, truth]);
   const toggle = (k: keyof Layers) => setLayers({ ...layers, [k]: !layers[k] });
   const LAYER: { k: keyof Layers; label: string; icon: GIName }[] = [
     { k: 'schemes', label: 'Schemes', icon: 'schemes' },
+    { k: 'spies', label: 'Spies', icon: 'agent' },
     { k: 'lovers', label: 'Lovers', icon: 'lover' },
     { k: 'feelings', label: 'Love & hatred', icon: 'love' },
     { k: 'fealty', label: 'Fealty', icon: 'crown' },

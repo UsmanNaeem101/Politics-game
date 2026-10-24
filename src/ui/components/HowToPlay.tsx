@@ -51,6 +51,21 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             </p>
           </section>
           <section>
+            <h3>Spies</h3>
+            <p>
+              A spy is a person: a maid in a lord's house, his brother, his lover, a friend he trusts. Recruit someone close to the one you want
+              watched, from their page, and offer them something: a <strong>wage</strong> every week, <strong>their own secret</strong> kept
+              quiet, or nothing at all if they are <strong>devoted</strong> to you or <strong>hate</strong> the one they watch. Each week they may
+              send word: the schemes their mark is part of, the secrets they keep, what they really want. You can keep three.
+            </p>
+            <p>
+              Spies get caught. A caught spy may name you, and a cunning mark may <strong>turn</strong> them instead: they go on reporting, in
+              the same hand, and every word is a lie. A paid or blackmailed spy names you and turns easily; a devoted one rarely. Other lords
+              set spies too, some in your own house: <strong>search your household</strong>, and when you find one, send them away or turn
+              them and let them carry your forgeries home.
+            </p>
+          </section>
+          <section>
             <h3>Money and standing</h3>
             <p>
               Your lands pay a little. Your <strong>trade</strong> pays more, and decides how the court sees you. Each trade wins or loses
