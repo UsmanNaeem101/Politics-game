@@ -87,6 +87,7 @@ describe('courting a lover', () => {
     for (let i = 0; i < 10 && !won; i++) {
       s.ap = 3;
       s.relations[wife][s.player].mods = s.relations[wife][s.player].mods.filter((m) => m.key !== 'rebuffed');
+      delete s.chars[wife].refused;
       won = perform(s, s.player, { type: 'seduce', target: wife }).ok;
     }
     expect(won).toBe(true);
@@ -128,6 +129,10 @@ describe('courting a lover', () => {
     const r = perform(s, s.player, { type: 'seduce', target: wife });
     expect(r.ok).toBe(false);
     expect(check(s, s.player, { type: 'seduce', target: wife })).toMatch(/answer/);
+    // Three months on, he may try again, though she still thinks a little less of him.
+    s.turn += 3;
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'seduce', target: wife })).toBeNull();
     if (/told/.test(r.text)) expect(s.relations[husband][s.player].mods.some((m) => m.key === 'advances')).toBe(true);
   });
 });

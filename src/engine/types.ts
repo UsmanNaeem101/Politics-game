@@ -90,6 +90,8 @@ export interface Character {
   traits: Traits;
   status: Status;
   statusTurn?: number;
+  /** Men she has turned away, and the month she did. */
+  refused?: Record<CharId, number>;
   /** A child she is carrying: whose, and the month it is due. */
   expecting?: { father: CharId; due: number };
   /** The true father, when it is not the husband (or there is none): a secret, though the father knows. */

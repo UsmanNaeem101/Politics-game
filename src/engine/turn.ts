@@ -121,6 +121,8 @@ export function repairSave(s: GameState): void {
         if (m.key === 'faithless' && (m.decay ?? 0) < FAITHLESS_FADES) m.decay = FAITHLESS_FADES;
         // ...but the man who bedded his wife is not forgiven, or the injury would be felt afresh.
         if (m.key === 'cuckold') m.decay = 0;
+        // A refusal's sting now fades in months, not years.
+        if (m.key === 'rebuffed' && (m.decay ?? 0) < 1) m.decay = 1;
       }
     }
   }

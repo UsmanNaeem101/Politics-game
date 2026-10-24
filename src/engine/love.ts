@@ -31,6 +31,9 @@ import type { CharId, GameState, Secret } from './types';
 
 type Result = { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' };
 
+/** Months a woman who has turned a man away waits before he may try again. */
+export const WOO_AGAIN = 3;
+
 /** Whoever this person has taken as a lover, living. */
 export function loversOf(s: GameState, id: CharId): CharId[] {
   const row = s.relations[id] ?? {};
@@ -47,7 +50,8 @@ export function seduceProblem(s: GameState, actor: CharId, target: CharId): stri
   if (A.spouse === target) return 'She is your wife.';
   if (akin(s, actor, target)) return 'She is your kin.';
   if (loversOf(s, target).includes(actor)) return 'She is your lover already.';
-  if (s.relations[target]?.[actor]?.mods.some((m) => m.key === 'rebuffed')) return 'She has given you her answer. Give it time.';
+  const refused = T.refused?.[actor];
+  if (refused !== undefined && s.turn - refused < WOO_AGAIN) return `She has given you her answer. Give it time: try again in ${dateLabel(refused + WOO_AGAIN)}.`;
   return null;
 }
 
@@ -145,7 +149,8 @@ export function seduce(s: GameState, actor: CharId, target: CharId, gift = 0): R
       tone: 'good',
     };
   }
-  addMod(s, target, actor, 'rebuffed', 'Made advances to me', -10, 0.5);
+  addMod(s, target, actor, 'rebuffed', 'Made advances to me', -10, 1);
+  (T.refused ??= {})[actor] = s.turn;
   // An honest wife tells her husband; a loose tongue tells the hall.
   if (husband && isFree(s, husband) && chance(s, 20 + T.traits.honor * 0.5)) {
     addMod(s, husband, actor, 'advances', 'Made advances to my wife', -30, 0.2);
