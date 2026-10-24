@@ -145,7 +145,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             </p>
             <p>
               Couples have children, and lovers may too: a widow's or a maid's child by her lover is born into her house, and the father is
-              told. Children grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
+              told. <strong>Try for a child</strong> with your wife or your lover: it draws her closer, and a child (born nine months on)
+              binds her to you as its father. Children grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
               schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
               mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole
               court hears of it, and she takes two months to answer: time enough to make your own offer. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.

@@ -40,6 +40,8 @@ before changing anything substantial; it is the plan we are building toward.
   `court.ts`); `alreadyJudged()` keeps it from being heard again without +15 proof. The UI keeps two earlier saves (`store.ts`: the start of this month, and
   before the last month ended) so an ending, or a game in progress, can be turned back. A traced killing by the player
   is answered at a hearing (`hearingAccuser()` in `actions.ts`); mercy there sets `Imprisonment.spared`.
+- Births: `births()` in `family.ts`; a planned child (`try-child`) sets `Character.expecting` and is delivered nine months
+  on (`deliver()`), binding the mother to the father. Widows pay upkeep monthly (`widowsUpkeep()`).
 - Matches are courtships (`GameState.courtships`, `matchmaking()` in `family.ts`): suitors are announced and the answer
   comes after `DELIBERATION` months; no one is matched during `MOURNING`.
 - Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); ages tick yearly in `mortality()` (`turn.ts`),

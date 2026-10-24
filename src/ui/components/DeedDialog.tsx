@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
   TAIL_COST,
+  conceiveOdds,
   incomeOf,
   meansWord,
   dineOdds,
@@ -231,6 +232,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'night-kill':
         return target ? { type, target } : null;
       case 'dine':
+        return target ? { type, target } : null;
+      case 'try-child':
         return target ? { type, target } : null;
     }
   })();
@@ -1041,6 +1044,21 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
         lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
       };
+    case 'try-child': {
+      const husband = livingSpouse(s, it.target);
+      return {
+        pct: conceiveOdds(s, it.target),
+        lines: [
+          `The chance she conceives this month, at ${ch(s, it.target).age}. Whatever comes of it, she is drawn closer to you.`,
+          `A child is born nine months on, and binds its mother to you as its father.`,
+          husband === P
+            ? 'Your wife’s child is your heir by blood.'
+            : husband
+              ? `Her husband will believe the child is his. She will know otherwise, and so will you.`
+              : 'Her child will be born out of wedlock, in her house, and known to be yours.',
+        ],
+      };
+    }
     case 'dine': {
       const husband = livingSpouse(s, it.target);
       return {

@@ -41,7 +41,7 @@ import { hearCredence, kindLabel, makeSecret, secretMatters, syncPlotSecret } fr
 import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
 import { tableTalk } from './talk';
-import { marriageable, matchProblem, propose, unwed } from './family';
+import { marriageable, matchProblem, propose, tryForChild, tryProblem, unwed } from './family';
 import { killInTheNight, nightProblem, seduce, seduceProblem } from './love';
 import { TAIL_COST, setTail, tailProblem } from './tails';
 import { dineProblem, sendToDine } from './wives';
@@ -128,7 +128,8 @@ export type Intent =
   | { type: 'seduce'; target: CharId; gift?: number }
   | { type: 'track'; target: CharId }
   | { type: 'night-kill'; target: CharId }
-  | { type: 'dine'; target: CharId };
+  | { type: 'dine'; target: CharId }
+  | { type: 'try-child'; target: CharId };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -175,6 +176,7 @@ export const COST: Record<IntentType, number> = {
   track: 1,
   'night-kill': 2,
   dine: 1,
+  'try-child': 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -211,6 +213,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
   seduce: { name: 'Woo as a lover', desc: 'Not marriage: make her your lover. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
+  'try-child': { name: 'Try for a child', desc: 'With your wife, or your lover. She is drawn closer to you for it; a child, if one comes, binds her to you as its father.' },
   dine: { name: 'Send your wife to dine with her', desc: 'Your wife dines with this lady and brings home what was said: gossip, what her husband wants, who sits in that house.' },
   'night-kill': { name: 'Kill them in the night', desc: 'Under your own roof, at night, with no one on the stair. Easy to do, harder to explain.' },
 };
@@ -386,6 +389,8 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return nightProblem(s, actor, it.target);
     case 'dine':
       return dineProblem(s, actor, it.target);
+    case 'try-child':
+      return tryProblem(s, actor, it.target);
     case 'plead':
       if (a.status !== 'imprisoned') return 'You are not in the Tower.';
       if (!s.king || it.target === s.king) return 'Write to someone who can reach the King.';
@@ -571,6 +576,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return killInTheNight(s, actor, it.target);
     case 'dine':
       return sendToDine(s, actor, it.target);
+    case 'try-child':
+      return tryForChild(s, actor, it.target);
   }
 }
 

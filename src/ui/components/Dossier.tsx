@@ -1,4 +1,5 @@
 import {
+  tryProblem,
   akin,
   dineProblem,
   dateLabel,
@@ -120,6 +121,9 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   const love = me.gender === 'm' && t.gender === 'f' ? seduceProblem(s, P, target) : 'no';
   if (love === null || (love && /answer|already/.test(love))) out.push(gate({ type: 'seduce', why: love ?? undefined }));
   if (!nightProblem(s, P, target)) out.push({ type: 'night-kill' });
+  // Your wife, or your lover: a child of yours.
+  const trying = tryProblem(s, P, target);
+  if (trying !== 'She is neither your wife nor your lover.') out.push({ type: 'try-child', why: trying ?? undefined });
   // Your wife dines with ladies; their husbands' business comes home with her.
   if (t.gender === 'f' && livingSpouse(s, P) && target !== me.spouse && !servant && t.rank !== 'clergy') out.push({ type: 'dine', why: dineProblem(s, P, target) ?? undefined });
   out.push(gate({ type: 'gift', why: me.gold <= 0 ? 'Your purse is empty.' : undefined }));
@@ -207,6 +211,11 @@ export function Dossier() {
         <div className="dossier-id">
           <h2 className="display-sm">{nm(s, id)}</h2>
           {lvl >= 1 && c.formerly?.length ? <p className="muted small">Formerly {c.formerly.join(', then ')}</p> : null}
+          {c.expecting && (c.expecting.father === P || lvl >= 4) && (
+            <p className="small">
+              <GIcon name="child" size={13} /> With child{c.expecting.father === P ? ' by you' : ''}; due in {dateLabel(c.expecting.due)}.
+            </p>
+          )}
           {c.sire === P && <p className="small">Your natural {c.gender === 'm' ? 'son' : 'daughter'}, though {c.gender === 'm' ? 'he bears' : 'she bears'} {c.house}'s name.</p>}
           {lvl >= 2 && s.courtships?.[id] && (
             <p className="small">

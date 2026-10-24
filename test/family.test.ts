@@ -16,6 +16,7 @@ import {
   makeSecret,
   marriageable,
   matchmaking,
+  PREGNANCY,
   opinion,
   DELIBERATION,
   proposeOdds,
@@ -268,5 +269,49 @@ describe('a widow’s purse', () => {
       expect(s.chars[wife].gold).toBe(48);
       expect(s.chars[head].gold).toBe(98);
     }
+  });
+});
+
+describe('trying for a child', () => {
+  it('with a lover: she is drawn closer, carries nine months, and the birth binds her to you', () => {
+    const s = generateCourt(15);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    s.chars[wife].age = 24;
+    becomeLovers(s, wife, s.player);
+    s.known[wife] = 4;
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'try-child', target: wife })).toBeNull();
+    const before = opinion(s, wife, s.player);
+    for (let i = 0; i < 30 && !s.chars[wife].expecting; i++) {
+      s.ap = 3;
+      perform(s, s.player, { type: 'try-child', target: wife });
+    }
+    expect(opinion(s, wife, s.player)).toBeGreaterThan(before);
+    const due = s.chars[wife].expecting!.due;
+    expect(due).toBe(s.turn + PREGNANCY);
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'try-child', target: wife })).toMatch(/already with child/);
+    const kids = s.chars[wife].children?.length ?? 0;
+    s.turn = due - 1;
+    births(s);
+    expect(s.chars[wife].children?.length ?? 0).toBe(kids);
+    s.turn = due;
+    births(s);
+    const child = s.chars[s.chars[wife].children!.at(-1)!];
+    expect(child.sire).toBe(s.player);
+    expect(s.chars[wife].expecting).toBeUndefined();
+    expect(s.relations[wife][s.player].mods.some((m) => m.key === 'child-father')).toBe(true);
+  });
+
+  it('not with a stranger, nor one past bearing', () => {
+    const s = generateCourt(15);
+    const { wife } = couple(s);
+    s.known[wife] = 3;
+    s.ap = 3;
+    expect(check(s, s.player, { type: 'try-child', target: wife })).toMatch(/neither/);
+    becomeLovers(s, wife, s.player);
+    s.chars[wife].age = 50;
+    expect(check(s, s.player, { type: 'try-child', target: wife })).toMatch(/past bearing/);
   });
 });

@@ -10,10 +10,11 @@ import { makeSecret } from './secrets';
 import { affairSpy } from './spies';
 import { loversOf } from './love';
 import { first, names, nm } from './text';
-import { acquaintance, addMod, adjustTrust, ch, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
+import { acquaintance, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
 
 export const COMING_OF_AGE = 16;
+export const PREGNANCY = 9;
 
 /** A given name no one living at court bears, if one is left. */
 function freshName(s: GameState, gender: 'm' | 'f'): string {
@@ -122,7 +123,13 @@ export function births(s: GameState): void {
   const living = s.order.filter((id) => !gone(s, id)).length;
   const odds = 1.6 * clamp((85 - living) / 25, 0.15, 1);
   for (const w of Object.values(s.chars)) {
-    if (w.gender !== 'f' || w.status !== 'free' || w.age < 17 || w.age > 42 || isServant(s, w.id) || isChild(s, w.id) || (w.children?.length ?? 0) >= 6) continue;
+    if (w.gender !== 'f' || w.status !== 'free') continue;
+    // A child she is carrying comes when it is due.
+    if (w.expecting) {
+      if (s.turn >= w.expecting.due) deliver(s, w);
+      continue;
+    }
+    if (w.age < 17 || w.age > 42 || isServant(s, w.id) || isChild(s, w.id) || (w.children?.length ?? 0) >= 6) continue;
     const h = w.spouse ? s.chars[w.spouse] : undefined;
     if (!h || gone(s, h.id) || h.spouse !== w.id) {
       // No husband, but a lover: now and then, a child out of wedlock.
@@ -134,31 +141,82 @@ export function births(s: GameState): void {
     // A lover's child, now and then, and the mother will know it.
     const affair = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(w.id) && x.victims.includes(h.id));
     const lover = affair?.guilty.find((g) => g !== w.id && isFree(s, g));
-    const sire = lover && chance(s, 35) ? lover : h.id;
-    const child = bearChild(s, w.id, h.id, 0, sire);
-    if (sire !== h.id) {
-      child.sire = sire;
-      const sec = makeSecret(s, {
-        kind: 'affair',
-        guilty: [w.id, sire],
-        victims: [h.id],
-        truth: true,
-        evidence: roll(s, 10, 25),
-        treason: w.rank === 'queen',
-        text: `${nm(s, child.id)}, born to ${nm(s, w.id)}, is not her husband's child. The father is ${nm(s, sire)}.`,
-      });
-      learn(s, w.id, sec.id, 100, 'self');
-      learn(s, sire, sec.id, 60, w.id);
-      if (sire === s.player) {
-        hearOf(s, child.id, 4);
-        log(s, `${first(s, w.id)} sent word, in secret: the child is yours, not her husband's.`, [sire], 'secret', [w.id, child.id]);
-      }
-    }
-    log(s, `${nm(s, w.id)} was delivered of a ${child.gender === 'm' ? 'son' : 'daughter'}, ${child.short}.`, 'all', 'good', [w.id, h.id, child.id]);
-    if (h.id === s.player || s.chars[s.player]?.householdId === child.householdId) hearOf(s, child.id, 4);
-    else if (acquaintance(s, w.id) >= 2 || acquaintance(s, h.id) >= 2) hearOf(s, child.id, 1);
+    wifeBears(s, w, h, lover && chance(s, 35) ? lover : h.id);
   }
   for (const c of Object.values(s.chars)) if (c.rank === 'child' && c.status === 'free' && c.age >= COMING_OF_AGE) comeOfAge(s, c);
+}
+
+/** A wife's child: her husband's in name, and in blood unless `sire` says otherwise (a secret she keeps). */
+function wifeBears(s: GameState, w: Character, h: Character, sire: CharId): Character {
+  const child = bearChild(s, w.id, h.id, 0, sire);
+  if (sire !== h.id) {
+    child.sire = sire;
+    const sec = makeSecret(s, {
+      kind: 'affair',
+      guilty: [w.id, sire],
+      victims: [h.id],
+      truth: true,
+      evidence: roll(s, 10, 25),
+      treason: w.rank === 'queen',
+      text: `${nm(s, child.id)}, born to ${nm(s, w.id)}, is not her husband's child. The father is ${nm(s, sire)}.`,
+    });
+    learn(s, w.id, sec.id, 100, 'self');
+    learn(s, sire, sec.id, 60, w.id);
+    if (sire === s.player) {
+      hearOf(s, child.id, 4);
+      log(s, `${first(s, w.id)} sent word, in secret: the child is yours, not her husband's.`, [sire], 'secret', [w.id, child.id]);
+    }
+  }
+  log(s, `${nm(s, w.id)} was delivered of a ${child.gender === 'm' ? 'son' : 'daughter'}, ${child.short}.`, 'all', 'good', [w.id, h.id, child.id]);
+  if (h.id === s.player || s.chars[s.player]?.householdId === child.householdId) hearOf(s, child.id, 4);
+  else if (acquaintance(s, w.id) >= 2 || acquaintance(s, h.id) >= 2) hearOf(s, child.id, 1);
+  return child;
+}
+
+/** Nine months on: the child is born, and she is bound to its father. */
+function deliver(s: GameState, w: Character): void {
+  const father = w.expecting!.father;
+  delete w.expecting;
+  const husband = livingSpouse(s, w.id);
+  if (husband) wifeBears(s, w, ch(s, husband), father);
+  else bastard(s, w.id, father);
+  if (gone(s, father)) return;
+  addMod(s, w.id, father, 'child-father', 'Father of my child', 25, 0.05);
+  adjustTrust(s, w.id, father, 15);
+  addMod(s, father, w.id, 'child-mother', 'Mother of my child', 10, 0.05);
+}
+
+/** How likely she is to conceive in a month of trying: likelier young, rarely after forty. */
+export function conceiveOdds(s: GameState, id: CharId): number {
+  const age = ch(s, id).age;
+  if (age < 17 || age > 44) return 0;
+  return clamp(Math.round(40 - Math.max(0, age - 28) * 2.3), 5, 40);
+}
+
+/** Why he cannot try for a child with her, or null: she must be his wife or his lover, and able. */
+export function tryProblem(s: GameState, actor: CharId, target: CharId): string | null {
+  const T = ch(s, target);
+  const mine = livingSpouse(s, actor) === target || loversOf(s, target).includes(actor);
+  if (!mine || T.gender !== 'f') return 'She is neither your wife nor your lover.';
+  if (!isFree(s, target)) return 'She is not at court.';
+  if (T.expecting) return 'She is already with child.';
+  if (!conceiveOdds(s, target)) return 'She is past bearing children.';
+  if ((T.children?.length ?? 0) >= 6) return 'She has borne enough children.';
+  return null;
+}
+
+/** A month of trying. Whatever comes of it, she is drawn closer. */
+export function tryForChild(s: GameState, actor: CharId, target: CharId): { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' } {
+  const T = ch(s, target);
+  const close = s.relations[target]?.[actor]?.mods.find((m) => m.key === 'trying')?.value ?? 0;
+  addMod(s, target, actor, 'trying', 'Shares his bed', Math.max(0, Math.min(6, 20 - close)), 0.5);
+  adjustTrust(s, target, actor, 4);
+  if (!chance(s, conceiveOdds(s, target))) return { ok: false, text: `Not this month. ${first(s, target)} is fonder of you for the trying.`, tone: 'neutral' };
+  T.expecting = { father: actor, due: s.turn + PREGNANCY };
+  const husband = livingSpouse(s, target);
+  const whose = husband && husband !== actor ? ' Her husband will believe it is his.' : '';
+  log(s, `${first(s, target)} is with child by you. It is due in ${dateLabel(T.expecting.due)}.${whose}`, [actor], 'secret', [target]);
+  return { ok: true, text: `${first(s, target)} is with child. It is due in ${dateLabel(T.expecting.due)}.${whose}`, tone: 'good' };
 }
 
 /** A child out of wedlock: born into the mother's house, her lover's by blood, and a secret. */
