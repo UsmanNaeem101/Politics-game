@@ -870,13 +870,19 @@ export function preferredCandidate(s: GameState, elector: CharId, cands: CharId[
   return cands.slice().sort((a, b) => score(b) - score(a))[0];
 }
 
+/** Who has a voice in the Witan: the grown men of the court, lords, knights and clergy. Not women, servants or boys. */
+export function witanVoice(s: GameState, id: CharId): boolean {
+  const c = ch(s, id);
+  return isFree(s, id) && c.gender === 'm' && c.rank !== 'servant' && c.rank !== 'child';
+}
+
 /** How the Witan would vote if it met today. Pure: safe to call from the UI. */
 export function witanForecast(s: GameState): { id: CharId; votes: number }[] {
   const cands = claimants(s);
   if (!cands.length) return [];
   const tally = new Map<CharId, number>(cands.map((c) => [c, 0]));
   for (const id of s.order) {
-    if (!isFree(s, id) || ch(s, id).rank === 'servant' || ch(s, id).rank === 'child') continue;
+    if (!witanVoice(s, id)) continue;
     const vote = id === s.player ? s.player : preferredCandidate(s, id, cands, false);
     if (!tally.has(vote)) continue;
     tally.set(vote, (tally.get(vote) ?? 0) + electorWeight(s, id));
@@ -897,7 +903,7 @@ export function holdWitan(s: GameState, playerVote?: CharId): WitanResult {
   }
   const tally = new Map<CharId, number>(cands.map((c) => [c, 0]));
   for (const id of s.order) {
-    if (!isFree(s, id) || ch(s, id).rank === 'servant' || ch(s, id).rank === 'child') continue;
+    if (!witanVoice(s, id)) continue;
     const vote = id === s.player && playerVote && cands.includes(playerVote) ? playerVote : preferredCandidate(s, id, cands);
     tally.set(vote, (tally.get(vote) ?? 0) + electorWeight(s, id));
   }

@@ -21,6 +21,7 @@ import {
   DELIBERATION,
   proposeOdds,
   perform,
+  repairSave,
   runSpies,
   wed,
   widowsUpkeep,
@@ -313,5 +314,43 @@ describe('trying for a child', () => {
     becomeLovers(s, wife, s.player);
     s.chars[wife].age = 50;
     expect(check(s, s.player, { type: 'try-child', target: wife })).toMatch(/past bearing/);
+  });
+});
+
+describe('a lover is not married off', () => {
+  it('a widow with a lover is not put forward to anyone else, and turns suitors away', () => {
+    const s = generateCourt(16);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    becomeLovers(s, wife, s.player);
+    s.turn += 30;
+    for (let i = 0; i < 300; i++) {
+      matchmaking(s);
+      s.turn++;
+    }
+    expect(s.chars[wife].spouse).toBe(lord);
+  });
+
+  it('an old save: your lover married to your brother while you were lovers is annulled, and each goes home', () => {
+    let s = generateCourt(17);
+    const brotherOf = (x: GameState) => x.chars[x.player].siblings.find((b) => x.chars[b].gender === 'm' && x.chars[b].status === 'free' && !x.chars[b].spouse);
+    for (let seed = 17; !brotherOf(s); seed++) s = generateCourt(seed);
+    const brother = brotherOf(s)!;
+    const home = s.chars[brother].householdId;
+    const oldName = s.chars[brother].name;
+    // A widow who keeps her own house, and is your lover.
+    const h = Object.values(s.houses).find((x) => x.rank === 'lesser' && x.head && x.head !== s.player && s.chars[x.head].spouse)!;
+    const lady = s.chars[h.head!].spouse!;
+    kill(s, h.head!, 'Died', false);
+    h.head = lady;
+    becomeLovers(s, lady, s.player);
+    s.turn += 2;
+    wed(s, brother, lady);
+    expect(h.head).toBe(brother);
+    repairSave(s);
+    expect(s.chars[lady].spouse === brother).toBe(false);
+    expect(h.head).toBe(lady);
+    expect(s.chars[brother].householdId).toBe(home);
+    expect(s.chars[brother].name).toBe(oldName);
   });
 });

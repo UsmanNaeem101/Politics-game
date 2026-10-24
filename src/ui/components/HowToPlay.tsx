@@ -127,7 +127,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>The Witan</h3>
             <p>
-              When the throne falls empty, the Witan meets at the end of the following month. Each lord's voice is weighted by their prestige, and
+              When the throne falls empty, the Witan meets at the end of the following month. Only men have a voice there, each weighted by his prestige, and
               they vote for whoever they like, trust, or were promised something by. The Briefing shows how they would vote today. A known
               regicide cannot be chosen.
             </p>
@@ -149,7 +149,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               binds her to you as its father. Children grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
               schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
               mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole
-              court hears of it, and she takes two months to answer: time enough to make your own offer. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
+              court hears of it, and she takes two months to answer: time enough to make your own offer. A woman who has a lover is not married off to anyone else; your lover will marry no one but you. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
             </p>
           </section>
           <section>

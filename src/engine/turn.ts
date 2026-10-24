@@ -11,7 +11,8 @@ import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
-import { affairsAsSpies, births, matchmaking, widowsUpkeep } from './family';
+import { affairsAsSpies, annul, births, matchmaking, widowsUpkeep } from './family';
+import { loversOf } from './love';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
@@ -35,6 +36,7 @@ import {
   isFree,
   isServant,
   learn,
+  livingSpouse,
   log,
   meetPersonalTies,
   opinion,
@@ -107,6 +109,14 @@ export function repairSave(s: GameState): void {
     }
   }
   hearOfTheNamed(s);
+  // A lover of the player's married off to another man while they were lovers: that marriage should never have been.
+  for (const w of Object.values(s.chars)) {
+    const h = w.gender === 'f' && !gone(s, w.id) ? livingSpouse(s, w.id) : undefined;
+    if (!h || h === s.player || !loversOf(s, w.id).includes(s.player)) continue;
+    const affair = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(w.id) && x.guilty.includes(s.player));
+    const wedding = s.events.filter((e) => e.actors.includes(w.id) && e.actors.includes(h) && / were married\./.test(e.text)).at(-1);
+    if (affair && wedding && wedding.turn >= affair.createdTurn) annul(s, h, w.id);
+  }
   // Schemes that still named members who died before the dead were struck from them.
   for (const p of Object.values(s.plots)) {
     if (p.status !== 'active' || p.members.every((m) => isAlive(s, m.id))) continue;

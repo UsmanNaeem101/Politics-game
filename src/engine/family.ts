@@ -9,7 +9,7 @@ import { chance, clamp, pick, roll, weighted } from './rng';
 import { makeSecret } from './secrets';
 import { affairSpy } from './spies';
 import { loversOf } from './love';
-import { first, names, nm } from './text';
+import { first, his, names, nm } from './text';
 import { acquaintance, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
 
@@ -301,6 +301,53 @@ function moveTo(s: GameState, id: CharId, to: House): void {
   }
 }
 
+/** The house a former name belongs to ("Sir Savaric Underhill" → House Underhill), if it still stands. */
+function houseOfName(s: GameState, name: string | undefined): House | undefined {
+  if (!name) return undefined;
+  return Object.values(s.houses).find((h) => h.rank !== 'royal' && h.rank !== 'church' && name.endsWith(` ${h.name}`));
+}
+
+/**
+ * A marriage undone, as if it had not been: each goes back to the house and the name they had before.
+ * If he had taken her house in hand, it is hers to keep again.
+ */
+export function annul(s: GameState, a: CharId, b: CharId): void {
+  const man = ch(s, a).gender === 'm' ? ch(s, a) : ch(s, b);
+  const woman = man.id === a ? ch(s, b) : ch(s, a);
+  if (man.spouse !== woman.id || woman.spouse !== man.id) return;
+  man.spouse = undefined;
+  woman.spouse = undefined;
+  for (const [x, y] of [[man.id, woman.id], [woman.id, man.id]]) {
+    const r = s.relations[x]?.[y];
+    if (r) r.mods = r.mods.filter((m) => m.key !== 'marriage');
+  }
+  const shared = s.houses[man.householdId];
+  if (shared?.head === man.id && woman.householdId === shared.id && man.formerly?.length) {
+    // He had married into her house: she keeps it again, and he goes home.
+    shared.head = woman.id;
+    const before = man.formerly.pop()!;
+    man.name = before;
+    man.rank = before.startsWith('Lord ') ? man.rank : 'knight';
+    const home = houseOfName(s, before);
+    if (home && home !== shared) {
+      man.house = home.name;
+      man.title = `A knight of House ${home.name}`;
+      moveTo(s, man.id, home);
+    }
+  } else if (woman.formerly?.length) {
+    // She had joined his: she goes back to the house she came from, and its name.
+    const before = woman.formerly.pop()!;
+    const home = houseOfName(s, before);
+    woman.name = before;
+    if (home && home.id !== woman.householdId) {
+      woman.house = home.name;
+      moveTo(s, woman.id, home);
+      if (!home.head || gone(s, home.head)) home.head = woman.id;
+    }
+  }
+  log(s, `The marriage of ${nm(s, man.id)} and ${nm(s, woman.id)} was annulled.`, 'all', 'court', [man.id, woman.id]);
+}
+
 /** A wedding. The bride joins her husband's house, unless she heads one and he does not. */
 export function wed(s: GameState, a: CharId, b: CharId): void {
   const man = ch(s, a).gender === 'm' ? ch(s, a) : ch(s, b);
@@ -444,6 +491,12 @@ export function matchmaking(s: GameState): void {
     if (s.turn - ct.since < DELIBERATION) continue;
     delete court[id];
     const best = ct.suitors.sort((a, b) => regard(s, id, b) - regard(s, id, a))[0];
+    // One who has taken a lover since will have no one else.
+    const lovers = loversOf(s, id);
+    if (lovers.length && !(best && lovers.includes(best))) {
+      log(s, `${nm(s, id)} turned ${his(s, id)} suitors away, and would not say why.`, 'all', 'neutral', [id]);
+      continue;
+    }
     wed(s, id, best ?? outsider(s, id).id);
   }
 
@@ -460,11 +513,17 @@ export function matchmaking(s: GameState): void {
     const c = ch(s, id);
     const widowed = !!c.spouse;
     if (widowed && (widowedFor(s, id) ?? 0) < MOURNING) continue;
+    // Someone with a lover is not put forward to anyone else: if the lover is free to marry, the match is with him;
+    // if the lover is the player, or married, there is no match to make.
+    const lovers = loversOf(s, id);
+    if (lovers.length && !lovers.some((l) => l !== P && marriageable(s, l) && !court[l] && !courting.has(l))) continue;
     if (!chance(s, widowed ? 5 : 2)) continue;
     const pool = s.order.filter(
       (o) =>
         o !== id &&
         o !== P &&
+        (!lovers.length || lovers.includes(o)) &&
+        (lovers.includes(o) || !loversOf(s, o).length) &&
         !court[o] &&
         !courting.has(o) &&
         marriageable(s, o) &&
@@ -474,7 +533,7 @@ export function matchmaking(s: GameState): void {
         Math.abs(ch(s, o).age - c.age) <= 20,
     );
     const suitors: CharId[] = [];
-    for (let n = chance(s, 60) ? roll(s, 1, 2) : 0; n > 0; n--) {
+    for (let n = lovers.length ? 1 : chance(s, 60) ? roll(s, 1, 2) : 0; n > 0; n--) {
       const x = weighted(s, pool.filter((o) => !suitors.includes(o)), (o) => regard(s, id, o) + Math.max(0, opinion(s, o, id)));
       if (x) suitors.push(x);
     }
