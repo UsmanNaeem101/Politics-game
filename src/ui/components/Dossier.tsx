@@ -1,4 +1,5 @@
 import {
+  dineProblem,
   dateLabel,
   DELIBERATION,
   livingSpouse,
@@ -117,6 +118,8 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   const love = me.gender === 'm' && t.gender === 'f' ? seduceProblem(s, P, target) : 'no';
   if (love === null || (love && /answer|already/.test(love))) out.push(gate({ type: 'seduce', why: love ?? undefined }));
   if (!nightProblem(s, P, target)) out.push({ type: 'night-kill' });
+  // Your wife dines with ladies; their husbands' business comes home with her.
+  if (t.gender === 'f' && livingSpouse(s, P) && target !== me.spouse && !servant && t.rank !== 'clergy') out.push({ type: 'dine', why: dineProblem(s, P, target) ?? undefined });
   out.push(gate({ type: 'gift', why: me.gold <= 0 ? 'Your purse is empty.' : undefined }));
   out.push(gate({ type: 'whisper', why: known.length ? undefined : 'You know no secret to share.' }));
   if (me.spouse === target) out.push({ type: 'counsel' });

@@ -139,6 +139,11 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               something of you, heeding her costs no time.
             </p>
             <p>
+              <strong>Send your wife to dine</strong> with another lady, from that lady's page, once a month. She comes home with gossip, with
+              what the lady's husband wants (an unhappy wife says more), and with faces from that house. A careless wife may say too much of
+              your own business, and one who does not care for you may keep things back. Other lords send their wives to dine with yours.
+            </p>
+            <p>
               Couples have children. They grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
               schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
               mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole

@@ -190,3 +190,53 @@ describe('a death in the night', () => {
     expect(check(s, P, { type: 'propose' })).toBeNull();
   });
 });
+
+describe('a wife dines out', () => {
+  /** A court where the player has a wife, and another lady whose husband has an aim. */
+  function setup() {
+    let s = generateCourt(11);
+    for (let seed = 11; !s.chars[s.player].spouse; seed++) s = generateCourt(seed);
+    const P = s.player;
+    const wife = s.chars[P].spouse!;
+    const { wife: lady, husband } = lady_(s);
+    return { s, P, wife, lady, husband };
+  }
+  const lady_ = (s: GameState) => {
+    for (const id of s.order) {
+      const c = s.chars[id];
+      if (c.gender !== 'f' || !c.spouse || c.spouse === s.player || c.rank === 'queen' || c.status !== 'free' || c.rank === 'child') continue;
+      if (s.chars[c.spouse].status !== 'free') continue;
+      s.known[id] = 2;
+      return { wife: id, husband: c.spouse };
+    }
+    throw new Error('no lady');
+  };
+
+  it('she brings home what the hostess lets fall, and you meet that house', () => {
+    const { s, P, wife, lady, husband } = setup();
+    s.chars[wife].traits.charm = 90;
+    addMod(s, lady, wife, 'friends', 'Friends', 60);
+    addMod(s, lady, husband, 'cold', 'Cold', -60);
+    addMod(s, wife, P, 'love', 'Loves him', 60);
+    let news = false;
+    for (let i = 0; i < 12 && !news; i++) {
+      s.ap = 3;
+      s.turn++;
+      const r = perform(s, P, { type: 'dine', target: lady });
+      news = r.ok && /news/.test(r.text);
+    }
+    expect(news).toBe(true);
+    expect(s.known[lady]).toBeGreaterThanOrEqual(3);
+    expect(s.events.some((e) => Array.isArray(e.visibleTo) && e.visibleTo.includes(P) && /dined with/.test(e.text))).toBe(true);
+  });
+
+  it('once a month, and only with ladies', () => {
+    const { s, P, lady, husband } = setup();
+    s.ap = 3;
+    s.known[husband] = 3;
+    expect(check(s, P, { type: 'dine', target: husband })).toMatch(/ladies/);
+    perform(s, P, { type: 'dine', target: lady });
+    s.ap = 3;
+    expect(check(s, P, { type: 'dine', target: lady })).toMatch(/already dined/);
+  });
+});

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
   TAIL_COST,
+  dineOdds,
   suitorsOf,
   traceChance,
   livingSpouse,
@@ -221,6 +222,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'track':
         return target ? { type, target } : null;
       case 'night-kill':
+        return target ? { type, target } : null;
+      case 'dine':
         return target ? { type, target } : null;
     }
   })();
@@ -1007,6 +1010,17 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
         lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
       };
+    case 'dine': {
+      const husband = livingSpouse(s, it.target);
+      return {
+        pct: dineOdds(s, P, it.target),
+        lines: [
+          `The chance ${first(s, it.target)} receives her. Her regard for your wife counts, and your wife's charm.`,
+          `Your wife may bring home gossip${husband ? `, what ${first(s, husband)} wants (an unhappy wife says more)` : ''}, and who loves and hates whom. A clever wife hears more.`,
+          'A careless wife may say too much of your own business. One who does not care for you may not tell you everything.',
+        ],
+      };
+    }
     case 'night-kill':
       return {
         pct: nightOdds(s, P, it.target),

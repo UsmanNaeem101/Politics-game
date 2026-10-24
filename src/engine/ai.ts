@@ -24,21 +24,23 @@ import { accessTo, recruitedSpies, spyOdds } from './spies';
 import { loversOf, seduceOdds, seduceProblem } from './love';
 import { MOURNING, widowedFor } from './family';
 import { TAIL_COST } from './tails';
+import { dineProblem } from './wives';
 import {
   addMod,
   adjustTrust,
   ch,
-  isServant,
-  log,
   credence,
   effective,
   isAlive,
   isChild,
   isFree,
+  isServant,
   knows,
   knowsAgenda,
-  opinion,
+  livingSpouse,
+  log,
   officeOf,
+  opinion,
   trust,
 } from './world';
 import type { SpyHook, CharId, GameState, Offer, Plot } from './types';
@@ -349,6 +351,11 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     .map((g) => ({ g, v: interest(g) }))
     .filter((x) => x.v > 5)
     .sort((a, b) => b.v - a.v)[0];
+  // A clever lord sends his wife to dine with the wife of the man he most wants to read.
+  if (spyTarget && c.traits.cunning >= 50) {
+    const hostess = livingSpouse(s, spyTarget.g);
+    if (hostess && !dineProblem(s, me, hostess)) add({ type: 'dine', target: hostess }, 4 + c.traits.cunning * 0.08 + spyTarget.v * 0.15);
+  }
   if (spyTarget) {
     const u = 4 + c.traits.cunning * 0.1 + c.traits.paranoia * 0.06 + spyTarget.v * 0.2 + (officeOf(s, me) === 'spymaster' ? 8 : 0);
     add({ type: 'spy', target: spyTarget.g, focus: 'schemes' }, u);

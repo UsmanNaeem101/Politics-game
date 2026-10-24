@@ -44,6 +44,7 @@ import { tableTalk } from './talk';
 import { marriageable, matchProblem, propose, unwed } from './family';
 import { killInTheNight, nightProblem, seduce, seduceProblem } from './love';
 import { TAIL_COST, setTail, tailProblem } from './tails';
+import { dineProblem, sendToDine } from './wives';
 import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, recruitedSpies, sweepHousehold } from './spies';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
@@ -125,7 +126,8 @@ export type Intent =
   | { type: 'plead'; target: CharId }
   | { type: 'seduce'; target: CharId }
   | { type: 'track'; target: CharId }
-  | { type: 'night-kill'; target: CharId };
+  | { type: 'night-kill'; target: CharId }
+  | { type: 'dine'; target: CharId };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -171,6 +173,7 @@ export const COST: Record<IntentType, number> = {
   seduce: 1,
   track: 1,
   'night-kill': 2,
+  dine: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -207,6 +210,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
   seduce: { name: 'Court as a lover', desc: 'Woo her. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
+  dine: { name: 'Send your wife to dine with her', desc: 'Your wife dines with this lady and brings home what was said: gossip, what her husband wants, who sits in that house.' },
   'night-kill': { name: 'Kill them in the night', desc: 'Under your own roof, at night, with no one on the stair. Easy to do, harder to explain.' },
 };
 
@@ -378,6 +382,8 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return tailProblem(s, actor, it.target);
     case 'night-kill':
       return nightProblem(s, actor, it.target);
+    case 'dine':
+      return dineProblem(s, actor, it.target);
     case 'plead':
       if (a.status !== 'imprisoned') return 'You are not in the Tower.';
       if (!s.king || it.target === s.king) return 'Write to someone who can reach the King.';
@@ -410,7 +416,7 @@ function fogProblem(s: GameState, it: Intent): string | null {
       if (lvl < 2) return 'You have only heard of them. Spy on their household, or wait to see them at court.';
       if (isServant(s, target)) return 'Servants need no introduction.';
     }
-    if ((it.type === 'spy' || it.type === 'track') && lvl < 1) return 'You know nothing of them.';
+    if ((it.type === 'spy' || it.type === 'track' || it.type === 'dine') && lvl < 1) return 'You know nothing of them.';
   }
   if (it.type === 'fabricate' && [...it.guilty, it.victim].some((g) => acquaintance(s, g) < 1)) return 'You cannot name someone you have never heard of.';
   if (it.type === 'scheme' && it.targets.some((g) => acquaintance(s, g) < (it.kind === 'murder' ? 2 : 1))) return 'You do not know your target well enough.';
@@ -561,6 +567,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
     }
     case 'night-kill':
       return killInTheNight(s, actor, it.target);
+    case 'dine':
+      return sendToDine(s, actor, it.target);
   }
 }
 
