@@ -11,7 +11,7 @@ import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
-import { affairsAsSpies, annul, births, forgetCuckolding, honestWoman, matchmaking, widowsUpkeep } from './family';
+import { MARRYING_AGE, affairsAsSpies, annul, births, forgetCuckolding, honestWoman, matchmaking, widowsUpkeep } from './family';
 import { loversOf, mistressOf } from './love';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
@@ -242,11 +242,19 @@ function worldTurns(s: GameState): void {
   newcomers(s);
 }
 
+/** Birthdays. Youth passes quickly: until they are of an age to marry, a year goes by every season. */
+export function growOlder(s: GameState): void {
+  const season = s.turn > 1 && (s.turn - 1) % MONTHS_PER_SEASON === 0;
+  const year = s.turn > 1 && (s.turn - 1) % MONTHS_PER_YEAR === 0;
+  for (const c of Object.values(s.chars)) {
+    if (c.status !== 'free' && c.status !== 'imprisoned') continue;
+    if (c.age < MARRYING_AGE ? season : year) c.age++;
+  }
+}
+
 /** Old age takes people, kings included. */
 function mortality(s: GameState): void {
-  if (s.turn > 1 && (s.turn - 1) % MONTHS_PER_YEAR === 0) {
-    for (const c of Object.values(s.chars)) if (c.status === 'free' || c.status === 'imprisoned') c.age++;
-  }
+  growOlder(s);
   // You and your wife will not die in your beds; only a blade, the axe or poison can end you.
   const spared = [s.player, s.chars[s.player]?.spouse];
   for (const id of s.order) {

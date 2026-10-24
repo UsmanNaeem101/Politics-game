@@ -71,6 +71,7 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
     { type: 'try-child', target: t() },
     { type: 'take-mistress', target: t() },
     { type: 'acknowledge', target: t() },
+    { type: 'betroth', target: t(), partner: pickOf(r, [t(), undefined]), dowry: pickOf(r, [0, 10]) },
     { type: 'plant', target: t(), mark: t(), hook: pickOf(r, ['gold', 'devotion', 'grudge'] as const)!, wage: 3 },
   ];
   for (const sp of spiesOf(s, P)) out.push({ type: 'dismiss-spy', spyId: sp.id });

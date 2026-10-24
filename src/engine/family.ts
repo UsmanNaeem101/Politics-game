@@ -14,6 +14,10 @@ import { FAITHLESS_FADES, acquaintance, addMod, adjustTrust, ch, dateLabel, gone
 import type { Character, CharId, GameState, House, Traits } from './types';
 
 export const COMING_OF_AGE = 16;
+/** Old enough to wed. Until then a year passes every season (`mortality()` in turn.ts). */
+export const MARRYING_AGE = 17;
+/** A child may be promised only to one near in age. */
+export const BETROTHAL_GAP = 8;
 export const PREGNANCY = 9;
 
 /** A given name no one living at court bears, if one is left. */
@@ -275,13 +279,20 @@ export function akin(s: GameState, a: CharId, b: CharId): boolean {
 /** Free to marry at all: grown, unwed, not a priest or a servant. */
 export function marriageable(s: GameState, id: CharId): boolean {
   const c = s.chars[id];
-  return !!c && c.status === 'free' && !isChild(s, id) && !isServant(s, id) && c.rank !== 'clergy' && c.age >= 17 && c.age <= 62 && unwed(s, id);
+  return !!c && c.status === 'free' && !isChild(s, id) && !isServant(s, id) && c.rank !== 'clergy' && c.age >= MARRYING_AGE && c.age <= 62 && unwed(s, id);
+}
+
+/** Promised to someone still living. */
+export function promised(s: GameState, id: CharId): CharId | undefined {
+  const b = s.chars[id]?.betrothed;
+  return b && !gone(s, b) && s.chars[b]?.betrothed === id ? b : undefined;
 }
 
 /** Why these two cannot marry, or null. */
 export function matchProblem(s: GameState, a: CharId, b: CharId): string | null {
   if (!marriageable(s, a)) return unwed(s, a) ? 'You are not free to marry.' : 'You are married.';
   if (!marriageable(s, b)) return 'They are not free to marry.';
+  if (promised(s, b)) return `They are promised to ${nm(s, promised(s, b)!)}.`;
   if (ch(s, a).gender === ch(s, b).gender) return 'The Church will not marry them.';
   if (akin(s, a, b)) return 'They are too close in blood.';
   return null;
@@ -560,6 +571,7 @@ export const suitorsOf = (s: GameState, id: CharId): CharId[] => s.courtships?.[
  */
 export function matchmaking(s: GameState): void {
   const P = s.player;
+  keepPromises(s);
   const court = (s.courtships ??= {});
   const courting = new Set(Object.values(court).flatMap((x) => x.suitors));
 
@@ -594,7 +606,7 @@ export function matchmaking(s: GameState): void {
 
   // Suitors come calling.
   for (const id of s.order) {
-    if (id === P || court[id] || courting.has(id) || !marriageable(s, id)) continue;
+    if (id === P || court[id] || courting.has(id) || !marriageable(s, id) || promised(s, id)) continue;
     const c = ch(s, id);
     const widowed = !!c.spouse;
     if (widowed && (widowedFor(s, id) ?? 0) < MOURNING) continue;
@@ -612,6 +624,7 @@ export function matchmaking(s: GameState): void {
         !court[o] &&
         !courting.has(o) &&
         marriageable(s, o) &&
+        !promised(s, o) &&
         (widowedFor(s, o) ?? MOURNING) >= MOURNING &&
         ch(s, o).gender !== c.gender &&
         !akin(s, id, o) &&
@@ -670,6 +683,132 @@ export function propose(s: GameState, actor: CharId, target?: CharId): { ok: boo
   }
   wed(s, actor, target);
   return { ok: true, text: `${first(s, target)} has said yes.`, tone: 'good' };
+}
+
+// ── Matches for your children ───────────────────────────────────────────────
+
+/** Who gives the answer for them: a child's father (or mother), an unwed son or daughter's house head, or themselves. */
+export function matchKeeper(s: GameState, id: CharId): CharId {
+  const c = ch(s, id);
+  const parents = (c.parents ?? []).filter((p) => isFree(s, p));
+  const head = s.houses[c.householdId]?.head;
+  const kin = parents.find((p) => ch(s, p).gender === 'm') ?? parents[0] ?? (head && head !== id && isFree(s, head) ? head : undefined);
+  if (isChild(s, id)) return kin ?? id;
+  return !c.spouse && kin ? kin : id;
+}
+
+/** Why no match can be sought for this child of yours at all, or null. */
+export function childMatchProblem(s: GameState, actor: CharId, child: CharId): string | null {
+  const C = ch(s, child);
+  if (!C.parents?.includes(actor)) return 'They are not your child to match.';
+  if (C.status !== 'free' || C.rank === 'clergy') return 'They are not free to marry.';
+  if (!unwed(s, child)) return 'They are married already.';
+  if (promised(s, child)) return `Already promised to ${nm(s, promised(s, child)!)}.`;
+  if (!isChild(s, child) && !marriageable(s, child)) return 'They are not free to marry.';
+  return null;
+}
+
+/** Why this match cannot be sought, or null. No partner: a match from the provinces. */
+export function betrothProblem(s: GameState, actor: CharId, child: CharId, partner?: CharId): string | null {
+  const own = childMatchProblem(s, actor, child);
+  if (own) return own;
+  const C = ch(s, child);
+  if (!partner) return marriageable(s, child) ? null : 'A matchmaker finds grown brides and husbands: name a match at court, or wait until they are grown.';
+  const T = ch(s, partner);
+  if (partner === actor || T.gender === C.gender || akin(s, child, partner)) return 'Not a match the Church will make.';
+  if (T.status !== 'free' || isServant(s, partner) || T.rank === 'clergy') return 'They are not free to marry.';
+  if (!unwed(s, partner) || (!isChild(s, partner) && !marriageable(s, partner))) return 'They are not free to marry.';
+  if (promised(s, partner)) return `They are promised to ${nm(s, promised(s, partner)!)}.`;
+  if ((widowedFor(s, partner) ?? MOURNING) < MOURNING) return 'They are in mourning.';
+  if (loversOf(s, partner).length) return 'They will hear of no one but their lover.';
+  const gap = Math.abs(T.age - C.age);
+  if ((isChild(s, child) || isChild(s, partner)) ? gap > BETROTHAL_GAP : gap > 20) return 'They are too far apart in age.';
+  const said = T.refused?.[child];
+  if (said !== undefined && s.turn - said < DELIBERATION + 1) return `Their family has given its answer. Ask again in ${dateLabel(said + DELIBERATION + 1)}.`;
+  return null;
+}
+
+/** Will their family take your child? Your standing and theirs, their regard for you, what you settle on the match. */
+export function betrothOdds(s: GameState, actor: CharId, child: CharId, partner: CharId, dowry = 0): number {
+  const keeper = matchKeeper(s, partner);
+  const K = ch(s, keeper);
+  const A = ch(s, actor);
+  // Your heir is the prize: the named one, or else your eldest son.
+  const named = s.houses[A.householdId]?.heir;
+  const sons = (A.children ?? []).filter((o) => isFree(s, o) && ch(s, o).gender === 'm').sort((a, b) => ch(s, b).age - ch(s, a).age);
+  const heir = named ? named === child : sons[0] === child;
+  const liking = keeper === partner || isChild(s, child) ? 0 : Math.max(-10, Math.min(15, opinion(s, partner, child) * 0.2));
+  return clamp(
+    Math.round(
+      30 +
+        opinion(s, keeper, actor) * 0.5 +
+        (A.prestige - Math.max(K.prestige, ch(s, partner).prestige)) * 0.3 +
+        A.traits.charm * 0.1 +
+        (heir ? 10 : 0) +
+        liking +
+        Math.min(25, dowry * 0.3) -
+        suitorsOf(s, partner).length * 6 -
+        (keeper === s.king ? 15 : 0),
+    ),
+    3,
+    95,
+  );
+}
+
+/** Seek a match for your child. Grown, they wed now; young, they are promised, and wed when both are grown. */
+export function betroth(s: GameState, actor: CharId, child: CharId, partner?: CharId, dowry = 0): { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' } {
+  const C = ch(s, child);
+  if (!partner) {
+    const match = outsider(s, child);
+    wed(s, child, match.id);
+    return { ok: true, text: `A match was made: ${match.name} has come from the provinces to marry ${C.short}.`, tone: 'good' };
+  }
+  const keeper = matchKeeper(s, partner);
+  const T = ch(s, partner);
+  if (!chance(s, betrothOdds(s, actor, child, partner, dowry))) {
+    (T.refused ??= {})[child] = s.turn;
+    log(s, `${keeper === partner ? nm(s, partner) : `${nm(s, keeper)}, for ${first(s, partner)},`} turned down a match with ${nm(s, child)}.`, [actor], 'bad', [keeper, partner, child]);
+    return { ok: false, text: `${first(s, keeper)} will not have the match.`, tone: 'bad' };
+  }
+  const paid = Math.min(dowry, ch(s, actor).gold);
+  if (paid > 0) {
+    ch(s, actor).gold -= paid;
+    ch(s, keeper).gold += paid;
+  }
+  // A match agreed binds the two families, whatever comes of it.
+  if (keeper !== actor) {
+    addMod(s, keeper, actor, `match-${child}`, 'Our children are matched', 12, 0.1);
+    addMod(s, actor, keeper, `match-${child}`, 'Our children are matched', 12, 0.1);
+  }
+  // Other suitors are sent away.
+  if (s.courtships?.[partner]) delete s.courtships[partner];
+  for (const ct of Object.values(s.courtships ?? {})) ct.suitors = ct.suitors.filter((x) => x !== partner);
+  const dowryText = paid ? ` ${paid} crowns go with it.` : '';
+  if (marriageable(s, child) && marriageable(s, partner)) {
+    wed(s, child, partner);
+    return { ok: true, text: `${first(s, keeper)} agreed: ${C.short} and ${T.short} are married.${dowryText}`, tone: 'good' };
+  }
+  C.betrothed = partner;
+  T.betrothed = child;
+  log(s, `${nm(s, child)} is promised to ${nm(s, partner)}. They will wed when both are grown.`, 'all', 'good', [child, partner, actor, keeper]);
+  return { ok: true, text: `${first(s, keeper)} agreed: ${C.short} is promised to ${T.short}, and they will wed when both are grown.${dowryText}`, tone: 'good' };
+}
+
+/** The promised wed once both are grown; a promise to the dead is void. */
+function keepPromises(s: GameState): void {
+  for (const c of Object.values(s.chars)) {
+    if (!c.betrothed) continue;
+    const o = s.chars[c.betrothed];
+    if (!o || o.betrothed !== c.id || gone(s, c.id) || gone(s, o.id) || !unwed(s, c.id) || !unwed(s, o.id)) {
+      delete c.betrothed;
+      continue;
+    }
+    if (c.gender !== 'm' || !marriageable(s, c.id) || !marriageable(s, o.id)) continue;
+    delete c.betrothed;
+    delete o.betrothed;
+    log(s, `${nm(s, c.id)} and ${nm(s, o.id)}, promised as children, are of an age to marry, and the match is kept.`, 'all', 'good', [c.id, o.id]);
+    wed(s, c.id, o.id);
+  }
 }
 
 /** Every unfaithful wife spies for her lover; old saves get theirs. */

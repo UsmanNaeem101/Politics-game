@@ -44,7 +44,7 @@ import { hearCredence, kindLabel, makeSecret, secretMatters, syncPlotSecret } fr
 import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
 import { tableTalk } from './talk';
-import { acknowledge, acknowledgeProblem, marriageable, matchProblem, propose, tryForChild, tryProblem, unwed } from './family';
+import { acknowledge, acknowledgeProblem, betroth, betrothProblem, marriageable, matchProblem, propose, tryForChild, tryProblem, unwed } from './family';
 import { killInTheNight, mistressProblem, nightProblem, seduce, seduceProblem, takeMistress } from './love';
 import { TAIL_COST, setTail, tailProblem } from './tails';
 import { dineProblem, sendToDine } from './wives';
@@ -135,7 +135,8 @@ export type Intent =
   | { type: 'dine'; target: CharId }
   | { type: 'try-child'; target: CharId }
   | { type: 'take-mistress'; target: CharId }
-  | { type: 'acknowledge'; target: CharId };
+  | { type: 'acknowledge'; target: CharId }
+  | { type: 'betroth'; target: CharId; partner?: CharId; dowry?: number };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -185,6 +186,7 @@ export const COST: Record<IntentType, number> = {
   'try-child': 1,
   'take-mistress': 1,
   acknowledge: 1,
+  betroth: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -221,6 +223,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
   seduce: { name: 'Woo as a lover', desc: 'Not marriage: make her your lover. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
+  betroth: { name: 'Arrange a match', desc: 'Find your son or daughter a husband or wife. Grown, they wed at once; young, they are promised, and wed when both are grown. Either way the two houses are bound.' },
   acknowledge: { name: 'Acknowledge as your own', desc: 'Own your natural child before the world: into your house, under your name. A son becomes your heir. No secret after that.' },
   'take-mistress': { name: 'Bring her into your household', desc: 'Your lover comes to live under your roof as your mistress, for all the court to see. Your wife will not forgive it.' },
   'try-child': { name: 'Try for a child', desc: 'With your wife, or your lover. She is drawn closer to you for it; a child, if one comes, binds her to you as its father.' },
@@ -255,7 +258,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
   if (target !== undefined) {
     if (target === actor) return 'You cannot do that to yourself.';
     if (!s.chars[target]) return 'No such person.';
-    if (isChild(s, target) && it.type !== 'acknowledge') return 'A child is no part of this.';
+    if (isChild(s, target) && it.type !== 'acknowledge' && it.type !== 'betroth') return 'A child is no part of this.';
     const needsPrisoner = it.type === 'execute' || it.type === 'release';
     if (needsPrisoner && ch(s, target).status !== 'imprisoned') return 'They are not in the Tower.';
     if (!needsPrisoner && it.type !== 'petition' && !isFree(s, target)) return 'They are not at court.';
@@ -406,6 +409,10 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return mistressProblem(s, actor, it.target);
     case 'acknowledge':
       return acknowledgeProblem(s, actor, it.target);
+    case 'betroth':
+      if ((it.dowry ?? 0) < 0 || (it.dowry ?? 0) > a.gold) return 'You do not have the gold.';
+      if (it.partner && !s.chars[it.partner]) return 'No such person.';
+      return betrothProblem(s, actor, it.target, it.partner);
     case 'plead':
       if (a.status !== 'imprisoned') return 'You are not in the Tower.';
       if (!s.king || it.target === s.king) return 'Write to someone who can reach the King.';
@@ -440,6 +447,7 @@ function fogProblem(s: GameState, it: Intent): string | null {
     }
     if ((it.type === 'spy' || it.type === 'track' || it.type === 'dine') && lvl < 1) return 'You know nothing of them.';
   }
+  if (it.type === 'betroth' && it.partner && acquaintance(s, it.partner) < 2) return 'You must at least have seen them at court.';
   if (it.type === 'fabricate' && [...it.guilty, it.victim].some((g) => acquaintance(s, g) < 1)) return 'You cannot name someone you have never heard of.';
   if (it.type === 'scheme' && it.targets.some((g) => acquaintance(s, g) < (it.kind === 'murder' ? 2 : 1))) return 'You do not know your target well enough.';
   return null;
@@ -597,6 +605,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return takeMistress(s, actor, it.target);
     case 'acknowledge':
       return acknowledge(s, actor, it.target);
+    case 'betroth':
+      return betroth(s, actor, it.target, it.partner, it.dowry ?? 0);
   }
 }
 

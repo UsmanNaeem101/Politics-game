@@ -1,5 +1,7 @@
 import {
   acknowledgeProblem,
+  childMatchProblem,
+  promised,
   mistressProblem,
   tryProblem,
   akin,
@@ -72,8 +74,11 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   const iAmKing = s.king === P;
   const jailed = me.status === 'imprisoned';
   if (t.status === 'dead' || t.status === 'fled') return [];
-  // A child is no part of anyone's deeds, save a father who would own him.
-  if (t.rank === 'child') return acknowledgeProblem(s, P, target) ? [] : [{ type: 'acknowledge' }];
+  // A son or daughter of yours, young or grown: yours to match.
+  const yours = !!t.parents?.includes(P);
+  const match: DeedButton[] = yours && t.status === 'free' ? [{ type: 'betroth', why: childMatchProblem(s, P, target) ?? undefined }] : [];
+  // A child is no part of anyone's deeds, save a father who would own him or match him.
+  if (t.rank === 'child') return [...(acknowledgeProblem(s, P, target) ? [] : [{ type: 'acknowledge' } as DeedButton]), ...match];
   const lvl = acquaintance(s, target);
   const servant = t.rank === 'servant';
   const known = Object.entries(s.knowledge[P] ?? {}).filter(
@@ -138,6 +143,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (me.spouse === target) out.push({ type: 'counsel' });
   if (!servant) {
     out.push(gate({ type: 'recruit', why: myPlots.some((p) => !p.targets.includes(target) && !p.members.some((m) => m.id === target)) ? undefined : 'You lead no scheme to draw them into.' }));
+    out.push(...match);
     // Her hand in marriage: shown whenever she is free to marry, with the reason if you are not.
     if (marriageable(s, target) && t.gender !== me.gender && !akin(s, P, target)) {
       const hand = t.gender === 'f' ? 'Ask for her hand' : 'Ask for his hand';
@@ -224,6 +230,11 @@ export function Dossier() {
             </p>
           )}
           {c.sire === P && <p className="small">Your natural {c.gender === 'm' ? 'son' : 'daughter'}, though {c.gender === 'm' ? 'he bears' : 'she bears'} {c.house}'s name.</p>}
+          {lvl >= 1 && promised(s, id) && (
+            <p className="small">
+              <GIcon name="betroth" size={13} /> Promised to {nm(s, promised(s, id)!)}; they wed when both are grown.
+            </p>
+          )}
           {lvl >= 2 && s.courtships?.[id] && (
             <p className="small">
               <GIcon name="propose" size={13} />{' '}

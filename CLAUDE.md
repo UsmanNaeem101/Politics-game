@@ -37,7 +37,8 @@ before changing anything substantial; it is the plan we are building toward.
   kept by a woman or a minor stands among the lesser, below every house a man leads (`houseStanding()`), until a man
   marries into it and takes it in hand (`wed()` in `family.ts`).
 - Families: `family.ts` (children with rank `child`, births, coming of age, weddings, NPC matchmaking, outsiders from the
-  provinces, the player's proposals). An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
+  provinces, the player's proposals). A parent arranges a child's match with `betroth()` (the other side's `matchKeeper()`
+  answers); grown, they wed at once, young, they are `promised()` (`Character.betrothed`) and wed in `matchmaking()` when grown. An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
 - Justice: a charge once judged is recorded by crime, not by letter (`GameState.judged`, keyed by `chargeKey()` in
   `court.ts`); `alreadyJudged()` keeps it from ever being heard again. The UI keeps two earlier saves (`store.ts`: the start of this month, and
   before the last month ended) so an ending, or a game in progress, can be turned back. A traced killing by the player
@@ -48,7 +49,8 @@ before changing anything substantial; it is the plan we are building toward.
 - Matches are courtships (`GameState.courtships`, `matchmaking()` in `family.ts`): suitors are announced and the answer
   comes after `DELIBERATION` months; no one is matched during `MOURNING`.
 - Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); opinion modifiers fade `FADE_PER_MONTH` times
-  their `decay` each month (the rates were set for weekly turns); ages tick yearly in `mortality()` (`turn.ts`),
+  their `decay` each month (the rates were set for weekly turns); ages tick in `growOlder()` (`turn.ts`): yearly, but
+  every season until `MARRYING_AGE`, so children grow up within a few years of play. Old age is `mortality()`,
   which never takes the player or the player's spouse.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own

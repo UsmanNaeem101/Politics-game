@@ -26,7 +26,14 @@ import {
   runSpies,
   wed,
   widowsUpkeep,
+  betrothProblem,
+  growOlder,
+  livingSpouse,
+  matchProblem,
+  outsider,
+  promised,
   type GameState,
+  type Intent,
 } from '../src/engine';
 
 /** A lord at court with a wife of childbearing age. */
@@ -432,5 +439,96 @@ describe('marrying your mistress', () => {
     expect(s.relations[priest][P].mods.some((m) => m.key === 'mistress-scandal')).toBe(false);
     if (kin) expect(s.relations[kin][P].mods.some((m) => m.key === 'dishonour')).toBe(false);
     expect(s.chars[widow].mistressOf).toBeUndefined();
+  });
+});
+
+describe('matching your children', () => {
+  /** The player as a father, with a wife; and another house with children of its own. */
+  function families(seed = 4) {
+    const s = generateCourt(seed);
+    const P = s.player;
+    const wife = livingSpouse(s, P) ?? outsider(s, P).id;
+    if (!livingSpouse(s, P)) wed(s, P, wife);
+    const other = couple(s);
+    s.ap = 9;
+    const child = (mother: string, father: string, age: number, gender: 'm' | 'f') => {
+      const c = bearChild(s, mother, father, age);
+      c.gender = gender;
+      s.known[c.id] = 2;
+      if (age >= COMING_OF_AGE) comeOfAge(s, c, true);
+      return c;
+    };
+    // Their family thinks the world of you.
+    addMod(s, other.lord, P, 'test-friend', 'Old friend', 100);
+    addMod(s, other.wife, P, 'test-friend', 'Old friend', 100);
+    return { s, P, wife, other, child };
+  }
+  /** Ask until the dice say yes: the odds are tested elsewhere. */
+  function agree(s: GameState, P: string, it: Extract<Intent, { type: 'betroth' }>) {
+    for (let i = 0; i < 40; i++) {
+      delete s.chars[it.partner!].refused;
+      s.ap = 9;
+      expect(check(s, P, it)).toBeNull();
+      if (perform(s, P, it).ok) return;
+    }
+    throw new Error('never agreed');
+  }
+
+  it('youth passes a year every season; grown men age a year a year', () => {
+    const s = generateCourt(5);
+    const { lord, wife } = couple(s);
+    const kid = bearChild(s, wife, lord, 2);
+    const man = s.chars[lord];
+    const [k0, m0] = [kid.age, man.age];
+    // Three years of months.
+    for (let t = 2; t <= 37; t++) {
+      s.turn = t;
+      growOlder(s);
+    }
+    expect(kid.age).toBe(k0 + 12);
+    expect(man.age).toBe(m0 + 3);
+  });
+
+  it('a young son is promised to a girl of another house, and they wed when both are grown', () => {
+    const { s, P, wife, other, child } = families();
+    const son = child(wife, P, 8, 'm');
+    const girl = child(other.wife, other.lord, 7, 'f');
+    agree(s, P, { type: 'betroth', target: son.id, partner: girl.id });
+    expect(promised(s, son.id)).toBe(girl.id);
+    expect(promised(s, girl.id)).toBe(son.id);
+    expect(s.relations[other.lord][P].mods.some((m) => m.key === `match-${son.id}`)).toBe(true);
+    // Grown, and the match is kept.
+    for (const c of [son, girl]) {
+      c.age = 17;
+      comeOfAge(s, c, true);
+    }
+    matchmaking(s);
+    expect(son.spouse).toBe(girl.id);
+    expect(promised(s, son.id)).toBeUndefined();
+  });
+
+  it('a grown daughter weds at once, and her promise keeps others away until then', () => {
+    const { s, P, wife, other, child } = families();
+    const daughter = child(wife, P, 18, 'f');
+    const man = child(other.wife, other.lord, 19, 'm');
+    agree(s, P, { type: 'betroth', target: daughter.id, partner: man.id });
+    expect(daughter.spouse).toBe(man.id);
+
+    const young = child(wife, P, 10, 'm');
+    const maid = child(other.wife, other.lord, 17, 'f');
+    agree(s, P, { type: 'betroth', target: young.id, partner: maid.id });
+    expect(maid.spouse).toBeUndefined();
+    expect(matchProblem(s, other.lord === s.player ? young.id : s.player, maid.id) ?? 'promised').toMatch(/promised|married|free/);
+    expect(betrothProblem(s, P, young.id, maid.id)).toMatch(/Already promised/);
+  });
+
+  it('is only for your own children, and not across a wide gap in age', () => {
+    const { s, P, wife, other, child } = families();
+    const theirs = child(other.wife, other.lord, 8, 'm');
+    const mine = child(wife, P, 6, 'f');
+    expect(betrothProblem(s, P, theirs.id, mine.id)).toMatch(/not your child/);
+    const grownMan = child(other.wife, other.lord, 30, 'm');
+    expect(betrothProblem(s, P, mine.id, grownMan.id)).toMatch(/too far apart/);
+    expect(betrothProblem(s, P, mine.id)).toMatch(/matchmaker/);
   });
 });

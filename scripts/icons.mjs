@@ -36,7 +36,7 @@ const MAP = {
   // spies
   plant: 'eye-target', 'dismiss-spy': 'cancel', sweep: 'secret-door', agent: 'domino-mask',
   // families
-  child: 'baby-face', propose: 'linked-rings', plead: 'envelope',
+  child: 'baby-face', propose: 'linked-rings', betroth: 'big-diamond-ring', plead: 'envelope',
   // love, tails and the night
   seduce: 'love-letter', track: 'footsteps', 'night-kill': 'candle-skull', dine: 'teapot', 'try-child': 'baby-bottle', 'take-mistress': 'heart-key', acknowledge: 'crown-coin',
   // parts of society

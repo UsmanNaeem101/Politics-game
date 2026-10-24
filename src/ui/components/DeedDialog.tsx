@@ -59,6 +59,10 @@ import {
   sellPrice,
   spyChance,
   strikeChance,
+  betrothOdds,
+  betrothProblem,
+  matchKeeper,
+  marriageable,
   forgeryDetection,
   warnCredence,
   warnFound,
@@ -114,6 +118,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const [plotId, setPlotId] = useState<string>(spec.plotId ?? '');
   const [amount, setAmount] = useState<number>(Math.min(25, me.gold));
   const [settle, setSettle] = useState<number>(0);
+  const [partner, setPartner] = useState<CharId>('');
   const [focus, setFocus] = useState<SpyFocus>('motive');
   const [fabKind, setFabKind] = useState<FabricateKind>('regicide');
   const [guilty, setGuilty] = useState<CharId[]>(spec.target ? [spec.target] : []);
@@ -246,6 +251,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return target ? { type, target } : null;
       case 'acknowledge':
         return target ? { type, target } : null;
+      case 'betroth':
+        return target ? { type, target, partner: partner || undefined, dowry: partner ? settle : 0 } : null;
     }
   })();
 
@@ -321,6 +328,53 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         </label>
       );
       break;
+    case 'betroth': {
+      if (!target) break;
+      const child = ch(s, target);
+      // Everyone you have seen at court who could be matched with them, likeliest first.
+      const roster = others(s, (id) => !betrothProblem(s, P, target, id), 2).sort((a, b) => betrothOdds(s, P, target, b, settle) - betrothOdds(s, P, target, a, settle));
+      const grown = !betrothProblem(s, P, target);
+      fields = (
+        <>
+          <fieldset className="field">
+            <legend>{child.gender === 'm' ? 'A bride for' : 'A husband for'} {child.short}</legend>
+            <div className="secret-choices roster">
+              {grown && (
+                <label className={`secret-choice ${partner === '' ? 'is-on' : ''}`}>
+                  <input type="radio" name="match" checked={partner === ''} onChange={() => setPartner('')} />
+                  <span>
+                    <GIcon name="propose" size={14} /> A match from the provinces, found by a matchmaker <span className="chip chip--good">certain</span>
+                  </span>
+                </label>
+              )}
+              {roster.map((o) => {
+                const c = ch(s, o);
+                const keeper = matchKeeper(s, o);
+                return (
+                  <label key={o} className={`secret-choice ${partner === o ? 'is-on' : ''}`}>
+                    <input type="radio" name="match" checked={partner === o} onChange={() => setPartner(o)} />
+                    <span>
+                      <strong>{nm(s, o)}</strong> <span className="muted">{c.age} · House {c.house}{keeper !== o ? ` · answer: ${first(s, keeper)}` : ''}</span>{' '}
+                      {suitorsOf(s, o).length > 0 && <span className="chip chip--danger">courted by {suitorsOf(s, o).map((x) => first(s, x)).join(', ')}</span>}{' '}
+                      <span className="chip">{betrothOdds(s, P, target, o, settle)}%</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {roster.length === 0 && <p className="muted small">No one you have seen at court is a match for {child.short} yet.</p>}
+          </fieldset>
+          {partner && (
+            <label className="field">
+              <span>Crowns to settle on the match, paid only if they agree ({me.gold} in your purse)</span>
+              <input id="deed-dowry" type="range" min={0} max={Math.min(100, me.gold - (me.gold % 5))} step={5} value={settle} onChange={(e) => setSettle(Number(e.target.value))} />
+              <span className="num">{settle}</span>
+            </label>
+          )}
+        </>
+      );
+      break;
+    }
     case 'whisper': {
       // A plot you were sworn into can be told only to those it is aimed at: a warning.
       const sworn = (k: (typeof secrets)[number]) => (target ? !!warnable(s, P, target, k.sec) : !!betrayable(s, P, k.sec) && s.plots[k.sec.plotId!]?.owner !== P);
@@ -1092,6 +1146,21 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
         lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
       };
+    case 'betroth': {
+      const C = ch(s, it.target);
+      if (!it.partner) return { lines: [`A matchmaker finds ${C.short} a ${C.gender === 'm' ? 'wife' : 'husband'} of good family from the provinces. No house at court is bound by it.`] };
+      const keeper = matchKeeper(s, it.partner);
+      const both = marriageable(s, it.target) && marriageable(s, it.partner);
+      return {
+        pct: betrothOdds(s, P, it.target, it.partner, it.dowry ?? 0),
+        lines: [
+          `The answer is ${keeper === it.partner ? `${first(s, it.partner)}’s own` : `${nm(s, keeper)}’s`}: their regard for you counts, and your standing against theirs.${it.dowry ? ' So does what you settle on the match.' : ''}`,
+          both ? 'Both are grown: if they agree, the wedding is at once.' : 'One of them is young: they will be promised, and wed when both are grown. Until then neither may be matched elsewhere.',
+          'A match binds the two houses: they will think better of you, and you of them.',
+          ...(suitorsOf(s, it.partner).length ? [`Courted already by ${suitorsOf(s, it.partner).map((x) => first(s, x)).join(' and ')}: each rival makes it harder.`] : []),
+        ],
+      };
+    }
     case 'acknowledge': {
       const T = ch(s, it.target);
       const deceived = T.parents?.find((p) => s.chars[p]?.gender === 'm');

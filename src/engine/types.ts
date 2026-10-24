@@ -92,8 +92,10 @@ export interface Character {
   statusTurn?: number;
   /** The man whose household she lives in as his acknowledged mistress. */
   mistressOf?: CharId;
-  /** Men she has turned away, and the month she did. */
+  /** Men she has turned away, and the month she did. For a match, keyed by the child refused. */
   refused?: Record<CharId, number>;
+  /** Promised in marriage: they wed when both are grown. */
+  betrothed?: CharId;
   /** A child she is carrying: whose, and the month it is due. */
   expecting?: { father: CharId; due: number };
   /** The true father, when it is not the husband (or there is none): a secret, though the father knows. */
