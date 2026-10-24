@@ -9,7 +9,24 @@ import { MOURNING, akin, widowedFor } from './family';
 import { affairSpy } from './spies';
 import { chance, clamp, roll } from './rng';
 import { first, nm } from './text';
-import { FAITHLESS_FADES, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rel } from './world';
+import {
+  FAITHLESS_FADES,
+  addMod,
+  adjustTrust,
+  ch,
+  dateLabel,
+  gone,
+  hearOf,
+  incomeOf,
+  isChild,
+  isFree,
+  isServant,
+  learn,
+  livingSpouse,
+  log,
+  opinion,
+  rel,
+} from './world';
 import type { CharId, GameState, Secret } from './types';
 
 type Result = { ok: boolean; text: string; tone: 'good' | 'bad' | 'neutral' | 'dire' };
@@ -35,15 +52,31 @@ export function seduceProblem(s: GameState, actor: CharId, target: CharId): stri
 }
 
 /** Will she? Her regard for him, his charm, her honour, and how she feels about her husband. */
-export function seduceOdds(s: GameState, actor: CharId, target: CharId): number {
-  return clamp(Math.round(seduceParts(s, actor, target).reduce((sum, p) => sum + p.value, 8)), 3, 85);
+export function seduceOdds(s: GameState, actor: CharId, target: CharId, gift = 0): number {
+  return clamp(Math.round(seduceParts(s, actor, target, gift).reduce((sum, p) => sum + p.value, 8)), 3, 85);
+}
+
+/** What she has to live on: what is in her purse, and half a year of whatever comes in. */
+export function meansOf(s: GameState, id: CharId): number {
+  return ch(s, id).gold + incomeOf(s, id) * 6;
+}
+
+/** How she stands for money, as a suitor would judge it. */
+export function meansWord(s: GameState, id: CharId): 'in want' | 'getting by' | 'comfortable' | 'rich' {
+  const m = meansOf(s, id);
+  return m < 20 ? 'in want' : m < 50 ? 'getting by' : m < 150 ? 'comfortable' : 'rich';
 }
 
 /** What the odds are made of, for anyone weighing them. */
-export function seduceParts(s: GameState, actor: CharId, target: CharId): { label: string; value: number }[] {
+export function seduceParts(s: GameState, actor: CharId, target: CharId, gift = 0): { label: string; value: number }[] {
   const A = ch(s, actor);
   const T = ch(s, target);
   const husband = livingSpouse(s, target);
+  // A woman alone with little to live on looks kindly on a man who could keep her; one who is rich needs no one.
+  const means = meansOf(s, target);
+  const want = husband ? 0 : clamp((50 - means) / 50, 0, 1);
+  const purse = clamp(A.gold / 80, 0, 1);
+  const giftWorth = Math.min(25, gift * (0.15 + want * 0.35) * (0.6 + T.traits.greed / 100));
   const love = husband ? opinion(s, target, husband) : 0;
   // Honour is chiefly a wife's vow. A widow or a maid has none to break, and weighs it half as much.
   const widowed = widowedFor(s, target);
@@ -52,6 +85,9 @@ export function seduceParts(s: GameState, actor: CharId, target: CharId): { labe
     { label: 'Your charm', value: A.traits.charm * 0.3 },
     husband ? { label: 'Her honour', value: -T.traits.honor * 0.3 } : { label: 'Her honour (no vow to break)', value: -T.traits.honor * 0.15 },
     { label: 'A lonely widow', value: widowed !== undefined && widowed >= MOURNING / 2 ? 6 : 0 },
+    { label: 'She is in want, and you are not', value: want * purse * 15 },
+    { label: 'She is rich, and needs no one', value: !husband && means >= 150 ? -6 : 0 },
+    { label: `${gift} crowns settled on her`, value: giftWorth },
     husband
       ? { label: love >= 0 ? `Her love for ${first(s, husband)}` : `Her coldness to ${first(s, husband)}`, value: -Math.max(0, love) * 0.3 + Math.max(0, -love) * 0.35 }
       : { label: 'No husband to betray', value: 8 },
@@ -89,16 +125,21 @@ export function becomeLovers(s: GameState, woman: CharId, man: CharId, evidence 
   return sec;
 }
 
-export function seduce(s: GameState, actor: CharId, target: CharId): Result {
+export function seduce(s: GameState, actor: CharId, target: CharId, gift = 0): Result {
   const T = ch(s, target);
   const husband = livingSpouse(s, target);
-  if (chance(s, seduceOdds(s, actor, target))) {
+  if (chance(s, seduceOdds(s, actor, target, gift))) {
     becomeLovers(s, target, actor);
+    // What he promised, he pays.
+    if (gift > 0) {
+      ch(s, actor).gold -= gift;
+      T.gold += gift;
+    }
     if (actor === s.player) hearOf(s, target, 4);
     log(s, `${nm(s, target)} has become ${actor === s.player ? 'your' : `${first(s, actor)}'s`} lover.`, [actor, target], 'secret', [actor, target]);
     return {
       ok: true,
-      text: `${first(s, target)} is yours.${husband ? ` She will tell you what ${first(s, husband)} says at home.` : ''}`,
+      text: `${first(s, target)} is yours.${gift > 0 ? ` You settled ${gift} crowns on her.` : ''}${husband ? ` She will tell you what ${first(s, husband)} says at home.` : ''}`,
       tone: 'good',
     };
   }

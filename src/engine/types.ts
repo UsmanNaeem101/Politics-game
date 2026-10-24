@@ -90,6 +90,8 @@ export interface Character {
   traits: Traits;
   status: Status;
   statusTurn?: number;
+  /** The true father, when it is not the husband (or there is none): a secret, though the father knows. */
+  sire?: CharId;
   /** The month she last dined out at her husband's bidding. */
   dined?: number;
   /** Names this person has gone by: a maiden name, a knight's before he was a lord. */

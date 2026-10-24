@@ -125,7 +125,7 @@ export type Intent =
   | { type: 'sweep' }
   | { type: 'propose'; target?: CharId }
   | { type: 'plead'; target: CharId }
-  | { type: 'seduce'; target: CharId }
+  | { type: 'seduce'; target: CharId; gift?: number }
   | { type: 'track'; target: CharId }
   | { type: 'night-kill'; target: CharId }
   | { type: 'dine'; target: CharId };
@@ -378,6 +378,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return matchProblem(s, actor, it.target);
     }
     case 'seduce':
+      if ((it.gift ?? 0) < 0 || (it.gift ?? 0) > a.gold) return 'You do not have the gold.';
       return seduceProblem(s, actor, it.target);
     case 'track':
       return tailProblem(s, actor, it.target);
@@ -561,7 +562,7 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
     case 'plead':
       return plead(s, actor, it.target);
     case 'seduce':
-      return seduce(s, actor, it.target);
+      return seduce(s, actor, it.target, it.gift ?? 0);
     case 'track': {
       setTail(s, actor, it.target);
       return { ok: true, text: `Your man will keep ${first(s, it.target)} in sight until the month turns.`, tone: 'neutral' };

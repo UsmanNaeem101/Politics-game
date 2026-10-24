@@ -207,6 +207,7 @@ export function Dossier() {
         <div className="dossier-id">
           <h2 className="display-sm">{nm(s, id)}</h2>
           {lvl >= 1 && c.formerly?.length ? <p className="muted small">Formerly {c.formerly.join(', then ')}</p> : null}
+          {c.sire === P && <p className="small">Your natural {c.gender === 'm' ? 'son' : 'daughter'}, though {c.gender === 'm' ? 'he bears' : 'she bears'} {c.house}'s name.</p>}
           {lvl >= 2 && s.courtships?.[id] && (
             <p className="small">
               <GIcon name="propose" size={13} />{' '}

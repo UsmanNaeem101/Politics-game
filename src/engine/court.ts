@@ -110,8 +110,8 @@ export function succeedHouse(s: GameState, id: CharId): void {
 /** Lands pass by blood unless the dead man was attainted for treason. */
 function passOnLands(s: GameState, id: CharId, attainted: boolean): void {
   const c = ch(s, id);
-  // Children inherit before brothers.
-  const kids = (c.children ?? []).filter((k) => isAlive(s, k));
+  // Children inherit before brothers; a child he fathered out of wedlock does not.
+  const kids = (c.children ?? []).filter((k) => isAlive(s, k) && !!ch(s, k).parents?.includes(id));
   const heirs = kids.length ? kids : c.siblings.filter((b) => isAlive(s, b));
   const held = Object.values(s.lands).filter((l) => l.holder === id);
   let i = 0;

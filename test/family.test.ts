@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMING_OF_AGE,
+  credence,
+  becomeLovers,
   addMod,
   affairSpy,
   bearChild,
@@ -223,5 +225,26 @@ describe('a marriage mends', () => {
       perform(s, P, { type: 'converse', target: wife });
     }
     expect(s.relations[wife][P].mods.some((m) => m.key === 'cold')).toBe(false);
+  });
+});
+
+describe('children out of wedlock', () => {
+  it('a widow’s lover may father her child: a secret, and the father is told', () => {
+    const s = generateCourt(13);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    s.chars[wife].age = 25;
+    becomeLovers(s, wife, s.player);
+    const before = s.chars[wife].children?.length ?? 0;
+    for (let i = 0; i < 600 && (s.chars[wife].children?.length ?? 0) === before; i++) births(s);
+    const child = s.chars[s.chars[wife].children!.at(-1)!];
+    expect(child.sire).toBe(s.player);
+    expect(child.parents).toEqual([wife]);
+    expect(child.householdId).toBe(s.chars[wife].householdId);
+    expect(s.chars[s.player].children).toContain(child.id);
+    expect(s.known[child.id]).toBe(4);
+    const sec = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.text.includes('out of wedlock'))!;
+    expect(credence(s, s.player, sec.id)).toBe(100);
+    expect(s.events.some((e) => Array.isArray(e.visibleTo) && e.visibleTo.includes(s.player) && /borne you/.test(e.text))).toBe(true);
   });
 });

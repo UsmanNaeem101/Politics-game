@@ -104,6 +104,11 @@ describe('courting a lover', () => {
     expect(livingSpouse(s, wife)).toBeUndefined();
     expect(s.chars[wife].spouse).toBe(husband);
     expect(seduceOdds(s, s.player, wife)).toBeGreaterThan(married);
+    // A widow with little to live on looks kindly on a man who can keep her, and on what he settles on her.
+    s.chars[wife].gold = 0;
+    s.chars[s.player].gold = 200;
+    expect(seduceOdds(s, s.player, wife, 50)).toBeGreaterThan(seduceOdds(s, s.player, wife, 0));
+    expect(seduceParts(s, s.player, wife).some((p) => /in want/.test(p.label))).toBe(true);
     // Her honour still counts, but half as much: she has no vow to break.
     const honour = seduceParts(s, s.player, wife).find((p) => p.label.startsWith('Her honour'));
     if (honour) expect(honour.label).toMatch(/no vow/);

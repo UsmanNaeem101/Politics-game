@@ -8,6 +8,7 @@ import { succeedHouse } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { makeSecret } from './secrets';
 import { affairSpy } from './spies';
+import { loversOf } from './love';
 import { first, names, nm } from './text';
 import { acquaintance, addMod, adjustTrust, ch, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
@@ -121,15 +122,22 @@ export function births(s: GameState): void {
   const living = s.order.filter((id) => !gone(s, id)).length;
   const odds = 1.6 * clamp((85 - living) / 25, 0.15, 1);
   for (const w of Object.values(s.chars)) {
-    if (w.gender !== 'f' || w.status !== 'free' || !w.spouse || w.age < 17 || w.age > 42 || isServant(s, w.id) || isChild(s, w.id)) continue;
-    const h = s.chars[w.spouse];
-    if (!h || gone(s, h.id) || h.spouse !== w.id || (w.children?.length ?? 0) >= 6 || !chance(s, odds)) continue;
+    if (w.gender !== 'f' || w.status !== 'free' || w.age < 17 || w.age > 42 || isServant(s, w.id) || isChild(s, w.id) || (w.children?.length ?? 0) >= 6) continue;
+    const h = w.spouse ? s.chars[w.spouse] : undefined;
+    if (!h || gone(s, h.id) || h.spouse !== w.id) {
+      // No husband, but a lover: now and then, a child out of wedlock.
+      const lover = loversOf(s, w.id).find((l) => isFree(s, l) && ch(s, l).gender === 'm');
+      if (lover && chance(s, odds * 0.6)) bastard(s, w.id, lover);
+      continue;
+    }
+    if (!chance(s, odds)) continue;
     // A lover's child, now and then, and the mother will know it.
     const affair = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(w.id) && x.victims.includes(h.id));
     const lover = affair?.guilty.find((g) => g !== w.id && isFree(s, g));
     const sire = lover && chance(s, 35) ? lover : h.id;
     const child = bearChild(s, w.id, h.id, 0, sire);
     if (sire !== h.id) {
+      child.sire = sire;
       const sec = makeSecret(s, {
         kind: 'affair',
         guilty: [w.id, sire],
@@ -141,12 +149,41 @@ export function births(s: GameState): void {
       });
       learn(s, w.id, sec.id, 100, 'self');
       learn(s, sire, sec.id, 60, w.id);
+      if (sire === s.player) {
+        hearOf(s, child.id, 4);
+        log(s, `${first(s, w.id)} sent word, in secret: the child is yours, not her husband's.`, [sire], 'secret', [w.id, child.id]);
+      }
     }
     log(s, `${nm(s, w.id)} was delivered of a ${child.gender === 'm' ? 'son' : 'daughter'}, ${child.short}.`, 'all', 'good', [w.id, h.id, child.id]);
     if (h.id === s.player || s.chars[s.player]?.householdId === child.householdId) hearOf(s, child.id, 4);
     else if (acquaintance(s, w.id) >= 2 || acquaintance(s, h.id) >= 2) hearOf(s, child.id, 1);
   }
   for (const c of Object.values(s.chars)) if (c.rank === 'child' && c.status === 'free' && c.age >= COMING_OF_AGE) comeOfAge(s, c);
+}
+
+/** A child out of wedlock: born into the mother's house, her lover's by blood, and a secret. */
+export function bastard(s: GameState, mother: CharId, father: CharId): Character {
+  const child = bearChild(s, mother, undefined, 0, father);
+  child.sire = father;
+  (ch(s, father).children ??= []).push(child.id);
+  addMod(s, father, child.id, 'blood', child.gender === 'm' ? 'My natural son' : 'My natural daughter', 20, 0, true);
+  const sec = makeSecret(s, {
+    kind: 'affair',
+    guilty: [mother, father],
+    victims: [],
+    truth: true,
+    evidence: roll(s, 30, 50),
+    text: `${nm(s, child.id)}, born to ${nm(s, mother)} out of wedlock, is the child of ${nm(s, father)}.`,
+  });
+  learn(s, mother, sec.id, 100, 'self');
+  learn(s, father, sec.id, 100, mother);
+  const word = child.gender === 'm' ? 'son' : 'daughter';
+  log(s, `${nm(s, mother)} was delivered of a ${word}, ${child.short}, and named no father. The court counts the months.`, 'all', 'neutral', [mother, child.id]);
+  if (father === s.player) {
+    hearOf(s, child.id, 4);
+    log(s, `${first(s, mother)} has borne you a ${word}, ${child.short}. The child bears her house's name, and is yours.`, [father], 'secret', [mother, child.id]);
+  } else if (acquaintance(s, mother) >= 2) hearOf(s, child.id, 1);
+  return child;
 }
 
 // ── Marriage ────────────────────────────────────────────────────────────────

@@ -2,6 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
   TAIL_COST,
+  incomeOf,
+  meansWord,
   dineOdds,
   seduceParts,
   suitorsOf,
@@ -104,6 +106,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const [secretId, setSecretId] = useState<string>(spec.secretId ?? '');
   const [plotId, setPlotId] = useState<string>(spec.plotId ?? '');
   const [amount, setAmount] = useState<number>(Math.min(25, me.gold));
+  const [settle, setSettle] = useState<number>(0);
   const [focus, setFocus] = useState<SpyFocus>('motive');
   const [fabKind, setFabKind] = useState<FabricateKind>('regicide');
   const [guilty, setGuilty] = useState<CharId[]>(spec.target ? [spec.target] : []);
@@ -222,7 +225,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'plead':
         return target ? { type, target } : null;
       case 'seduce':
-        return target ? { type, target } : null;
+        return target ? { type, target, gift: settle } : null;
       case 'track':
         return target ? { type, target } : null;
       case 'night-kill':
@@ -293,6 +296,15 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
             <span className="num">{amount}</span>
           </label>
         </>
+      );
+      break;
+    case 'seduce':
+      fields = (
+        <label className="field">
+          <span>Crowns to settle on her, paid only if she says yes ({me.gold} in your purse)</span>
+          <input id="deed-settle" type="range" min={0} max={Math.min(100, me.gold - (me.gold % 5))} step={5} value={settle} onChange={(e) => setSettle(Number(e.target.value))} />
+          <span className="num">{settle}</span>
+        </label>
       );
       break;
     case 'whisper': {
@@ -1006,12 +1018,16 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     case 'seduce': {
       const T = ch(s, it.target);
       const husband = livingSpouse(s, it.target);
+      const gift = it.gift ?? 0;
       return {
-        pct: seduceOdds(s, P, it.target),
+        pct: seduceOdds(s, P, it.target, gift),
         lines: [
-          seduceParts(s, P, it.target)
+          seduceParts(s, P, it.target, gift)
             .map((p) => `${p.label} ${p.value > 0 ? '+' : ''}${p.value}`)
             .join(' · '),
+          `She is ${meansWord(s, it.target)}: ${T.gold} crowns${incomeOf(s, it.target) ? `, +${incomeOf(s, it.target)} a month` : ', and nothing coming in'}. ${
+            husband ? 'A wife has her husband’s purse.' : 'Money settled on her counts for more the less she has, and with a greedy woman.'
+          }`,
           'Her regard for you counts most: keep company with her, or give gifts, first.',
           husband
             ? `A wife who loves ${first(s, husband)} will not stray; one who does not may. As your lover she will tell you what he says at home.`

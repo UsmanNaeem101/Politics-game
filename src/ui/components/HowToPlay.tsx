@@ -144,7 +144,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               your own business, and one who does not care for you may keep things back. Other lords send their wives to dine with yours.
             </p>
             <p>
-              Couples have children. They grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
+              Couples have children, and lovers may too: a widow's or a maid's child by her lover is born into her house, and the father is
+              told. Children grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
               schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
               mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole
               court hears of it, and she takes two months to answer: time enough to make your own offer. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
@@ -154,7 +155,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <h3>Love, and following people</h3>
             <p>
               You may <strong>woo any woman as your lover</strong> from her page. That is not marriage: for her hand, use <strong>Ask for her hand</strong>. Her regard for you, your charm and her honour decide it (a widow or a maid has no vow to break, and
-              weighs her honour half as much), and a
+              weighs her honour half as much). A woman alone with little to live on looks kindly on a man who can keep her, and you can
+              settle crowns on her (paid only if she says yes). A
               wife who loves her husband will not stray. A married lover tells you what her husband says at home. Turned away, she may tell
               him. Other men court other men's wives, yours among them.
             </p>
