@@ -59,6 +59,7 @@ import {
   sellPrice,
   spyChance,
   strikeChance,
+  forgeryDetection,
   warnCredence,
   warnFound,
   warnable,
@@ -928,7 +929,16 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         };
       }
       const c = hearCredence(s, it.target, P, sec);
-      return { pct: c, lines: ['How far they will believe you.'] };
+      const grave = sec.treason || sec.kind === 'murder';
+      const forgery = !sec.truth && sec.fabricatedBy === P;
+      const lines = ['How far they will believe you.'];
+      if (grave && it.target === s.king) {
+        lines.push(sec.inquiry !== undefined ? 'His people are already asking questions about it.' : 'If he half believes it (25 or more), he will set his people asking questions.');
+        if (forgery) lines.push(`Each time they look, the chance they see through your letters and trace them to you: ${forgeryDetection(s, sec)}%.`);
+      } else if (grave && s.king) {
+        lines.push('A tale this grave may be carried to the King, and he may have it looked into.');
+      }
+      return { pct: c, lines };
     }
     case 'fabricate':
       return { lines: [`Your forgery will carry proof of about ${fabricateEvidence(s, P)}–${fabricateEvidence(s, P) + 15}. Working on a ruin scheme that uses it makes it better.`] };

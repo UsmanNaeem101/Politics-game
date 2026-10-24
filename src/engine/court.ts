@@ -528,6 +528,7 @@ export function pursueInquiries(s: GameState): void {
     if (sec.inquiry === undefined) continue;
     const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K && !alreadyJudged(s, sec, g));
     if (!K || !suspects.length || s.turn - sec.inquiry > 6) {
+      if (K && suspects.length && K !== s.player) log(s, `The King’s people have stopped asking questions about ${names(s, suspects)}.`, 'all', 'court', suspects);
       delete sec.inquiry;
       continue;
     }
@@ -535,13 +536,23 @@ export function pursueInquiries(s: GameState): void {
     const digger = spy && isFree(s, spy) && !sec.guilty.includes(spy) ? spy : undefined;
     if (!chance(s, 15 + (digger ? ch(s, digger).traits.cunning * 0.3 : 0))) continue;
     if (!sec.truth) {
-      // There is nothing to find, and finding nothing cools the King.
-      const k = s.knowledge[K]?.[sec.id];
-      if (k && !k.lie) k.credence = Math.max(0, k.credence - 10);
-      continue;
+      // What there is to find are the forged letters. A sharp eye sees through them, and follows the trail home.
+      if (chance(s, forgeryDetection(s, sec))) {
+        exposeForgery(s, sec, sec.fabricatedBy ?? K);
+        delete sec.inquiry;
+        continue;
+      }
+      if (!sec.fabricatedBy) {
+        // A tale with nothing behind it: finding nothing cools the King.
+        const k = s.knowledge[K]?.[sec.id];
+        if (k && !k.lie) k.credence = Math.max(0, k.credence - 10);
+        continue;
+      }
+      learn(s, K, sec.id, credence(s, K, sec.id) + roll(s, 6, 12) + Math.round(sec.evidence * 0.05), digger ?? 'spies');
+    } else {
+      sec.evidence = clamp(sec.evidence + roll(s, 5, 12), 0, 95);
+      learn(s, K, sec.id, credence(s, K, sec.id) + roll(s, 10, 18), digger ?? 'spies');
     }
-    sec.evidence = clamp(sec.evidence + roll(s, 5, 12), 0, 95);
-    learn(s, K, sec.id, credence(s, K, sec.id) + roll(s, 10, 18), digger ?? 'spies');
     if (digger) learn(s, digger, sec.id, credence(s, K, sec.id), 'spies');
     log(s, `${digger ? nm(s, digger) : 'The King’s people'} found more: ${sec.text}`, digger ? [K, digger] : [K], 'secret', suspects);
     // A king who is the player judges for himself.

@@ -94,7 +94,10 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <h3>Secrets, belief and proof</h3>
             <p>
               Every secret has two numbers. <strong>Belief</strong> is how far someone credits it. <strong>Proof</strong> is how well it would stand up
-              before the King. Whisper what you know, or forge a lie and spread that instead.
+              before the King. Whisper what you know, or forge a lie and spread that instead. A tale of treason or murder does not stay where
+              you left it: loyal lords, men on the rise and friends of the victim carry it to the King, and he sets his people asking questions.
+              They may find your forged letters convincing, and the Guard comes for the accused; or they may see through them, and follow the
+              trail back to you.
             </p>
           </section>
           <section>

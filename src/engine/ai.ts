@@ -254,32 +254,42 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   for (const [sid, k] of Object.entries(myRow)) {
     const sec = s.secrets[sid];
     if (!sec || sec.guilty.includes(me) || !sec.guilty.some((g) => isAlive(s, g))) continue;
-    if (!k.lie && k.credence < 50) continue;
+    // A grave charge goes to the King half-believed: let him judge it. Anything else wants surer ground.
+    const grave = sec.treason || sec.kind === 'murder';
+    const sure = k.lie || k.credence >= 50;
+    if (!sure && !(grave && k.credence >= 35)) continue;
     if (sec.plotId && s.plots[sec.plotId]?.status !== 'active' && !capital(sec)) continue;
     if (k.lie && c.traits.honor >= 60) continue;
     const protects = sec.guilty.some((g) => c.spouse === g || (c.siblings.includes(g) && opinion(s, me, g) > 0) || desire(s, me, g, dctx) < -10);
     if (protects) continue;
     const want = Math.max(...sec.guilty.map((g) => desire(s, me, g, dctx)));
     const anyBiding = sec.guilty.some((g) => biding(s, me, g));
+    // The King hears of it from those loyal to him, and from friends of whoever it would harm.
+    const loyalty = king ? opinion(s, me, king) : 0;
+    const friendHarmed = sec.victims.some((v) => v !== king && opinion(s, me, v) >= 15);
+    // A plot on the King's own life: any man in his fealty tells him, unless he wants the crown himself.
+    const onKing = !!king && sec.victims.includes(king) && loyalty >= 10 && c.agenda.kind !== 'crown';
     for (const l of others) {
       if (sec.guilty.includes(l)) continue;
       // Once told is told: repeating a tale does not make it truer.
       if (knows(s, l, sid) || heardTale(l, sec.text)) continue;
       let u = 0;
-      if (sec.victims.includes(l) && !k.lie && !anyBiding) {
+      if (sure && sec.victims.includes(l) && !k.lie && !anyBiding) {
         if (opinion(s, me, l) >= 15 || c.agenda.kind === 'peace' || (l === king && c.agenda.kind === 'protect-king')) {
           u = 16 + opinion(s, me, l) * 0.3 + c.traits.honor * 0.15 + (c.agenda.kind === 'peace' ? 15 : 0);
         }
       }
-      if (l === king && sec.treason && (want >= 25 || c.agenda.kind === 'protect-king' || c.traits.honor >= 60)) {
-        let v = want * 0.3 + c.traits.honor * 0.1 + (100 - E.boldness) * 0.08;
+      if (l === king && grave && (want >= 25 || c.agenda.kind === 'protect-king' || c.traits.honor >= 60 || friendHarmed || onKing || c.agenda.kind === 'rise')) {
+        let v = want * 0.3 + c.traits.honor * 0.1 + (100 - E.boldness) * 0.08 + Math.max(0, loyalty) * 0.15 + (friendHarmed ? 8 : 0) + (onKing ? 8 : 0);
+        // A man on the rise wins the King's favour by bringing him a plot.
+        if (c.agenda.kind === 'rise') v += 8;
         if (c.agenda.kind === 'protect-king') v += 30;
         if (anyBiding) v -= 25;
         if (sec.guilty.some((g) => Object.values(s.plots).some((p) => p.owner === me && p.targets.includes(g) && delegated(s, p)))) v -= 30;
         u = Math.max(u, v);
       }
       const theirHate = Math.min(...sec.guilty.map((g) => opinion(s, l, g)));
-      if (theirHate <= -15 && want >= 30 && !anyBiding) {
+      if (sure && theirHate <= -15 && want >= 30 && !anyBiding) {
         u = Math.max(u, want * 0.25 - theirHate * 0.15 + (k.lie ? (100 - c.traits.honor) * 0.1 - 5 : 0));
       }
       if (u > 0) add({ type: 'whisper', target: l, secretId: sid }, u);

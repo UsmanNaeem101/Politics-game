@@ -90,6 +90,7 @@ import type {
   Plot,
   PlotId,
   PlotKind,
+  Secret,
   SecretId,
 } from './types';
 
@@ -786,12 +787,26 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
     addMod(s, target, actor, 'tale-teller', 'Spreads tales', -10, 0.5);
   }
   log(s, `${nm(s, actor)} drew ${nm(s, target)} aside ${place} and whispered: “${sec.text}”`, [actor, target], 'secret', [actor, target]);
+  const looked = target === s.king && kingLooksInto(s, sec, c);
   const verdict = c >= 65 ? 'believes every word' : c >= 45 ? 'is inclined to believe it' : c >= 25 ? 'is doubtful' : 'does not believe you';
   return {
     ok: c >= 45,
-    text: `${first(s, target)} ${verdict}${isNew ? '' : ' (it was not news to them)'}.`,
+    text: `${first(s, target)} ${verdict}${isNew ? '' : ' (it was not news to them)'}.${looked ? ` ${cap(he(s, target))} will have it looked into.` : ''}`,
     tone: c >= 45 ? 'good' : 'neutral',
   };
+}
+
+/**
+ * A grave tale brought to the King, and not idly dismissed: his people start asking questions. The court
+ * notices. Returns whether he did.
+ */
+function kingLooksInto(s: GameState, sec: Secret, c: number): boolean {
+  if (c < 25 || sec.inquiry !== undefined || s.king === s.player || !(sec.treason || sec.kind === 'murder')) return false;
+  const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== s.king && !alreadyJudged(s, sec, g));
+  if (!suspects.length) return false;
+  sec.inquiry = s.turn;
+  log(s, `Word goes round that the King’s people are asking questions about ${names(s, suspects)}.`, 'all', 'court', suspects);
+  return true;
 }
 
 /**

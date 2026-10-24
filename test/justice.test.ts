@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   alreadyJudged,
   addMod,
+  candidates,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -137,6 +138,65 @@ describe('hired blades', () => {
   });
 });
 
+describe('a forged tale of treason', () => {
+  const forge = (s: GameState, evidence = 60) =>
+    makeSecret(s, { kind: 'regicide', guilty: ['aldric'], victims: ['osric'], truth: false, fabricatedBy: 'anselm', evidence });
+  const tellsKing = (s: GameState, who: string, sid: string) =>
+    candidates(s, who).some((c) => c.intent.type === 'whisper' && c.intent.target === 'osric' && c.intent.secretId === sid);
+
+  it('goes to the King from a loyal man who only half believes it', () => {
+    const s = fresh();
+    const sec = forge(s);
+    learn(s, 'hugh', sec.id, 40, 'anselm');
+    expect(tellsKing(s, 'hugh', sec.id)).toBe(true);
+  });
+
+  it('goes to the King from a man on the rise, who would win his favour by it', () => {
+    const s = fresh();
+    const sec = forge(s);
+    s.chars.bertrand.agenda = { kind: 'rise', targets: [], summary: 'Rise.' };
+    learn(s, 'bertrand', sec.id, 40, 'anselm');
+    expect(tellsKing(s, 'bertrand', sec.id)).toBe(true);
+  });
+
+  it('sets the King’s people asking questions when he hears it, and the court knows', () => {
+    let opened = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const s = fresh(seed);
+      s.ap = 3;
+      const sec = forge(s);
+      learn(s, 'anselm', sec.id, 0, 'self', true);
+      perform(s, 'anselm', { type: 'whisper', target: 'osric', secretId: sec.id });
+      if (credence(s, 'osric', sec.id) < 25) continue;
+      expect(sec.inquiry).toBe(s.turn);
+      expect(s.events.some((e) => /asking questions about/.test(e.text))).toBe(true);
+      opened++;
+    }
+    expect(opened).toBeGreaterThan(0);
+  });
+
+  it('under inquiry, either convinces with its forged letters or is traced to the forger', () => {
+    let exposed = 0;
+    let believed = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = fresh(seed);
+      const sec = forge(s);
+      learn(s, 'osric', sec.id, 40, 'hugh');
+      sec.inquiry = s.turn;
+      for (let m = 0; m < 7 && sec.inquiry !== undefined; m++) {
+        pursueInquiries(s);
+        s.turn++;
+      }
+      if (Object.values(s.secrets).some((x) => x.kind === 'slander' && x.guilty[0] === 'anselm')) {
+        exposed++;
+        expect(credence(s, 'osric', sec.id)).toBeLessThanOrEqual(5);
+      } else if (credence(s, 'osric', sec.id) > 40) believed++;
+    }
+    expect(exposed).toBeGreaterThan(0);
+    expect(believed).toBeGreaterThan(0);
+  });
+});
+
 describe('a plot you were sworn into', () => {
   function sworn(sincere: boolean) {
     const s = fresh();
@@ -267,9 +327,10 @@ describe('a dismissed charge', () => {
     expect(s.secrets[sid].inquiry).toBeUndefined();
   });
 
-  it('digging into a lie finds nothing, and the King cools on it', () => {
+  it('digging into a tale with no forged letters behind it finds nothing, and the King cools on it', () => {
     const s = fresh();
     const sec = s.secrets['s-false-pact'];
+    delete sec.fabricatedBy;
     sec.inquiry = s.turn;
     learn(s, 'osric', sec.id, 60, 'anselm');
     for (let i = 0; i < 100; i++) pursueInquiries(s);
