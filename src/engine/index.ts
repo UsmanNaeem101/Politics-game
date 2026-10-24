@@ -9,6 +9,7 @@ export * from './audiences';
 export * from './objectives';
 export * from './turn';
 export * from './economy';
+export { heardFeeling, tableTalk, talkChance } from './talk';
 export { BUSINESSES, BUSINESS_KINDS, ESTATES, ESTATE_NAMES, MAX_BUSINESSES, type BusinessDef } from './content/businesses';
 export { seasonalFeast } from './tensions';
 export { candidates, desire, npcTurn } from './ai';

@@ -355,6 +355,8 @@ export interface Insight {
   agendas: CharId[];
   /** `${plotId}:${memberId}` pairs whose sincerity this observer has uncovered. */
   sincerity: string[];
+  /** `${a}>${b}`: this observer has heard how a feels about b. */
+  feelings?: string[];
 }
 
 export type Verdict = 'triumph' | 'victory' | 'survival' | 'defeat' | 'death';

@@ -36,6 +36,7 @@ import { chance, clamp, rand, roll } from './rng';
 import { hearCredence, kindLabel, makeSecret } from './secrets';
 import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
+import { tableTalk } from './talk';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
@@ -512,6 +513,9 @@ function converse(s: GameState, actor: CharId, target: CharId): Outcome {
   if (isServant(s, target)) {
     const told = servantGossip(s, actor, target);
     if (told) extra += ` ${told}`;
+  } else {
+    const talk = tableTalk(s, actor, target);
+    if (talk) extra += ` ${talk}`;
   }
 
   let read = '';

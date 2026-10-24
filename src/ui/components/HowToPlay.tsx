@@ -43,6 +43,12 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               Servants hear what is said behind closed doors, and a servant who likes you may let it slip. Your wife makes friends among the other
               ladies; that opens doors, and sometimes she comes home with gossip. Set spies on a household to learn who lives there.
             </p>
+            <p>
+              <strong>Keeping company</strong> is how most things are learned. The warmer someone is to you, the more they trust you and the
+              looser their tongue, the more they let fall: gossip, a warning of a knife meant for you, a friend to meet, whom they love and
+              whom they loathe, what they want. A cunning man gives little away; a hot-headed one gives too much. They never betray their own
+              secrets, nor their family's, but an ambition they are hiding may slip out in a careless word.
+            </p>
           </section>
           <section>
             <h3>Money and standing</h3>

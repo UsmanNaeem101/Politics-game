@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
+  heardFeeling,
   OFFICE_NAMES,
   acquaintance,
   ch,
@@ -315,8 +316,11 @@ function buildGraph(s: GameState, layers: Layers, truth: boolean): { nodes: Node
         if (seen.has(key)) continue;
         const mine = a === P || b === P;
         const pub = visibleMods(s, P, a, b);
-        if (!truth && !mine && !pub.length) continue;
-        const o = truth || mine ? opinion(s, a, b) : pub.reduce((m, x) => m + x.value, 0);
+        // Feelings you have heard spoken of in conversation.
+        const heardAB = heardFeeling(s, P, a, b);
+        const heardBA = heardFeeling(s, P, b, a);
+        if (!truth && !mine && !pub.length && !heardAB && !heardBA) continue;
+        const o = truth || mine || heardAB ? opinion(s, a, b) : heardBA ? opinion(s, b, a) : pub.reduce((m, x) => m + x.value, 0);
         if (Math.abs(o) < 30 || ch(s, a).spouse === b || ch(s, a).householdId === ch(s, b).householdId) continue;
         seen.add(key);
         edges.push({

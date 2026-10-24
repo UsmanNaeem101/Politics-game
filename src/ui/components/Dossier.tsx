@@ -1,4 +1,5 @@
 import {
+  heardFeeling,
   BUSINESSES,
   businessesOf,
   credence,
@@ -137,6 +138,8 @@ export function Dossier() {
   const myView = isMe ? null : opinion(s, P, id);
   const myMods = isMe ? [] : visibleMods(s, P, P, id);
   const theirMods = isMe || lvl < 3 ? [] : visibleMods(s, P, id, P);
+  // Feelings this person has spoken of in your hearing.
+  const spoken = isMe ? [] : s.order.filter((o) => heardFeeling(s, P, id, o)).map((o) => ({ o, v: opinion(s, id, o) })).filter((x) => Math.abs(x.v) >= 15);
   const known = secretsAbout(s, P, id);
   const plots = plotViews(s, P).filter((v) => v.plot.owner === id || v.plot.targets.includes(id) || (v.plot.members.some((m) => m.id === id) && v.role !== 'known'));
   const deeds = deedsFor(s, id);
@@ -197,6 +200,23 @@ export function Dossier() {
               <GIcon name="motive" size={12} /> True design
             </dt>
             <dd className={motive ? 'reveal' : 'muted'}>{motive ? c.agenda.summary : 'Hidden. Set spies on them (motive) to learn it.'}</dd>
+          </>
+        )}
+        {spoken.length > 0 && (
+          <>
+            <dt>
+              <GIcon name="converse" size={12} /> Speaks of
+            </dt>
+            <dd className="links">
+              {spoken.map(({ o, v }) => (
+                <span key={o} className={v > 0 ? 'good' : 'bad'}>
+                  {v > 0 ? 'Loves' : 'Hates'}{' '}
+                  <button className="link" onClick={() => select(o)}>
+                    {nm(s, o)}
+                  </button>
+                </span>
+              ))}
+            </dd>
           </>
         )}
         {theirView !== null && (
