@@ -140,6 +140,8 @@ export function houseTier(s: GameState, h: House): House['rank'] {
   if (h.rank === 'royal' || h.rank === 'church') return h.rank;
   const head = h.head ? s.chars[h.head] : undefined;
   if (!head || gone(s, head.id)) return h.rank;
+  // A house kept by a widow or a boy not yet grown keeps its lands and its trade, not its place among the lords.
+  if (head.gender === 'f' || head.rank === 'child') return 'lesser';
   const off = officeOf(s, head.id);
   const great = off === 'marshal' || off === 'chancellor' || off === 'spymaster' ? 20 : 0;
   return head.prestige + great >= 45 ? 'great' : 'lesser';

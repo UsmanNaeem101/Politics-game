@@ -33,7 +33,8 @@ before changing anything substantial; it is the plan we are building toward.
   "Have them watched". `secretMatters()` in `secrets.ts` decides what is old news (the dead, finished plots);
   deed lists and validation use it. A plot member can betray it to the King (`betrayable()` in `plots.ts`,
   `turnInformer` in `actions.ts`).
-- Houses rise and fall: `houseTier()` in `world.ts` places them on the map by the head's prestige and office.
+- Houses rise and fall: `houseTier()` in `world.ts` places them on the map by the head's prestige and office; a house
+  kept by a woman or a minor stands among the lesser.
 - Families: `family.ts` (children with rank `child`, births, coming of age, weddings, NPC matchmaking, outsiders from the
   provinces, the player's proposals). An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
 - Justice: a charge once judged is recorded by crime, not by letter (`GameState.judged`, keyed by `chargeKey()` in

@@ -190,4 +190,14 @@ describe('houses rise and fall', () => {
     s.chars[s.player].prestige = 33;
     expect(houseTier(s, h)).toBe('great');
   });
+
+  it('a house kept by a widow stands among the lesser, whatever its wealth', () => {
+    const s = generateCourt(5);
+    const great = Object.values(s.houses).find((h) => h.rank === 'great' && h.head && s.chars[h.head].spouse)!;
+    expect(houseTier(s, great)).toBe('great');
+    const widow = s.chars[great.head!].spouse!;
+    great.head = widow;
+    s.chars[widow].prestige = 80;
+    expect(houseTier(s, great)).toBe('lesser');
+  });
 });
