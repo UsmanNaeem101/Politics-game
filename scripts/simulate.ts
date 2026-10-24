@@ -1,7 +1,7 @@
 // Run a generated court with the player on autopilot (the same AI as everyone
 // else) and print what really happened:
 //   npx vite-node scripts/simulate.ts -- [seed] [weeks] [--quiet]
-import { evaluate, weekLabel } from '../src/engine';
+import { evaluate, dateLabel } from '../src/engine';
 import { autopilotSeason } from '../test/helpers';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
@@ -15,7 +15,7 @@ if (!quiet) {
   for (const ev of s.events) {
     if (ev.turn !== turn) {
       turn = ev.turn;
-      console.log(`\n── ${weekLabel(turn)} ──`);
+      console.log(`\n── ${dateLabel(turn)} ──`);
     }
     const vis = ev.visibleTo === 'all' ? 'ALL' : ev.visibleTo.map((v) => s.chars[v]?.short ?? v).join(',') || 'nobody';
     console.log(`  [${ev.tone}] (${vis}) ${ev.text}`);

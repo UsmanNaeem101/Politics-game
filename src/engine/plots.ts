@@ -5,7 +5,23 @@ import { kill, imprison } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { deedDone, describe, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
-import { OFFICE_NAMES, addMod, ch, credence, hasPerk, isAlive, isFree, isRemoved, knows, learn, log, officeOf, opinion, uid } from './world';
+import {
+  addMod,
+  ch,
+  credence,
+  dateLabel,
+  hasPerk,
+  isAlive,
+  isFree,
+  isRemoved,
+  knows,
+  learn,
+  log,
+  OFFICE_NAMES,
+  officeOf,
+  opinion,
+  uid,
+} from './world';
 import type { CharId, GameState, Offer, Plot, PlotCondition, PlotKind, Secret, SecretId } from './types';
 
 const ADJ = ['Silent', 'Red', 'Long', 'Crooked', 'Hollow', 'Winter', 'Last', 'Gilded', 'Black', 'Quiet'];
@@ -210,7 +226,7 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
       'a fall from the battlements that no one saw',
       'a pillow, in the small hours',
     ]);
-    kill(s, target, `Murdered, week ${s.turn} — ${how}`, false);
+    kill(s, target, `Murdered, ${dateLabel(s.turn)} — ${how}`, false);
     deedDone(s, sec);
     log(s, `You struck. ${nm(s, target)} is dead by ${how}.`, insiders, 'secret', insiders);
     if (traced) {
@@ -269,7 +285,7 @@ function seize(s: GameState, killer: CharId, secretId: SecretId, victimWasKing: 
 
 // ── Secrecy ─────────────────────────────────────────────────────────────────
 
-/** Every week, crowded or sloppy plots leak. */
+/** Every month, crowded or sloppy plots leak. */
 export function leakPlots(s: GameState): void {
   for (const p of Object.values(s.plots)) {
     if (p.status !== 'active' || !isFree(s, p.owner)) continue;

@@ -1,4 +1,4 @@
-// The rhythm of a week: you act, the court acts in the night, the world turns.
+// The rhythm of a month: you act, the court acts in the night, the world turns.
 // The game is open-ended: it runs until the player dies, flees or is crowned.
 
 import { evolveAgendas, expireDirectives, npcTurn } from './ai';
@@ -10,18 +10,21 @@ import { leakPlots, spymasterHears } from './plots';
 import { deedDone } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
+import { runTails } from './tails';
 import { affairsAsSpies, births, matchmaking } from './family';
 import { seasonalFeast } from './tensions';
 import { chance, pick, shuffle } from './rng';
 import { first, his, nm, names } from './text';
 import {
-  WEEKS_PER_SEASON,
-  WEEKS_PER_YEAR,
+  MONTHS_PER_SEASON,
+  MONTHS_PER_YEAR,
   acquaintance,
   addMod,
   ch,
   credence,
+  dateLabel,
   decayMods,
+  gone,
   hearOf,
   houseTier,
   incomeOf,
@@ -101,7 +104,7 @@ export function repairSave(s: GameState): void {
   }
 }
 
-/** Can the player end the week right now? */
+/** Can the player end the month right now? */
 export function canEndWeek(s: GameState): string | null {
   if (s.phase !== 'playing') return 'The game is over.';
   if (s.audiences.length) return 'Someone is waiting on your answer.';
@@ -153,6 +156,7 @@ function worldTurns(s: GameState): void {
   pursueInquiries(s);
   runBusinesses(s);
   runSpies(s);
+  runTails(s);
   noteRisingHouses(s);
   if (s.interregnum && s.interregnum.since < s.turn) {
     holdWitan(s, s.witanVote);
@@ -170,29 +174,30 @@ function worldTurns(s: GameState): void {
 
 /** Old age takes people, kings included. */
 function mortality(s: GameState): void {
-  if (s.turn > 1 && (s.turn - 1) % WEEKS_PER_YEAR === 0) {
+  if (s.turn > 1 && (s.turn - 1) % MONTHS_PER_YEAR === 0) {
     for (const c of Object.values(s.chars)) if (c.status === 'free' || c.status === 'imprisoned') c.age++;
   }
   for (const id of s.order) {
     const c = ch(s, id);
-    if (c.status === 'dead' || c.status === 'fled' || c.age < 55) continue;
-    const pct = ((c.age - 50) * (c.age - 50)) / 800;
+    // You will not die in your bed; only a blade, the axe or poison can end you.
+    if (c.status === 'dead' || c.status === 'fled' || c.age < 55 || id === s.player) continue;
+    const pct = ((c.age - 50) * (c.age - 50)) / 185;
     if (!chance(s, pct)) continue;
     const king = s.king === id;
-    kill(s, id, `Died of old age at ${c.age}, week ${s.turn}`, false);
+    kill(s, id, `Died of old age at ${c.age}, ${dateLabel(s.turn)}`, false);
     log(s, king ? `King ${c.short} died in ${his(s, id)} sleep. The throne is empty.` : `${nm(s, id)} died of old age.`, 'all', king ? 'dire' : 'neutral', [id]);
   }
 }
 
 /** New families come to court, so an open-ended game never runs dry. */
 function newcomers(s: GameState): void {
-  if (s.turn % WEEKS_PER_SEASON !== 0) return;
-  const nobles = s.order.filter((id) => isFree(s, id) && !isServant(s, id) && ch(s, id).rank !== 'clergy').length;
-  if (s.order.length >= 75) return;
+  if (s.turn % (MONTHS_PER_SEASON * 2) !== 0) return;
+  const nobles = s.order.filter((id) => isFree(s, id) && !isServant(s, id) && ch(s, id).rank !== 'clergy' && ch(s, id).rank !== 'child').length;
+  if (s.order.filter((id) => !gone(s, id)).length >= 75) return;
   if (nobles < 20 || chance(s, 40)) arriveHouse(s);
 }
 
-/** What the player notices, and what their wife brings home, as a new week begins. */
+/** What the player notices, and what their wife brings home, as a new month begins. */
 function dawn(s: GameState): void {
   const P = s.player;
   if (!isFree(s, P)) return;
@@ -202,7 +207,7 @@ function dawn(s: GameState): void {
     s.order.filter((id) => isFree(s, id) && acquaintance(s, id) === 1 && !isServant(s, id)),
   ).slice(0, 2);
   const marked = heard.filter((id) => hearOf(s, id, 2));
-  if (marked.length) log(s, `At court this week you put faces to names: ${names(s, marked)}.`, [P], 'neutral', []);
+  if (marked.length) log(s, `At court this month you put faces to names: ${names(s, marked)}.`, [P], 'neutral', []);
 
   // A wife's social rounds open doors.
   const wife = ch(s, P).spouse;

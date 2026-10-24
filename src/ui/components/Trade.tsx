@@ -57,7 +57,7 @@ export function TradeCard({ kind }: { kind: BusinessKind }) {
           {def.name} {def.illicit && <span className="chip chip--danger">racket</span>}
         </span>
         <span className="trade-nums">
-          <GIcon name="gold" size={13} /> {def.cost} to set up · <strong>+{def.income}</strong> a week
+          <GIcon name="gold" size={13} /> {def.cost} to set up · <strong>+{def.income}</strong> a month
         </span>
         <Effects values={def.standing} />
         {def.ifKnown && (
@@ -92,7 +92,7 @@ export function TradeLine({ b }: { b: Business }) {
     <span className="trade-line">
       <GIcon name={b.kind} size={22} />
       <span>
-        <strong>{def.name}</strong> <span className="muted">+{def.income} a week</span>
+        <strong>{def.name}</strong> <span className="muted">+{def.income} a month</span>
         <br />
         <small className="muted">{def.perkText}</small>
       </span>

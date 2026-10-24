@@ -1,4 +1,4 @@
-import { dawnEvents } from '../../engine';
+import { dateLabel, dawnEvents } from '../../engine';
 import { useGame } from '../context';
 
 export function DawnReport({ onClose }: { onClose: () => void }) {
@@ -12,14 +12,14 @@ export function DawnReport({ onClose }: { onClose: () => void }) {
       <div className="modal dawn" role="dialog" aria-modal="true" aria-labelledby="dawn-h">
         <header className="modal-head">
           <div>
-            <p className="eyebrow">While you slept</p>
+            <p className="eyebrow">While the month passed</p>
             <h2 id="dawn-h" className="display">
-              Week {s.turn} dawns
+              {dateLabel(s.turn)}
             </h2>
           </div>
         </header>
         <div className="modal-body dawn-body">
-          {evs.length === 0 && <p className="muted">A quiet night. Too quiet, perhaps.</p>}
+          {evs.length === 0 && <p className="muted">A quiet month. Too quiet, perhaps.</p>}
           {priv.length > 0 && (
             <section>
               <h3 className="panel-subtitle">What reached your ears</h3>
@@ -48,7 +48,7 @@ export function DawnReport({ onClose }: { onClose: () => void }) {
         <footer className="modal-foot">
           <span className="muted small">{waiting ? `${waiting} ${waiting === 1 ? 'person waits' : 'people wait'} to see you.` : ''}</span>
           <button className="btn btn--primary" onClick={onClose} autoFocus>
-            {waiting ? 'Receive them' : 'Begin the week'}
+            {waiting ? 'Receive them' : 'Begin the month'}
           </button>
         </footer>
       </div>

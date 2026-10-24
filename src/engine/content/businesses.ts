@@ -11,7 +11,7 @@ export interface BusinessDef {
   blurb: string;
   /** Gold to set it up. */
   cost: number;
-  /** Crowns a week, before trouble. */
+  /** Crowns a month, before trouble. */
   income: number;
   /** An illicit trade: run in secret, and a scandal and a crime if known. */
   illicit: boolean;
@@ -19,10 +19,10 @@ export interface BusinessDef {
   standing: Partial<Record<Estate, number>>;
   /** Further regard, from anyone who knows of a racket. */
   ifKnown?: Partial<Record<Estate, number>>;
-  /** Weekly chance (%) that something goes wrong. */
+  /** Monthly chance (%) that something goes wrong. */
   risk: number;
   troubles: { text: string; loss: number }[];
-  /** Weekly chance (%) that word of a racket gets out. */
+  /** Monthly chance (%) that word of a racket gets out. */
   leak?: number;
   /** How the secret is told, after the owner's name: "secretly runs …". */
   secretly?: string;

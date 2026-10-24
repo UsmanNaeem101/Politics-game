@@ -9,7 +9,7 @@ import {
   strikeChance,
   waitCleared,
   conditionMet,
-  weekLabel,
+  dateLabel,
   type PlotView,
 } from '../../engine';
 import { useGame } from '../context';
@@ -84,7 +84,7 @@ function PlotCard({ v }: { v: PlotView }) {
                 ? `${c.who === P ? 'you hold' : `${first(s, c.who)} holds`} a great office`
                 : c.kind === 'favour'
                   ? `${c.who === P ? 'you stand' : `${first(s, c.who)} stands`} high in the King's favour`
-                  : `after ${weekLabel(c.turn)}`}
+                  : `after ${dateLabel(c.turn)}`}
               {conditionMet(s, c) ? ' ✓' : ''}
             </span>
           ))}

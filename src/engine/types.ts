@@ -90,7 +90,7 @@ export interface Character {
   traits: Traits;
   status: Status;
   statusTurn?: number;
-  /** Found guilty or let out of the Tower: begins no new scheme before this week. */
+  /** Found guilty or let out of the Tower: begins no new scheme before this month. */
   lieLow?: number;
   fate?: string;
   gold: number;
@@ -107,9 +107,9 @@ export interface Character {
   /** The face shown to the court. */
   facade: string;
   bio: string;
-  /** Influence from a spouse, -100 (restrained) .. +100 (goaded). Decays each week. */
+  /** Influence from a spouse, -100 (restrained) .. +100 (goaded). Decays each month. */
   pressure: number;
-  /** Extra protection from hired swords; decays each week. */
+  /** Extra protection from hired swords; decays each month. */
   guard: number;
   heraldry: Heraldry;
   playable?: { blurb: string; difficulty: 'Gentle' | 'Cunning' | 'Treacherous' | 'Desperate' };
@@ -139,7 +139,7 @@ export interface OpinionMod {
   key: string;
   label: string;
   value: number;
-  /** Amount the modifier shrinks toward zero each week; 0 = permanent. */
+  /** Amount the modifier shrinks toward zero each month; 0 = permanent. */
   decay: number;
   /** Known to the whole court (an old rivalry, a marriage, a public insult). */
   public?: boolean;
@@ -184,7 +184,7 @@ export interface Secret {
   fixedText?: boolean;
   /** The plotted killing was done: no longer a plan but a murder committed. */
   deed?: boolean;
-  /** Week the King set his people to look into it (a dismissed charge, an unsolved murder). */
+  /** Month the King set his people to look into it (a dismissed charge, an unsolved murder). */
   inquiry?: number;
   /** For a racket: the business it is about, and what kind. */
   businessId?: string;
@@ -210,6 +210,14 @@ export type BusinessKind =
 /** Why a spy serves: it decides how far they can be trusted, and what they will do when caught. */
 export type SpyHook = 'gold' | 'blackmail' | 'devotion' | 'grudge';
 
+/** A man hired to follow someone for a month. */
+export interface Tail {
+  id: string;
+  by: CharId;
+  target: CharId;
+  since: number;
+}
+
 /** A person recruited to watch someone they can get close to. */
 export interface Spy {
   id: string;
@@ -217,7 +225,7 @@ export interface Spy {
   master: CharId;
   mark: CharId;
   hook: SpyHook;
-  /** Crowns a week, for a paid spy. */
+  /** Crowns a month, for a paid spy. */
   wage: number;
   since: number;
   status: 'active' | 'ended';
@@ -431,6 +439,8 @@ export interface GameState {
   businesses: Record<string, Business>;
   /** Recruited spies, everyone's. Missing in saves from before spies. */
   spies: Record<string, Spy>;
+  /** People being followed this month. */
+  tails?: Record<string, Tail>;
   offices: Record<OfficeId, CharId | null>;
   king: CharId | null;
   interregnum: { since: number } | null;
@@ -444,7 +454,7 @@ export interface GameState {
   audiences: Audience[];
   events: GameEvent[];
   nextId: number;
-  /** Event id at which the current week's night began, for the dawn report. */
+  /** Event id at which the current month's turn began, for the dawn report. */
   nightStart: number;
   /** Charges the King has judged, by chargeKey(): how much proof there was then. A forged copy is the same charge. */
   judged?: Record<string, number>;

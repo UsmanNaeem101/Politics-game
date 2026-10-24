@@ -5,12 +5,12 @@ import { repairSave, type GameState } from '../engine';
 
 const KEY = 'crown-of-whispers/save/v2';
 const PREFS = 'crown-of-whispers/prefs/v1';
-// A copy to turn back to after a bad end: the game as it stood before the last week ended, or
+// A copy to turn back to after a bad end: the game as it stood before the last month ended, or
 // before the deed that ended it.
 const PREV = 'crown-of-whispers/save/v2/week-before';
 const PREV_TURN = 'crown-of-whispers/save/v2/week-before-turn';
 
-/** Which game and week the saved copy is of, and whether someone was waiting on an answer. */
+/** Which game and month the saved copy is of, and whether someone was waiting on an answer. */
 let saved: { seed: number; turn: number; waiting: boolean } | null = null;
 
 function keepPrev(turn: number): void {
@@ -29,7 +29,7 @@ export function saveGame(s: GameState | null): void {
       } else if (saved && saved.seed === s.seed && s.turn === saved.turn + 1) keepPrev(saved.turn);
     }
     // Ended by a deed or in the night: turn back to just before it. Ended answering a summons at dawn:
-    // the copy from before last week ended is the better place to stand.
+    // the copy from before last month ended is the better place to stand.
     if (s && s.phase === 'ended' && saved && saved.seed === s.seed && !saved.waiting) keepPrev(saved.turn);
     if (!s || s.phase === 'ended') localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, JSON.stringify(s));
@@ -56,7 +56,7 @@ export function loadGame(): GameState | null {
   }
 }
 
-/** The week a game can be turned back to, if there is one. */
+/** The month a game can be turned back to, if there is one. */
 export function weekBefore(): number | null {
   try {
     const t = Number(localStorage.getItem(PREV_TURN));
@@ -66,7 +66,7 @@ export function weekBefore(): number | null {
   }
 }
 
-/** The game as it stood just before the last week ended. It becomes the saved game again. */
+/** The game as it stood just before the last month ended. It becomes the saved game again. */
 export function turnBack(): GameState | null {
   try {
     const raw = localStorage.getItem(PREV);

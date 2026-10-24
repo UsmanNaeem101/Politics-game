@@ -171,7 +171,7 @@ export function hearCredence(s: GameState, listener: CharId, teller: CharId, sec
   c += guiltyOp < 0 ? -guiltyOp * 0.25 : -guiltyOp * 0.18;
   if (sec.treason) c += (L.traits.paranoia - 40) * 0.2;
   if (!sec.truth) c += (T.traits.cunning - L.traits.cunning) * 0.15;
-  // A king hears a hundred tales a week and discounts them all.
+  // A king hears a hundred tales a month and discounts them all.
   if (s.king === listener) c *= 0.85;
   return clamp(Math.round(c), 5, 95);
 }

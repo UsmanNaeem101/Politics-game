@@ -1,5 +1,17 @@
 import { useState } from 'react';
-import { betrayable, credenceWord, evidenceWord, first, kindLabel, knownSecrets, nm, secretMatters, type GameState, type KnownSecret } from '../../engine';
+import {
+  betrayable,
+  credenceWord,
+  dateLabel,
+  first,
+  kindLabel,
+  knownSecrets,
+  nm,
+  secretMatters,
+  evidenceWord,
+  type GameState,
+  type KnownSecret,
+} from '../../engine';
 import { useGame } from '../context';
 
 type Group = 'treason' | 'crimes' | 'forged' | 'rumours' | 'own' | 'old';
@@ -75,15 +87,15 @@ export function Ledger() {
                   <p className="muted small">
                     {k.k.source === 'self'
                       ? k.k.lie
-                        ? `You forged this in week ${k.k.turn}.`
+                        ? `You forged this in ${dateLabel(k.k.turn)}.`
                         : 'You know this first-hand.'
                       : k.k.source === 'spies'
-                        ? `Your spies brought it, week ${k.k.turn}.`
+                        ? `Your spies brought it, ${dateLabel(k.k.turn)}.`
                         : k.k.source === 'rumour'
-                          ? `A rumour, week ${k.k.turn}.`
+                          ? `A rumour, ${dateLabel(k.k.turn)}.`
                           : k.k.source === 'court' || k.k.source === 'confession'
-                            ? `Heard at court, week ${k.k.turn}.`
-                            : `Told you by ${nm(s, k.k.source)}, week ${k.k.turn}.`}
+                            ? `Heard at court, ${dateLabel(k.k.turn)}.`
+                            : `Told you by ${nm(s, k.k.source)}, ${dateLabel(k.k.turn)}.`}
                     {k.told.length > 0 && ` You have told ${k.told.map((t) => first(s, t)).join(', ')}.`}{' '}
                     Concerns:{' '}
                     {k.sec.guilty.map((g2, i) => (

@@ -1,4 +1,7 @@
 import {
+  nightProblem,
+  seduceProblem,
+  tailProblem,
   marriageable,
   matchProblem,
   betrayable,
@@ -105,7 +108,12 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
     }),
   );
   out.push({ type: 'spy', why: lvl < 1 ? 'You know nothing of them.' : undefined });
+  out.push({ type: 'track', why: lvl < 1 ? 'You know nothing of them.' : (tailProblem(s, P, target) ?? undefined) });
   out.push(gate({ type: 'converse' }));
+  // Any woman may be courted, but not a wife of your own or your kin.
+  const love = me.gender === 'm' && t.gender === 'f' ? seduceProblem(s, P, target) : 'no';
+  if (love === null || (love && /answer|already/.test(love))) out.push(gate({ type: 'seduce', why: love ?? undefined }));
+  if (!nightProblem(s, P, target)) out.push({ type: 'night-kill' });
   out.push(gate({ type: 'gift', why: me.gold <= 0 ? 'Your purse is empty.' : undefined }));
   out.push(gate({ type: 'whisper', why: known.length ? undefined : 'You know no secret to share.' }));
   if (me.spouse === target) out.push({ type: 'counsel' });
@@ -350,7 +358,7 @@ export function Dossier() {
               {isMe && (
                 <span className="muted">
                   {' '}
-                  · {c.gold} crowns, +{incomeOf(s, id)} a week
+                  · {c.gold} crowns, +{incomeOf(s, id)} a month
                 </span>
               )}
             </dd>
@@ -405,7 +413,7 @@ export function Dossier() {
             {deeds.map((d) => {
               const cost = COST[d.type];
               const noTime = cost > s.ap;
-              const why = d.why ?? (noTime ? 'Not enough time left this week.' : undefined);
+              const why = d.why ?? (noTime ? 'Not enough time left this month.' : undefined);
               return (
                 <button key={d.type} className="deed" disabled={!!why} title={why ?? ACTION_INFO[d.type].desc} onClick={() => openDeed({ type: d.type, target: isMe ? undefined : id })}>
                   <GIcon name={d.type as GIName} size={20} />

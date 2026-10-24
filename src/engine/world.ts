@@ -98,7 +98,7 @@ export function businessesOf(s: GameState, id: CharId): Business[] {
   return Object.values(s.businesses ?? {}).filter((b) => b.owner === id);
 }
 
-/** Crowns a week from trade. Friends in the guilds make honest trade pay better. */
+/** Crowns a month from trade. Friends in the guilds make honest trade pay better. */
 export function tradeIncome(s: GameState, id: CharId): number {
   const mine = businessesOf(s, id);
   if (!mine.length) return 0;
@@ -413,27 +413,29 @@ export function uid(s: GameState, prefix: string): string {
   return `${prefix}${s.nextId++}`;
 }
 
-/** Characters that sit at court and could be spoken to this week. */
+/** Characters that sit at court and could be spoken to this month. */
 export function courtiers(s: GameState, except?: CharId): CharId[] {
   return s.order.filter((id) => id !== except && s.chars[id].status === 'free');
 }
 
+// A turn is a month. Years are counted from your arrival at court, which was in the spring.
 export const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'] as const;
-export const WEEKS_PER_SEASON = 13;
-export const WEEKS_PER_YEAR = 52;
+export const MONTHS = ['March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February'] as const;
+export const MONTHS_PER_SEASON = 3;
+export const MONTHS_PER_YEAR = 12;
 
 export interface CalendarDate {
   year: number;
   season: (typeof SEASONS)[number];
-  week: number;
+  month: (typeof MONTHS)[number];
 }
 
 export function calendar(turn: number): CalendarDate {
   const t = turn - 1;
-  return { year: Math.floor(t / WEEKS_PER_YEAR) + 1, season: SEASONS[Math.floor(t / WEEKS_PER_SEASON) % 4], week: (t % WEEKS_PER_SEASON) + 1 };
+  return { year: Math.floor(t / MONTHS_PER_YEAR) + 1, season: SEASONS[Math.floor(t / MONTHS_PER_SEASON) % 4], month: MONTHS[t % MONTHS_PER_YEAR] };
 }
 
-export function weekLabel(turn: number): string {
+export function dateLabel(turn: number): string {
   const d = calendar(turn);
-  return `${d.season} of Year ${d.year}, week ${d.week}`;
+  return `${d.month}, Year ${d.year}`;
 }

@@ -229,7 +229,7 @@ export function witanAudience(s: GameState): Audience | null {
     from: P,
     turn: s.turn,
     title: 'The Witan will gather',
-    text: `The throne stands empty. At the week's end the lords of the Witan will acclaim a new king. Whom will you name? (You have this week to win voices for your choice.)`,
+    text: `The throne stands empty. At the month's end the lords of the Witan will acclaim a new king. Whom will you name? (You have this month to win voices for your choice.)`,
     options: cands.map((c) => ({ id: c, label: c === P ? 'Yourself' : nm(s, c), tone: 'neutral' as const })),
     data: {},
   };

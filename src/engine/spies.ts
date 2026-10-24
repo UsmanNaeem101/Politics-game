@@ -1,10 +1,11 @@
 // Spies are people. You recruit someone who can get close to the person you
 // want watched (a maid in their house, a brother, a lover, a friend) and you
 // offer them something: a wage, silence about their own secret, or nothing at
-// all if they love you or hate the mark. They report each week until they are
+// all if they love you or hate the mark. They report each month until they are
 // caught, unpaid, or turned; a turned spy goes on reporting, and every word is
 // a lie.
 
+import { discoverAffair } from './love';
 import { REPORT_OPENERS, SPY_HOOKS } from './content/spies';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { makeSecret, secretMatters } from './secrets';
@@ -79,7 +80,7 @@ export function hookProblem(s: GameState, master: CharId, agent: CharId, mark: C
   switch (hook) {
     case 'gold':
       if (wage < 1) return 'Name a wage.';
-      return ch(s, master).gold < wage * 2 ? `You need ${wage * 2} crowns: two weeks' wages in hand.` : null;
+      return ch(s, master).gold < wage * 2 ? `You need ${wage * 2} crowns: two months' wages in hand.` : null;
     case 'blackmail': {
       const sec = secretId ? s.secrets[secretId] : undefined;
       if (!sec || !sec.guilty.includes(agent) || !secretMatters(s, sec)) return 'You hold nothing over them.';
@@ -137,7 +138,7 @@ export function recruitSpy(s: GameState, master: CharId, agent: CharId, mark: Ch
   log(s, `${nm(s, agent)} agreed to watch ${nm(s, mark)} for ${nm(s, master)}.`, [master, agent], 'secret', [agent, mark]);
   return {
     ok: true,
-    text: `${first(s, agent)} will watch ${first(s, mark)} for you${hook === 'gold' ? `, for ${wage} crowns a week` : ''}. Reports will come at dawn.`,
+    text: `${first(s, agent)} will watch ${first(s, mark)} for you${hook === 'gold' ? `, for ${wage} crowns a month` : ''}. Reports will come as each month turns.`,
     tone: 'good',
   };
 }
@@ -147,7 +148,7 @@ export function endSpy(s: GameState, spy: Spy, why?: string): void {
   if (why) log(s, why, [spy.master], 'neutral', [spy.agent]);
 }
 
-/** Every week: wages, reports, lies from the turned, and the risk of being caught. */
+/** Every month: wages, reports, lies from the turned, and the risk of being caught. */
 export function runSpies(s: GameState): void {
   for (const spy of activeSpies(s)) {
     const { agent, master, mark } = spy;
@@ -210,7 +211,7 @@ function affairSecret(s: GameState, spy: Spy): Secret | undefined {
 function lettersFound(s: GameState, spy: Spy): void {
   const { agent: wife, master: lover, mark: husband } = spy;
   const sec = affairSecret(s, spy);
-  if (sec) learn(s, husband, sec.id, 90, 'self');
+  if (sec) discoverAffair(s, husband, sec);
   endSpy(s, spy);
   log(s, `You found ${husband === s.player ? 'your wife' : first(s, wife)}'s letters to ${nm(s, lover)}. There is no mistaking them.`, [husband], 'dire', [wife, lover]);
   log(s, `${first(s, wife)}'s husband found her letters to you. He knows.`, [lover], 'dire', [wife, husband]);

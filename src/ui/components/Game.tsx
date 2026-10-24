@@ -109,8 +109,8 @@ function TopBar({ onHelp, onTheme, onQuit, onEnd }: { onHelp: () => void; onThem
     <header className="topbar">
       <div className="topbar-brand">
         <span className="display brand">Crown of Whispers</span>
-        <span className="week" title={`Week ${s.turn} of your time at court`}>
-          <GIcon name={d.season === 'Winter' ? 'clergy' : 'feast'} size={13} /> {d.season}, year {d.year} · week <strong>{d.week}</strong>
+        <span className="week" title={`${s.turn} months at court`}>
+          <GIcon name={d.season === 'Winter' ? 'clergy' : 'feast'} size={13} /> <strong>{d.month}</strong> · year {d.year}
         </span>
       </div>
       <button className="topbar-me" onClick={() => select(s.player)} title="Your own dossier">
@@ -121,7 +121,7 @@ function TopBar({ onHelp, onTheme, onQuit, onEnd }: { onHelp: () => void; onThem
         </span>
       </button>
       <dl className="stats">
-        <div title={`Gold: +${incomeOf(s, s.player)} a week from lands, office and trade`}>
+        <div title={`Gold: +${incomeOf(s, s.player)} a month from lands, office and trade`}>
           <dt>
             <GIcon name="gold" size={14} />
           </dt>
@@ -160,15 +160,15 @@ function TopBar({ onHelp, onTheme, onQuit, onEnd }: { onHelp: () => void; onThem
           </div>
         )}
       </dl>
-      <div className="time" aria-label={`${s.ap} of ${s.apMax} hours left this week`} title="Time left this week">
+      <div className="time" aria-label={`${s.ap} of ${s.apMax} measures of time left this month`} title="Time left this month">
         {Array.from({ length: s.apMax }, (_, i) => (
           <span key={i} className={`pip ${i < s.ap ? 'is-full' : ''}`}>
             <GIcon name="time" size={16} />
           </span>
         ))}
       </div>
-      <button className="btn btn--primary end-week" onClick={onEnd} disabled={!!blocked} title={blocked ?? 'Let the night pass'}>
-        End the week <Icon name="arrow" />
+      <button className="btn btn--primary end-week" onClick={onEnd} disabled={!!blocked} title={blocked ?? 'Let the month pass'}>
+        End the month <Icon name="arrow" />
       </button>
       <div className="topbar-menu">
         <button className="icon-btn" onClick={onHelp} title="How to play" aria-label="How to play">

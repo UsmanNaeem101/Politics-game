@@ -2,24 +2,20 @@
 // a few new tensions are applied to whoever fits them: a dormant ambition wakes,
 // a feud starts at table, a lonely wife takes a lover, the King picks a favourite.
 
-import { chance, pick, roll, shuffle, weighted } from './rng';
-import { makeSecret } from './secrets';
-import { affairSpy } from './spies';
+import { becomeLovers } from './love';
+import { chance, pick, shuffle, weighted } from './rng';
 import { first, nm } from './text';
 import {
   SEASONS,
-  WEEKS_PER_SEASON,
+  MONTHS_PER_SEASON,
   acquaintance,
   addMod,
-  ch,
   hasPerk,
   hearOf,
   isFree,
   isServant,
-  learn,
   log,
   opinion,
-  rel,
 } from './world';
 import type { Character, GameState } from './types';
 
@@ -28,8 +24,8 @@ const nobles = (s: GameState): Character[] =>
 
 /** The seasonal feast: faces, introductions, and a quarrel or two. */
 export function seasonalFeast(s: GameState): void {
-  if (s.turn <= 1 || (s.turn - 1) % WEEKS_PER_SEASON !== 0) return;
-  const season = SEASONS[Math.floor((s.turn - 1) / WEEKS_PER_SEASON) % 4];
+  if (s.turn <= 1 || (s.turn - 1) % MONTHS_PER_SEASON !== 0) return;
+  const season = SEASONS[Math.floor((s.turn - 1) / MONTHS_PER_SEASON) % 4];
   const host = s.king ? nm(s, s.king) : 'the lords of the Witan';
   log(s, `${host} held the ${season} feast. The whole court was there.`, 'all', 'court');
   const P = s.player;
@@ -50,7 +46,8 @@ export function seasonalFeast(s: GameState): void {
       log(s, `At the feast you were seated beside ${nm(s, tablemate.id)}, and the two of you talked.`, [P, tablemate.id], 'good', [tablemate.id]);
     }
   }
-  const n = roll(s, 1, 2);
+  // A feast every season, and not every one ends in trouble.
+  const n = chance(s, 65) ? 1 : 0;
   const kinds = shuffle(s, [feud, ambitionWakes, newAffair, newFavourite, slight, grudgeHardens]);
   let done = 0;
   for (const k of kinds) {
@@ -101,24 +98,7 @@ function newAffair(s: GameState): boolean {
   );
   const lover = weighted(s, lovers, (c) => c.traits.charm);
   if (!lover) return false;
-  const husband = wife.spouse!;
-  const sec = makeSecret(s, {
-    kind: 'affair',
-    guilty: [wife.id, lover.id],
-    victims: [husband],
-    truth: true,
-    evidence: roll(s, 15, 30),
-    treason: wife.rank === 'queen',
-    text: `${wife.name} has taken ${lover.name} as her lover.`,
-  });
-  learn(s, wife.id, sec.id, 100, 'self');
-  learn(s, lover.id, sec.id, 100, 'self');
-  addMod(s, wife.id, lover.id, 'lover', 'Her lover', 45);
-  addMod(s, lover.id, wife.id, 'lover', 'His lover', 35);
-  rel(s, wife.id, lover.id).trust = 75;
-  const maid = s.houses[wife.householdId]?.members.find((m) => ch(s, m).role === 'maid' && isFree(s, m));
-  if (maid && chance(s, 60)) learn(s, maid, sec.id, 60, 'spies');
-  affairSpy(s, wife.id, lover.id);
+  becomeLovers(s, wife.id, lover.id);
   log(s, `${wife.name} and ${lover.name} slipped away from the feast together.`, [], 'secret', [wife.id, lover.id]);
   return true;
 }

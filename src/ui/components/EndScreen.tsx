@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PLAYER_AIM, VERDICT_LABEL, ch, evaluate, first, nm, styleOf, weekLabel } from '../../engine';
+import { PLAYER_AIM, VERDICT_LABEL, ch, evaluate, first, nm, styleOf, dateLabel } from '../../engine';
 import { useGame } from '../context';
 import { weekBefore } from '../store';
 import { GIcon } from '../icons/GIcon';
@@ -28,12 +28,12 @@ export function EndScreen({
 
   const reasonLine =
     end.reason === 'crowned'
-      ? `${weekLabel(end.turn)} · the Witan has chosen`
+      ? `${dateLabel(end.turn)} · the Witan has chosen`
       : end.reason === 'player-dead'
-        ? `${weekLabel(end.turn)} · your story ends`
+        ? `${dateLabel(end.turn)} · your story ends`
         : end.reason === 'player-fled'
-          ? `${weekLabel(end.turn)} · you fled the court`
-          : `${weekLabel(end.turn)} · the season ends`;
+          ? `${dateLabel(end.turn)} · you fled the court`
+          : `${dateLabel(end.turn)} · the season ends`;
 
   return (
     <div className="end">
@@ -59,7 +59,7 @@ export function EndScreen({
           )}
           {back && (
             <button className="btn btn--primary" onClick={onTurnBack} title="Go back to how things stood before this end, and choose differently">
-              <GIcon name="time" size={16} /> Turn back to {weekLabel(back)}
+              <GIcon name="time" size={16} /> Turn back to {dateLabel(back)}
             </button>
           )}
           <button className={`btn ${end.reason === 'crowned' || back ? '' : 'btn--primary'}`} onClick={() => onRestart(Math.floor(Math.random() * 999999) + 1, '')}>

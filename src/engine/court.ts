@@ -7,16 +7,17 @@ import { kindLabel, makeSecret, publish, refreshText } from './secrets';
 import { unmaskTurned } from './spies';
 import { He, His, first, his, names, nm, vary } from './text';
 import {
-  OFFICE_NAMES,
   addMod,
   adjustTrust,
   ch,
-  hasPerk,
   credence,
+  dateLabel,
+  hasPerk,
   isAlive,
   isFree,
   learn,
   log,
+  OFFICE_NAMES,
   officeOf,
   opinion,
   trust,
@@ -161,7 +162,7 @@ export function release(s: GameState, id: CharId, why: string): void {
   const rec = s.imprisoned[id];
   c.status = 'free';
   c.statusTurn = s.turn;
-  c.lieLow = Math.max(c.lieLow ?? 0, s.turn + 6);
+  c.lieLow = Math.max(c.lieLow ?? 0, s.turn + 4);
   delete s.imprisoned[id];
   if (s.king) addMod(s, id, s.king, 'jailed', 'Threw me in a cell', -20, 1);
   if (rec?.accuser && rec.accuser !== id) addMod(s, id, rec.accuser, 'denounced', 'Denounced me to the King', -35);
@@ -171,7 +172,7 @@ export function release(s: GameState, id: CharId, why: string): void {
 export function execute(s: GameState, id: CharId, crime: string): void {
   if (!isAlive(s, id)) return;
   scaffoldSpeech(s, id);
-  kill(s, id, `Beheaded for ${crime}, week ${s.turn}`, true);
+  kill(s, id, `Beheaded for ${crime}, ${dateLabel(s.turn)}`, true);
   log(
     s,
     vary(s, [
@@ -514,7 +515,7 @@ export function pursueInquiries(s: GameState): void {
   for (const sec of Object.values(s.secrets)) {
     if (sec.inquiry === undefined) continue;
     const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K);
-    if (!K || !suspects.length || s.turn - sec.inquiry > 13) {
+    if (!K || !suspects.length || s.turn - sec.inquiry > 6) {
       delete sec.inquiry;
       continue;
     }
@@ -575,7 +576,7 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
   c.gold -= fine;
   if (s.king) ch(s, s.king).gold += fine;
   c.prestige = Math.max(0, c.prestige - 20);
-  c.lieLow = s.turn + 10;
+  c.lieLow = s.turn + 6;
   markJudged(s, sec, id);
   // A scheme laid bare before the King is finished.
   const plot = sec.plotId ? s.plots[sec.plotId] : undefined;
@@ -677,7 +678,7 @@ export function questionPrisoner(s: GameState, id: CharId): boolean {
     }
   }
 
-  // Name others, to buy mercy or settle scores — one name a week at most.
+  // Name others, to buy mercy or settle scores — one name a month at most.
   const row = s.knowledge[id] ?? {};
   const guiltyHere = rec.charges.some((c) => s.secrets[c]?.truth);
   const tellable = Object.entries(row)

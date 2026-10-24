@@ -18,7 +18,7 @@ import {
   plotViews,
   strikeChance,
   visibleEvents,
-  weekLabel,
+  dateLabel,
   witanForecast,
 } from '../../engine';
 import { useGame } from '../context';
@@ -79,7 +79,7 @@ export function Briefing() {
       <section className="card">
         <h3 className="card-title">
           <GIcon name="trade" size={16} /> Your trade
-          <span className="muted small">+{incomeOf(s, P)} crowns a week in all</span>
+          <span className="muted small">+{incomeOf(s, P)} crowns a month in all</span>
         </h3>
         {trades.length === 0 ? (
           <p className="muted">You run no trade. Your lands alone keep you.</p>
@@ -143,8 +143,8 @@ export function Briefing() {
                   </button>
                   <br />
                   <small className="muted">
-                    {sp.affair ? 'for love' : sp.hook === 'gold' ? `${sp.wage} crowns a week` : `for ${SPY_HOOKS[sp.hook].name.toLowerCase()}`} · {sp.reports} {sp.reports === 1 ? 'report' : 'reports'} since{' '}
-                    {weekLabel(sp.since)}
+                    {sp.affair ? 'for love' : sp.hook === 'gold' ? `${sp.wage} crowns a month` : `for ${SPY_HOOKS[sp.hook].name.toLowerCase()}`} · {sp.reports} {sp.reports === 1 ? 'report' : 'reports'} since{' '}
+                    {dateLabel(sp.since)}
                   </small>
                 </span>
                 <button className="btn btn--sm" onClick={() => openDeed({ type: 'dismiss-spy', spyId: sp.id })}>
@@ -248,7 +248,7 @@ export function Briefing() {
         <ul className="events">
           {latest.map((e) => (
             <li key={e.id} className={`ev ev--${e.tone}`}>
-              <GIcon name={TONE_ICON[e.tone] ?? 'neutral'} size={14} /> <span className="ev-week">{weekLabel(e.turn)}</span> {e.text}
+              <GIcon name={TONE_ICON[e.tone] ?? 'neutral'} size={14} /> <span className="ev-week">{dateLabel(e.turn)}</span> {e.text}
             </li>
           ))}
         </ul>

@@ -17,7 +17,7 @@ export const SPY_HOOKS: Record<SpyHook, HookDef> = {
   gold: {
     hook: 'gold',
     name: 'A wage',
-    desc: 'Crowns every week. Reliable while you pay, and for sale to anyone who pays more.',
+    desc: 'Crowns every month. Reliable while you pay, and for sale to anyone who pays more.',
     names: 70,
     turns: 60,
   },

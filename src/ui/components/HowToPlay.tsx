@@ -21,11 +21,15 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             </p>
           </section>
           <section>
-            <h3>The week</h3>
+            <h3>The month</h3>
             <p>
-              Each week you have three measures of <strong>time</strong> (the hourglasses). Spend them on deeds. When you end the week, everyone else
-              acts in the night. At dawn you learn what reached your ears, and anyone who wants something from you comes to call. Each season opens
-              with a feast where the whole court gathers.
+              Each month you have three measures of <strong>time</strong> (the hourglasses). Spend them on deeds. When you end the month, everyone
+              else makes their moves. As the next month begins you learn what reached your ears, and anyone who wants something from you comes to
+              call. Each season opens with a feast where the whole court gathers.
+            </p>
+            <p>
+              Time passes and people age. Children grow up and the old die, but you will not die of old age: only a blade, the axe or poison can
+              end you.
             </p>
           </section>
           <section>
@@ -54,8 +58,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <h3>Spies</h3>
             <p>
               A spy is a person: a maid in a lord's house, his brother, his lover, a friend he trusts. Recruit someone close to the one you want
-              watched, from their page, and offer them something: a <strong>wage</strong> every week, <strong>their own secret</strong> kept
-              quiet, or nothing at all if they are <strong>devoted</strong> to you or <strong>hate</strong> the one they watch. Each week they may
+              watched, from their page, and offer them something: a <strong>wage</strong> every month, <strong>their own secret</strong> kept
+              quiet, or nothing at all if they are <strong>devoted</strong> to you or <strong>hate</strong> the one they watch. Each month they may
               send word: the schemes their mark is part of, the secrets they keep, what they really want. You can keep three.
             </p>
             <p>
@@ -115,7 +119,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>The Witan</h3>
             <p>
-              When the throne falls empty, the Witan meets at the end of the following week. Each lord's voice is weighted by their prestige, and
+              When the throne falls empty, the Witan meets at the end of the following month. Each lord's voice is weighted by their prestige, and
               they vote for whoever they like, trust, or were promised something by. The Briefing shows how they would vote today. A known
               regicide cannot be chosen.
             </p>
@@ -134,9 +138,23 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             </p>
           </section>
           <section>
+            <h3>Love, and following people</h3>
+            <p>
+              You may <strong>court any woman as your lover</strong>, from her page. Her regard for you, your charm and her honour decide it, and a
+              wife who loves her husband will not stray. A married lover tells you what her husband says at home. Turned away, she may tell
+              him. Other men court other men's wives, yours among them.
+            </p>
+            <p>
+              <strong>Track their movements</strong> to have someone followed for a month: where they go, whom they dine with, and where they slip
+              away to after dark. It is how a husband finds his wife's lover, and how a jealous husband may find you. Someone under your own roof
+              you can <strong>kill in the night</strong>. It is easily done and hard to explain. A widower may <strong>seek a match</strong> from the
+              next month: anyone you know who is free to marry, or a bride from the provinces.
+            </p>
+          </section>
+          <section>
             <h3>A bad end</h3>
             <p>
-              If you die or flee, you can <strong>turn back</strong> to how things stood before the week ended, and choose differently.
+              If you die or flee, you can <strong>turn back</strong> to how things stood before the month ended, and choose differently.
             </p>
           </section>
           <p className="credit small muted">

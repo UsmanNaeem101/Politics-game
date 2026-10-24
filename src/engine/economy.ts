@@ -56,7 +56,7 @@ export function sellPrice(b: Business): number {
   return Math.floor(BUSINESSES[b.kind].cost / 2);
 }
 
-/** Every week: trades pass to heirs, things go wrong, rackets leak, and perks pay out. */
+/** Every month: trades pass to heirs, things go wrong, rackets leak, and perks pay out. */
 export function runBusinesses(s: GameState): void {
   for (const b of Object.values(s.businesses ?? {})) {
     const def = BUSINESSES[b.kind];

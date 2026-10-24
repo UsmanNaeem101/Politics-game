@@ -1,4 +1,4 @@
-// Every deed a courtier can do in a week. The player and the AI share this code:
+// Every deed a courtier can do in a month. The player and the AI share this code:
 // what the AI may do, the player may do, and with the same odds.
 
 import {
@@ -41,27 +41,30 @@ import { BUSINESSES } from './content/businesses';
 import { investProblem, openBusiness, sellPrice } from './economy';
 import { tableTalk } from './talk';
 import { marriageable, matchProblem, propose, unwed } from './family';
+import { killInTheNight, nightProblem, seduce, seduceProblem } from './love';
+import { TAIL_COST, setTail, tailProblem } from './tails';
 import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, recruitedSpies, sweepHousehold } from './spies';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
-  OFFICE_NAMES,
   acquaintance,
   addMod,
   adjustTrust,
   ch,
   credence,
-  hearOf,
-  isServant,
+  dateLabel,
   effective,
-  insightOf,
-  isAlive,
   gone,
   hasPerk,
+  hearOf,
+  insightOf,
+  isAlive,
   isChild,
   isFree,
+  isServant,
   knows,
   learn,
   log,
+  OFFICE_NAMES,
   officeOf,
   opinion,
   removeMod,
@@ -118,7 +121,10 @@ export type Intent =
   | { type: 'dismiss-spy'; spyId: string }
   | { type: 'sweep' }
   | { type: 'propose'; target?: CharId }
-  | { type: 'plead'; target: CharId };
+  | { type: 'plead'; target: CharId }
+  | { type: 'seduce'; target: CharId }
+  | { type: 'track'; target: CharId }
+  | { type: 'night-kill'; target: CharId };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -161,6 +167,9 @@ export const COST: Record<IntentType, number> = {
   sweep: 1,
   propose: 1,
   plead: 1,
+  seduce: 1,
+  track: 1,
+  'night-kill': 2,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -169,7 +178,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   gift: { name: 'Give a gift', desc: 'Gold buys goodwill, especially from the greedy.' },
   whisper: { name: 'Whisper a secret', desc: 'Tell them something you know, or something you have invented. They decide whether to believe it.' },
   fabricate: { name: 'Forge a lie', desc: 'Invent a treason and the letters to prove it. Lies can be spread, and laid before the King.' },
-  spy: { name: 'Have them watched', desc: 'Pay a stable boy or a tavern girl to watch them for a week: one look, no more. A recruited spy does better, and keeps at it.' },
+  spy: { name: 'Have them watched', desc: 'Pay a stable boy or a tavern girl to watch them for a month: one look, no more. A recruited spy does better, and keeps at it.' },
   scheme: { name: 'Begin a scheme', desc: 'Start a murder plot, or gather charges to destroy someone before the King.' },
   advance: { name: 'Work on a scheme', desc: 'Prepare. Murder plots strike harder; ruin plots carry more proof.' },
   recruit: { name: 'Draw into a scheme', desc: 'Offer a carrot. They may join sincerely, join only to betray you, or refuse and know everything.' },
@@ -195,6 +204,9 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   sweep: { name: 'Search your household', desc: 'Look for someone else’s spy among your people.' },
   propose: { name: 'Seek a match', desc: 'Ask for someone’s hand, or have a match found for you in the provinces.' },
   plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
+  seduce: { name: 'Court as a lover', desc: 'Woo her. A married lover will tell you what her husband says at home. A refusal may reach him.' },
+  track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
+  'night-kill': { name: 'Kill them in the night', desc: 'Under your own roof, at night, with no one on the stair. Easy to do, harder to explain.' },
 };
 
 const KING_ONLY: IntentType[] = ['arrest', 'question', 'execute', 'release', 'appoint'];
@@ -215,7 +227,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
   if (a.status === 'imprisoned' && !PRISON_OK.includes(it.type)) return 'You are in the Tower.';
   if (a.status === 'free' && it.type === 'escape') return 'You are not imprisoned.';
   if (KING_ONLY.includes(it.type) && s.king !== actor) return 'Only the King may do that.';
-  if (actor === s.player && COST[it.type] > s.ap) return 'Not enough time left this week.';
+  if (actor === s.player && COST[it.type] > s.ap) return 'Not enough time left this month.';
   const target = 'target' in it ? it.target : undefined;
   if (actor === s.player) {
     const fog = fogProblem(s, it);
@@ -355,10 +367,16 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
     }
     case 'propose': {
       const late = a.spouse ? s.chars[a.spouse] : undefined;
-      if (late && gone(s, late.id) && s.turn - (late.statusTurn ?? 0) < 4) return 'It is too soon after the funeral.';
+      if (late && gone(s, late.id) && s.turn - (late.statusTurn ?? 0) < 1) return 'It is too soon after the funeral.';
       if (!it.target) return marriageable(s, actor) ? null : unwed(s, actor) ? 'You are not free to marry.' : 'You are married.';
       return matchProblem(s, actor, it.target);
     }
+    case 'seduce':
+      return seduceProblem(s, actor, it.target);
+    case 'track':
+      return tailProblem(s, actor, it.target);
+    case 'night-kill':
+      return nightProblem(s, actor, it.target);
     case 'plead':
       if (a.status !== 'imprisoned') return 'You are not in the Tower.';
       if (!s.king || it.target === s.king) return 'Write to someone who can reach the King.';
@@ -375,7 +393,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
 }
 
 /** Deeds that need you to have been introduced (servants need only be seen). */
-export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant', 'plant', 'propose', 'plead'];
+export const CONTACT: IntentType[] = ['converse', 'gift', 'whisper', 'recruit', 'blackmail', 'grant', 'plant', 'propose', 'plead', 'seduce'];
 
 /** The player cannot deal with people they do not know. */
 function fogProblem(s: GameState, it: Intent): string | null {
@@ -391,7 +409,7 @@ function fogProblem(s: GameState, it: Intent): string | null {
       if (lvl < 2) return 'You have only heard of them. Spy on their household, or wait to see them at court.';
       if (isServant(s, target)) return 'Servants need no introduction.';
     }
-    if (it.type === 'spy' && lvl < 1) return 'You know nothing of them.';
+    if ((it.type === 'spy' || it.type === 'track') && lvl < 1) return 'You know nothing of them.';
   }
   if (it.type === 'fabricate' && [...it.guilty, it.victim].some((g) => acquaintance(s, g) < 1)) return 'You cannot name someone you have never heard of.';
   if (it.type === 'scheme' && it.targets.some((g) => acquaintance(s, g) < (it.kind === 'murder' ? 2 : 1))) return 'You do not know your target well enough.';
@@ -527,6 +545,14 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return propose(s, actor, it.target);
     case 'plead':
       return plead(s, actor, it.target);
+    case 'seduce':
+      return seduce(s, actor, it.target);
+    case 'track': {
+      setTail(s, actor, it.target);
+      return { ok: true, text: `Your man will keep ${first(s, it.target)} in sight until the month turns.`, tone: 'neutral' };
+    }
+    case 'night-kill':
+      return killInTheNight(s, actor, it.target);
   }
 }
 
@@ -564,7 +590,7 @@ function invest(s: GameState, actor: CharId, kind: BusinessKind): Outcome {
     return { ok: true, text: `Your ${def.name.toLowerCase()} is open for business, and no one must know whose it is.`, tone: 'neutral' };
   }
   log(s, `${nm(s, actor)} has gone into the ${def.name.toLowerCase()}.`, 'all', 'neutral', [actor]);
-  return { ok: true, text: `You are in the ${def.name.toLowerCase()}. It should bring in ${def.income} crowns a week.`, tone: 'good' };
+  return { ok: true, text: `You are in the ${def.name.toLowerCase()}. It should bring in ${def.income} crowns a month.`, tone: 'good' };
 }
 
 function divest(s: GameState, actor: CharId, businessId: string): Outcome {
@@ -1224,7 +1250,7 @@ export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, {
   const K = s.king!;
   if (!granted) {
     // A lord refused waits a season or more before he asks again.
-    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -12, 0.5);
+    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -8, 0.5);
     log(s, `The King refused ${nm(s, actor)}'s petition.`, [actor, K], 'court', [actor]);
     return { ok: false, text: 'The King refuses you.', tone: 'bad' };
   }
@@ -1418,7 +1444,7 @@ export function exile(s: GameState, id: CharId): void {
   const wasKing = s.king === id;
   c.status = 'fled';
   c.statusTurn = s.turn;
-  c.fate = `Fled the court, week ${s.turn}`;
+  c.fate = `Fled the court, ${dateLabel(s.turn)}`;
   delete s.imprisoned[id];
   if (wasKing) {
     s.king = null;

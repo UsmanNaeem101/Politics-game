@@ -1,4 +1,4 @@
-// How the other souls at court decide what to do with their week.
+// How the other souls at court decide what to do with their month.
 //
 // Each NPC scores every deed open to it by its hidden agenda, its temperament
 // (as bent by a spouse's pressure), and what it believes. It then picks among
@@ -21,6 +21,8 @@ import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
 import { alreadyJudged, capital, claimants, officeEligible } from './court';
 import { accessTo, recruitedSpies, spyOdds } from './spies';
+import { loversOf, seduceOdds, seduceProblem } from './love';
+import { TAIL_COST } from './tails';
 import {
   addMod,
   adjustTrust,
@@ -47,18 +49,32 @@ interface Candidate {
 
 const DELEGATED_UNTIL = 4;
 
+/** What `desire` needs to know about `me`, worked out once rather than for every rival. */
+export interface DesireContext {
+  /** People `me` believes mean them harm. */
+  threats: Set<CharId>;
+  /** Leaders of schemes `me` has truly sworn to. */
+  sworn: Set<CharId>;
+}
+
+export function desireContext(s: GameState, me: CharId): DesireContext {
+  const sworn = new Set<CharId>();
+  for (const p of Object.values(s.plots)) if (p.status === 'active' && p.members.some((m) => m.id === me && m.sincere)) sworn.add(p.owner);
+  return { threats: new Set(threatsTo(s, me, me, 50).flatMap((sec) => sec.guilty)), sworn };
+}
+
 /** How badly `me` wants `g` gone. */
-export function desire(s: GameState, me: CharId, g: CharId): number {
+export function desire(s: GameState, me: CharId, g: CharId, ctx: DesireContext = desireContext(s, me)): number {
   if (g === me) return 0;
   const c = ch(s, me);
   let d = Math.max(0, -opinion(s, me, g)) * 0.4;
   if (c.agenda.targets.includes(g)) d += 35;
   if (c.agenda.kind === 'rise' && officeOf(s, g)) d += 12;
-  if (threatsTo(s, me, me, 50).some((sec) => sec.guilty.includes(g))) d += 30;
+  if (ctx.threats.has(g)) d += 30;
   if (c.agenda.kind === 'crown' && g === s.king) d += 15;
   if (c.spouse === g) d -= 80;
   if (c.siblings.includes(g) && opinion(s, me, g) > 0) d -= 40;
-  if (Object.values(s.plots).some((p) => p.status === 'active' && p.owner === g && p.members.some((m) => m.id === me && m.sincere))) d -= 30;
+  if (ctx.sworn.has(g)) d -= 30;
   return d;
 }
 
@@ -96,6 +112,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   const others = s.order.filter((id) => id !== me && isFree(s, id) && !isServant(s, id) && !isChild(s, id));
   const king = s.king;
   const myRow = s.knowledge[me] ?? {};
+  const dctx = desireContext(s, me);
 
   if (c.status === 'imprisoned') {
     const charges = s.imprisoned[me]?.charges ?? [];
@@ -153,7 +170,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     if (p.kind === 'murder') {
       if (mine && ready && canStrike(s, p).ok) {
         const sc = strikeChance(s, p);
-        const threat = threatsTo(s, me, me, 50).some((sec) => sec.guilty.includes(target)) ? 25 : 0;
+        const threat = dctx.threats.has(target) ? 25 : 0;
         add({ type: 'strike', plotId: p.id }, sc - (100 - E.boldness) * 0.6 + E.ambition * 0.15 + threat);
       }
       // Sharpening a knife you cannot yet use only leaves a trail.
@@ -164,7 +181,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
         const odds = denounceOdds(s, me, { type: 'denounce', plotId: p.id });
         if (odds.length) {
           const est = odds.reduce((m, o) => m + o.pct, 0) / odds.length;
-          const want = odds.reduce((m, o) => m + desire(s, me, o.accused), 0) / odds.length;
+          const want = odds.reduce((m, o) => m + desire(s, me, o.accused, dctx), 0) / odds.length;
           let u = want * 0.4 + (est - (100 - E.boldness) * 0.5) * 0.6 + (p.progress >= 50 ? 10 : 0);
           if (delegated(s, p)) u -= 30;
           add({ type: 'denounce', plotId: p.id }, u);
@@ -197,10 +214,10 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
       if (sec.guilty.includes(me) && !traitor) continue;
       if (!k.lie && k.credence < 50) continue;
       if (!(sec.treason || sec.kind === 'theft' || sec.kind === 'slander' || sec.kind === 'murder' || sec.kind === 'racket')) continue;
-      const odds = denounceOdds(s, me, { type: 'denounce', secretId: sid }).filter((o) => desire(s, me, o.accused) > -10);
+      const odds = denounceOdds(s, me, { type: 'denounce', secretId: sid }).filter((o) => desire(s, me, o.accused, dctx) > -10);
       if (!odds.length) continue;
       for (const o of odds) {
-        let want = desire(s, me, o.accused);
+        let want = desire(s, me, o.accused, dctx);
         if (sec.treason && sec.victims.includes(king)) {
           if (c.agenda.kind === 'protect-king') want += 30 + k.credence * 0.3;
           if (c.traits.honor >= 60) want += 10;
@@ -226,9 +243,9 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     if (!k.lie && k.credence < 50) continue;
     if (sec.plotId && s.plots[sec.plotId]?.status !== 'active' && !capital(sec)) continue;
     if (k.lie && c.traits.honor >= 60) continue;
-    const protects = sec.guilty.some((g) => c.spouse === g || (c.siblings.includes(g) && opinion(s, me, g) > 0) || desire(s, me, g) < -10);
+    const protects = sec.guilty.some((g) => c.spouse === g || (c.siblings.includes(g) && opinion(s, me, g) > 0) || desire(s, me, g, dctx) < -10);
     if (protects) continue;
-    const want = Math.max(...sec.guilty.map((g) => desire(s, me, g)));
+    const want = Math.max(...sec.guilty.map((g) => desire(s, me, g, dctx)));
     const anyBiding = sec.guilty.some((g) => biding(s, me, g));
     for (const l of others) {
       if (sec.guilty.includes(l)) continue;
@@ -259,7 +276,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (king && c.traits.honor < 50 && c.traits.cunning >= 50) {
     for (const g of others) {
       if (g === king) continue;
-      const want = desire(s, me, g);
+      const want = desire(s, me, g, dctx);
       if (want < 40) continue;
       const have = secretsAgainst(s, g, me, 50).some((x) => x.treason);
       if (have) continue;
@@ -291,14 +308,38 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
       const charge = secretsAgainst(s, g, me, 50).find((x) => capital(x) || x.kind === 'theft' || x.kind === 'affair' || x.kind === 'racket');
       if (charge) plan({ type: 'scheme', kind: 'ruin', targets: [g], charges: [charge.id] }, 22);
       // No charge to bring: a hot, unscrupulous man reaches for a knife instead.
-      else if (g !== king) plan({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
+      else if (g !== king) plan({ type: 'scheme', kind: 'murder', targets: [g], charges: [] }, desire(s, me, g, dctx) * 0.25 + E.wrath * 0.15 + E.boldness * 0.1 - c.traits.honor * 0.25);
     }
   }
 
+  // ── Love ──────────────────────────────────────────────────────────────────
+  // A man without a lover, and without much honour, looks about him; any wife at court may catch his eye.
+  if (c.gender === 'm' && !isChild(s, me) && c.traits.honor < 60 && !loversOf(s, me).length) {
+    let best: { w: CharId; odds: number } | undefined;
+    for (const w of others) {
+      if (ch(s, w).gender !== 'f' || opinion(s, w, me) < 5 || seduceProblem(s, me, w)) continue;
+      const odds = seduceOdds(s, me, w);
+      if (!best || odds > best.odds) best = { w, odds };
+    }
+    if (best && best.odds >= 25) add({ type: 'seduce', target: best.w }, (best.odds - 18) * 0.5 + c.traits.charm * 0.08 + (c.archetype === 'rake' ? 14 : 0) - c.traits.honor * 0.12);
+  }
+  // A husband who suspects has her followed; one who knows, and has the temper for it, may do worse.
+  const wife = c.spouse && ch(s, c.spouse).gender === 'f' && isFree(s, c.spouse) ? c.spouse : undefined;
+  if (wife) {
+    const suspicion = Object.entries(myRow).reduce((m, [sid, k]) => {
+      const sec = s.secrets[sid];
+      return !k.lie && sec?.kind === 'affair' && sec.guilty.includes(wife) && sec.victims.includes(me) ? Math.max(m, k.credence) : m;
+    }, 0);
+    if (suspicion >= 15 && suspicion < 80 && c.gold >= TAIL_COST) add({ type: 'track', target: wife }, 15 + E.paranoia * 0.2 + suspicion * 0.2);
+    else if (!suspicion && E.paranoia >= 70 && opinion(s, me, wife) < 0 && c.gold >= TAIL_COST) add({ type: 'track', target: wife }, 6);
+    if (suspicion >= 80 && E.wrath >= 65 && c.traits.honor < 45) add({ type: 'night-kill', target: wife }, (E.wrath - 50) * 0.4 + (50 - c.traits.honor) * 0.3 - 5);
+  }
+
   // ── Spies ─────────────────────────────────────────────────────────────────
+  const wary = new Set(threatsTo(s, me, me, 25).flatMap((sec) => sec.guilty));
   const interest = (g: CharId) =>
-    desire(s, me, g) +
-    (threatsTo(s, me, me, 25).some((sec) => sec.guilty.includes(g)) ? 25 : 0) +
+    desire(s, me, g, dctx) +
+    (wary.has(g) ? 25 : 0) +
     (g === king && c.agenda.kind === 'crown' ? 10 : 0) +
     (c.agenda.kind === 'protect-king' && Object.entries(myRow).some(([sid, k]) => !k.lie && k.credence >= 20 && s.secrets[sid]?.guilty.includes(g)) ? 30 : 0);
   const spyTarget = others
@@ -310,7 +351,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     const u = 4 + c.traits.cunning * 0.1 + c.traits.paranoia * 0.06 + spyTarget.v * 0.2 + (officeOf(s, me) === 'spymaster' ? 8 : 0);
     add({ type: 'spy', target: spyTarget.g, focus: 'schemes' }, u);
     // Better still, someone placed close to them, for as long as it lasts.
-    // Weighed every third week, in turn: finding the right person to suborn takes time.
+    // Weighed every third month, in turn: finding the right person to suborn takes time.
     if ((s.turn + me.length) % 3 === 0 && recruitedSpies(s, me).length < 2) {
       const wage = 4;
       const best = s.order
@@ -432,7 +473,7 @@ function choose(s: GameState, cands: Candidate[]): Candidate | undefined {
   return top[0];
 }
 
-/** One NPC's week. */
+/** One NPC's month. */
 export function npcTurn(s: GameState, me: CharId): void {
   const c = ch(s, me);
   if (c.status === 'dead' || c.status === 'fled') return;

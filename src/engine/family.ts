@@ -115,12 +115,15 @@ export function comeOfAge(s: GameState, c: Character, quiet = false): void {
   }
 }
 
-/** Every week: babies born, children grown. */
+/** Every month: babies born, children grown. */
 export function births(s: GameState): void {
+  // A crowded court has fewer children at it: the rest are fostered in the country.
+  const living = s.order.filter((id) => !gone(s, id)).length;
+  const odds = 1.6 * clamp((85 - living) / 25, 0.15, 1);
   for (const w of Object.values(s.chars)) {
     if (w.gender !== 'f' || w.status !== 'free' || !w.spouse || w.age < 17 || w.age > 42 || isServant(s, w.id) || isChild(s, w.id)) continue;
     const h = s.chars[w.spouse];
-    if (!h || gone(s, h.id) || h.spouse !== w.id || (w.children?.length ?? 0) >= 6 || !chance(s, 1.1)) continue;
+    if (!h || gone(s, h.id) || h.spouse !== w.id || (w.children?.length ?? 0) >= 6 || !chance(s, odds)) continue;
     // A lover's child, now and then, and the mother will know it.
     const affair = Object.values(s.secrets).find((x) => x.kind === 'affair' && x.truth && x.guilty.includes(w.id) && x.victims.includes(h.id));
     const lover = affair?.guilty.find((g) => g !== w.id && isFree(s, g));
@@ -279,8 +282,8 @@ export function matchmaking(s: GameState): void {
     if (id === P || !marriageable(s, id)) continue;
     const c = ch(s, id);
     const widowed = !!c.spouse;
-    if (widowed && s.turn - (ch(s, c.spouse!).statusTurn ?? 0) < 13) continue;
-    if (!chance(s, widowed ? 4 : 0.8)) continue;
+    if (widowed && s.turn - (ch(s, c.spouse!).statusTurn ?? 0) < 4) continue;
+    if (!chance(s, widowed ? 10 : 2)) continue;
     const pool = s.order.filter(
       (o) => o !== id && o !== P && marriageable(s, o) && ch(s, o).gender !== c.gender && !akin(s, id, o) && Math.abs(ch(s, o).age - c.age) <= 20,
     );

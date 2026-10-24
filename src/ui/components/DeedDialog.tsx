@@ -1,6 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
+  TAIL_COST,
+  nightOdds,
+  seduceOdds,
+  spotChance,
   matchProblem,
   pleadWillingness,
   proposeOdds,
@@ -208,6 +212,12 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'propose':
         return { type, target: target || undefined };
       case 'plead':
+        return target ? { type, target } : null;
+      case 'seduce':
+        return target ? { type, target } : null;
+      case 'track':
+        return target ? { type, target } : null;
+      case 'night-kill':
         return target ? { type, target } : null;
     }
   })();
@@ -714,7 +724,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
           </fieldset>
           {hook === 'gold' && (
             <label className="field">
-              <span>Wage, crowns a week</span>
+              <span>Wage, crowns a month</span>
               <input type="number" min={1} max={15} value={wage} onChange={(e) => setWage(Math.max(1, Math.min(15, Number(e.target.value) || 1)))} />
             </label>
           )}
@@ -731,21 +741,38 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       );
       break;
     }
-    case 'propose':
-      fields = !spec.target && (
-        <>
-          {pick(
-            'Whose hand',
-            target,
-            setTarget,
-            [{ value: '', label: 'Leave it to a matchmaker: a match from the provinces' }].concat(
-              others(s, (id) => !matchProblem(s, P, id), 3).map((o) => ({ value: o, label: nm(s, o) })),
-            ),
-            'deed-target',
-          )}
-        </>
+    case 'propose': {
+      if (spec.target) break;
+      // Everyone you know who is free to marry you, with your chances.
+      const roster = others(s, (id) => !matchProblem(s, P, id), 3).sort((a, b) => proposeOdds(s, P, b) - proposeOdds(s, P, a));
+      fields = (
+        <fieldset className="field">
+          <legend>Whose hand</legend>
+          <div className="secret-choices roster">
+            <label className={`secret-choice ${target === '' ? 'is-on' : ''}`}>
+              <input type="radio" name="hand" checked={target === ''} onChange={() => setTarget('')} />
+              <span>
+                <GIcon name="propose" size={14} /> A match from the provinces, found by a matchmaker <span className="chip chip--good">certain</span>
+              </span>
+            </label>
+            {roster.map((o) => {
+              const c = ch(s, o);
+              return (
+                <label key={o} className={`secret-choice ${target === o ? 'is-on' : ''}`}>
+                  <input type="radio" name="hand" checked={target === o} onChange={() => setTarget(o)} />
+                  <span>
+                    <strong>{nm(s, o)}</strong> <span className="muted">{c.age} · {c.spouse ? 'widowed' : 'unmarried'} · House {c.house}</span>{' '}
+                    <span className="chip">{proposeOdds(s, P, o)}%</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {roster.length === 0 && <p className="muted small">No one you have been introduced to is free to marry you.</p>}
+        </fieldset>
       );
       break;
+    }
     case 'plead':
       fields = !spec.target && personPick('To whom will you write', (id) => met(s)(id) && id !== s.king);
       break;
@@ -901,7 +928,7 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       return { lines: [`You can move ${first(s, sp)} by about ${influence(s, P, sp)}.`] };
     }
     case 'guard':
-      return { lines: ['+15 protection against knives, fading over a few weeks.'] };
+      return { lines: ['+15 protection against knives, fading over a few months.'] };
     case 'flee':
       return { lines: ['You will live. Your lands are forfeit, and your part in this story ends tonight.'] };
     case 'escape':
@@ -919,7 +946,7 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       const def = BUSINESSES[it.kind];
       return {
         lines: [
-          `Costs ${def.cost} crowns now, and should bring in ${def.income} a week (more if the guilds like you).`,
+          `Costs ${def.cost} crowns now, and should bring in ${def.income} a month (more if the guilds like you).`,
           def.illicit
             ? 'Run in secret. Word may get out: a debtor talks, a client is seen. If it does, it is a scandal, and a charge that can be laid before the King.'
             : 'The whole court will know what you have gone into.',
@@ -928,14 +955,14 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     }
     case 'divest': {
       const b = s.businesses[it.businessId];
-      return { lines: [`You will get ${sellPrice(b)} crowns, and lose ${BUSINESSES[b.kind].income} a week.`] };
+      return { lines: [`You will get ${sellPrice(b)} crowns, and lose ${BUSINESSES[b.kind].income} a month.`] };
     }
     case 'plant': {
       const def = SPY_HOOKS[it.hook];
       return {
         pct: spyOdds(s, P, it.target, it.mark, it.hook, it.wage, it.secretId),
         lines: [
-          it.hook === 'gold' ? `Two weeks' wages now (${it.wage * 2} crowns), then ${it.wage} a week.` : 'It costs you no gold.',
+          it.hook === 'gold' ? `Two months' wages now (${it.wage * 2} crowns), then ${it.wage} a month.` : 'It costs you no gold.',
           `If they refuse, they may tell ${first(s, it.mark)}.`,
           `If caught, a spy who serves for ${def.name.toLowerCase()} names you ${def.names >= 60 ? 'readily' : def.names >= 30 ? 'sometimes' : 'rarely'}, and is ${def.turns >= 50 ? 'easily' : 'rarely'} turned.`,
         ],
@@ -946,7 +973,31 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     case 'propose':
       return it.target
         ? { pct: proposeOdds(s, P, it.target), lines: ['Their regard for you counts, and your standing against theirs, and what their family thinks of you.'] }
-        : { lines: ['A matchmaker will find you a wife from the provinces. She will join your household this week.'] };
+        : { lines: ['A matchmaker will find you a wife from the provinces. She will join your household this month.'] };
+    case 'seduce': {
+      const T = ch(s, it.target);
+      return {
+        pct: seduceOdds(s, P, it.target),
+        lines: [
+          'Her regard for you counts, and your charm, against her honour.',
+          T.spouse ? `A wife who loves ${first(s, T.spouse)} will not stray; one who does not may. As your lover she will tell you what he says at home.` : 'She is unwed: a scandal if it comes out, not a crime.',
+          'Turned away, she may tell her husband.',
+        ],
+      };
+    }
+    case 'track':
+      return {
+        pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
+        lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
+      };
+    case 'night-kill':
+      return {
+        pct: nightOdds(s, P, it.target),
+        lines: [
+          'If they wake, they will know what you tried.',
+          'Your household may have heard something. Their kin will wonder. If they were anyone of note, the King may have it looked into.',
+        ],
+      };
     case 'plead': {
       const will = pleadWillingness(s, P, it.target);
       const odds = petitionOdds(s, it.target, { type: 'petition', kind: 'mercy', target: P });

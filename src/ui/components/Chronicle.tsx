@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { visibleEvents, type EventTone, type GameEvent, type GameState } from '../../engine';
+import { dateLabel, visibleEvents, type EventTone, type GameEvent, type GameState } from '../../engine';
 import { useGame } from '../context';
 
 const TONES: { id: 'all' | 'public' | 'private'; label: string }[] = [
@@ -20,7 +20,7 @@ export function EventList({ events, showHidden }: { events: GameEvent[]; showHid
     <div className="chronicle-weeks">
       {weeks.map((w) => (
         <section key={w} className="chron-week">
-          <h3 className="chron-week-title">Week {w}</h3>
+          <h3 className="chron-week-title">{dateLabel(w)}</h3>
           <ul className="events">
             {byWeek.get(w)!.map((e) => (
               <li key={e.id} className={`ev ev--${e.tone as EventTone} ${showHidden && e.visibleTo !== 'all' ? 'ev--hidden' : ''}`}>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, weekLabel, type BusinessKind, type TraitKey } from '../../engine';
+import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, dateLabel, type BusinessKind, type TraitKey } from '../../engine';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Shield } from './Shield';
 import { TradeCard } from './Trade';
@@ -52,7 +52,7 @@ export function TitleScreen({
           )}
           {backTo && (
             <button className="btn btn--primary" onClick={onTurnBack} title="Your last game ended. Go back to how it stood before.">
-              <GIcon name="time" size={16} /> Turn back to {weekLabel(backTo)}
+              <GIcon name="time" size={16} /> Turn back to {dateLabel(backTo)}
             </button>
           )}
           <button className="btn" onClick={onHelp}>
@@ -105,7 +105,7 @@ export function TitleScreen({
                   <li key={l}>{court.lands[l].name}</li>
                 ))}
                 <li>
-                  <GIcon name="gold" size={13} /> {me.gold} crowns, +{incomeOf(court, me.id)} a week
+                  <GIcon name="gold" size={13} /> {me.gold} crowns, +{incomeOf(court, me.id)} a month
                 </li>
               </ul>
             </div>
@@ -120,7 +120,7 @@ export function TitleScreen({
                   <option value="">As fortune decides</option>
                   {BUSINESS_KINDS.filter((k) => !BUSINESSES[k].royalGrant).map((k) => (
                     <option key={k} value={k}>
-                      {BUSINESSES[k].name} (+{BUSINESSES[k].income} a week{BUSINESSES[k].illicit ? ', racket' : ''})
+                      {BUSINESSES[k].name} (+{BUSINESSES[k].income} a month{BUSINESSES[k].illicit ? ', racket' : ''})
                     </option>
                   ))}
                 </select>
