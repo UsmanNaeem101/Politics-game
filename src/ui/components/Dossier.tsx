@@ -1,4 +1,6 @@
 import {
+  dateLabel,
+  DELIBERATION,
   livingSpouse,
   nightProblem,
   seduceProblem,
@@ -196,6 +198,13 @@ export function Dossier() {
         <div className="dossier-id">
           <h2 className="display-sm">{nm(s, id)}</h2>
           {lvl >= 1 && c.formerly?.length ? <p className="muted small">Formerly {c.formerly.join(', then ')}</p> : null}
+          {lvl >= 2 && s.courtships?.[id] && (
+            <p className="small">
+              <GIcon name="propose" size={13} />{' '}
+              {s.courtships[id].suitors.length ? `Courted by ${s.courtships[id].suitors.map((x) => first(s, x)).join(' and ')}` : 'A match is being sought in the provinces'}
+              {`; ${c.gender === 'f' ? 'she' : 'he'} answers by ${dateLabel(s.courtships[id].since + DELIBERATION)}.`}
+            </p>
+          )}
           <p className="muted">
             {!dark && <GIcon name={roleIcon(s, id)} size={14} />} {dark ? (house ? `of House ${house.name}` : 'Unknown') : `${roleLabel(s, id)}${c.epithet ? ` · ${c.epithet}` : ''}${lvl >= 3 ? ` · ${c.age}` : ''}`}
           </p>

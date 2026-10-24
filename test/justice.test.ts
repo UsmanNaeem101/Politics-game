@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   alreadyJudged,
+  addMod,
   applyJudgments,
+  decidePrisoners,
+  murdererShunned,
+  perform,
+  resolveAudience,
   chargesFor,
   check,
   applyPetition,
@@ -27,6 +32,58 @@ import {
 import { createScenario } from './fixtures/osric';
 
 const fresh = (seed = 7): GameState => createScenario(seed, 'anselm');
+
+describe('a killing traced to you', () => {
+  /** The player strikes and is traced, in whichever court that happens first. */
+  function traced(): { s: GameState; victim: string } {
+    for (let seed = 1; seed <= 80; seed++) {
+      const s = fresh(seed);
+      const p = createPlot(s, 'anselm', 'murder', ['edmund']);
+      p.progress = 100;
+      s.chars.anselm.traits.cunning = 0;
+      s.ap = 3;
+      const r = perform(s, 'anselm', { type: 'strike', plotId: p.id });
+      if (r.ok && s.chars.edmund.status === 'dead' && s.audiences.some((a) => a.kind === 'accused')) return { s, victim: 'edmund' };
+    }
+    throw new Error('never traced');
+  }
+
+  it('brings you before the King to answer for it, not straight to the Tower', () => {
+    const { s } = traced();
+    expect(s.chars.anselm.status).toBe('free');
+    const a = s.audiences.find((x) => x.kind === 'accused')!;
+    expect(a.options.map((o) => o.id)).toEqual(expect.arrayContaining(['deny', 'mercy', 'flee']));
+  });
+
+  it('mercy granted at the hearing holds: the Tower for six months, then out, disgraced', () => {
+    for (let i = 0; i < 30; i++) {
+      const { s } = traced();
+      const a = s.audiences.find((x) => x.kind === 'accused')!;
+      resolveAudience(s, a.id, 'mercy');
+      if (s.chars.anselm.status !== 'imprisoned') continue;
+      expect(s.imprisoned.anselm.spared).toBe(true);
+      learn(s, 'osric', s.imprisoned.anselm.charges[0], 100, 'confession');
+      decidePrisoners(s);
+      expect(s.chars.anselm.status).toBe('imprisoned');
+      s.turn += 6;
+      decidePrisoners(s);
+      expect(s.chars.anselm.status).toBe('free');
+      return;
+    }
+  });
+
+  it('the court takes it as it felt about the dead: kin hate you, his enemies shed no tears', () => {
+    const s = fresh();
+    const enemy = s.order.find((id) => !['anselm', 'edmund'].includes(id) && s.chars[id].status === 'free')!;
+    addMod(s, enemy, 'edmund', 'hate', 'Hates him', -80);
+    const friend = s.order.find((id) => !['anselm', 'edmund', enemy].includes(id) && s.chars[id].status === 'free')!;
+    addMod(s, friend, 'edmund', 'love', 'Loves him', 80);
+    murdererShunned(s, 'anselm', 'edmund');
+    const grudge = (id: string) => s.relations[id]?.anselm?.mods.find((m) => m.key === 'murderer-edmund')?.value ?? 0;
+    expect(grudge(enemy)).toBeGreaterThanOrEqual(0);
+    expect(grudge(friend)).toBeLessThan(-35);
+  });
+});
 
 describe('hired blades', () => {
   it('strike harder, and keep your own hands out of it', () => {

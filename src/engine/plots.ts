@@ -6,18 +6,19 @@ import { chance, clamp, pick, roll, weighted } from './rng';
 import { deedDone, describe, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
 import {
+  OFFICE_NAMES,
   addMod,
   ch,
   credence,
   dateLabel,
   hasPerk,
   isAlive,
+  isChild,
   isFree,
   isRemoved,
   knows,
   learn,
   log,
-  OFFICE_NAMES,
   officeOf,
   opinion,
   uid,
@@ -216,7 +217,8 @@ export interface StrikeOutcome {
   text: string;
 }
 
-export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
+/** `hearing`: a traced killer is summoned to answer before the King rather than seized (the player's own deeds). */
+export function resolveStrike(s: GameState, p: Plot, hearing = false): StrikeOutcome {
   const target = p.targets[0];
   const owner = p.owner;
   const pct = strikeChance(s, p);
@@ -242,10 +244,8 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
       sec.evidence = 90;
       publish(s, sec.id, 85, 'court');
       log(s, `${nm(s, target)} is dead — ${how}. The trail led straight to ${nm(s, owner)}.`, 'all', 'dire', [target, owner]);
-      for (const id of s.order) {
-        if (isAlive(s, id) && id !== owner) addMod(s, id, owner, `murderer-${target}`, `Murdered ${first(s, target)}`, -35, 0.5);
-      }
-      seize(s, owner, sec.id, wasKing);
+      murdererShunned(s, owner, target);
+      if (!hearing) seize(s, owner, sec.id, wasKing);
     } else {
       log(s, `${nm(s, target)} was found dead — ${how}. No one has been named.`, 'all', 'dire', [target]);
       // A murdered lord is the King's business: his people start asking questions.
@@ -270,13 +270,31 @@ export function resolveStrike(s: GameState, p: Plot): StrikeOutcome {
     if (s.king && s.king !== owner) learn(s, s.king, sec.id, 85, 'court');
     addMod(s, target, owner, 'tried-kill', 'Tried to murder me', -80);
     log(s, `An attempt on the life of ${nm(s, target)} failed — and the assassins named ${nm(s, owner)}.`, 'all', 'dire', [target, owner]);
-    if (s.king && s.king !== owner && s.king !== s.player) seize(s, owner, sec.id, false);
+    if (s.king && s.king !== owner && s.king !== s.player && !hearing) seize(s, owner, sec.id, false);
     return { success, traced: true, text: 'The attempt failed, and your name was spoken.' };
   }
   learn(s, target, sec.id, 30, 'rumour');
   log(s, `Someone tried to kill ${nm(s, target)}. The would-be killers fled into the night.`, 'all', 'bad', [target]);
   log(s, `The attempt on ${nm(s, target)} failed. No one knows it was you — yet.`, insiders, 'secret', insiders);
   return { success, traced: false, text: 'The attempt failed, but the trail is cold.' };
+}
+
+/**
+ * How the court takes a known murder: as it felt about the dead. Kin and friends hate the killer;
+ * strangers think a little less of him; those who hated the victim shed no tears.
+ */
+export function murdererShunned(s: GameState, killer: CharId, victim: CharId): void {
+  const V = ch(s, victim);
+  for (const id of s.order) {
+    if (!isAlive(s, id) || id === killer || isChild(s, id)) continue;
+    const c = ch(s, id);
+    const kin = V.spouse === id || V.siblings.includes(id) || !!V.parents?.includes(id) || !!V.children?.includes(id);
+    const regard = opinion(s, id, victim);
+    let v = kin ? -60 : regard <= -30 ? 0 : -(8 + Math.max(0, regard) * 0.5 + Math.max(0, c.traits.honor - 50) * 0.2);
+    if (regard <= -50 && !kin) v = 5;
+    v = Math.round(v);
+    if (v) addMod(s, id, killer, `murderer-${victim}`, v > 0 ? `Rid us of ${first(s, victim)}` : `Murdered ${first(s, victim)}`, v, 0.5);
+  }
 }
 
 /** The Guard lays hands on a known murderer. */

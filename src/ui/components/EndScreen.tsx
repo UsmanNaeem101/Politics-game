@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { PLAYER_AIM, VERDICT_LABEL, ch, evaluate, first, nm, styleOf, dateLabel } from '../../engine';
 import { useGame } from '../context';
-import { weekBefore } from '../store';
+import { backPoints, type BackPoint } from '../store';
+import { TurnBackButtons } from './TurnBack';
 import { GIcon } from '../icons/GIcon';
 import { EventList } from './Chronicle';
 import { CourtMap } from './CourtMap';
@@ -17,10 +18,10 @@ export function EndScreen({
   onRestart: (seed: number, name: string) => void;
   onQuit: () => void;
   onRuleOn: () => void;
-  onTurnBack: () => void;
+  onTurnBack: (point: BackPoint) => void;
 }) {
   const { s } = useGame();
-  const back = s.ending?.reason === 'crowned' ? null : weekBefore();
+  const back = s.ending?.reason === 'crowned' ? [] : backPoints();
   const P = s.player;
   const end = s.ending!;
   const r = end.result;
@@ -57,12 +58,8 @@ export function EndScreen({
               <GIcon name="crown" size={16} /> Rule on
             </button>
           )}
-          {back && (
-            <button className="btn btn--primary" onClick={onTurnBack} title="Go back to how things stood before this end, and choose differently">
-              <GIcon name="time" size={16} /> Turn back to {dateLabel(back)}
-            </button>
-          )}
-          <button className={`btn ${end.reason === 'crowned' || back ? '' : 'btn--primary'}`} onClick={() => onRestart(Math.floor(Math.random() * 999999) + 1, '')}>
+          <TurnBackButtons points={back} onTurnBack={onTurnBack} />
+          <button className={`btn ${end.reason === 'crowned' || back.length ? '' : 'btn--primary'}`} onClick={() => onRestart(Math.floor(Math.random() * 999999) + 1, '')}>
             A new court
           </button>
           <button className="btn" onClick={() => onRestart(s.seed, ch(s, P).short)}>

@@ -21,6 +21,7 @@ import {
   readCase,
   release,
   rollJudgments,
+  shields,
   succeedHouse,
   vacate,
 } from './court';
@@ -479,7 +480,14 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return denounce(s, actor, it);
     case 'strike': {
       const p = s.plots[it.plotId];
-      const r = resolveStrike(s, p);
+      const victim = p.targets[0];
+      // Your own killing, traced: you answer for it before the King, rather than being taken in the night.
+      const accuser = actor === s.player && s.king && s.king !== actor && victim !== s.king ? hearingAccuser(s, actor, victim) : undefined;
+      const r = resolveStrike(s, p, !!accuser);
+      if (accuser && r.traced && isFree(s, actor)) {
+        pushAudience(s, accusedAudience(s, accuser, [p.secretId]));
+        return { ok: r.success, text: `${r.text} The Guard is at your door: you are to answer for it before the King.`, tone: 'dire' };
+      }
       return { ok: r.success, text: r.text, tone: r.success ? (r.traced ? 'dire' : 'good') : 'bad' };
     }
     case 'blackmail':
@@ -1101,6 +1109,15 @@ function judgmentAudience(s: GameState, accuser: CharId, charges: SecretId[], pl
     ],
     data: { accuser, charges, plotId: plot?.id, suspicious, only },
   };
+}
+
+/** Who lays a traced killing before the King: the Captain of the Guard, or the dead man's kin, or a great lord. */
+function hearingAccuser(s: GameState, killer: CharId, victim: CharId): CharId | undefined {
+  const V = ch(s, victim);
+  const fit = (id: CharId | null | undefined): id is CharId =>
+    !!id && id !== killer && id !== s.king && isFree(s, id) && !isChild(s, id) && !shields(s, id).includes(killer);
+  const kin = [V.spouse, ...V.siblings, ...(V.parents ?? []), ...(V.children ?? [])];
+  return [s.offices.captain, ...kin].find(fit) ?? s.order.find((id) => fit(id) && ch(s, id).rank === 'great');
 }
 
 function accusedAudience(s: GameState, accuser: CharId, charges: SecretId[], plot?: Plot, only?: CharId[]): Audience {

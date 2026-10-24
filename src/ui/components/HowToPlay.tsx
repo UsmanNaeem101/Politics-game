@@ -115,7 +115,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>The King’s justice</h3>
             <p>
-              A denunciation is judged on proof, on witnesses, and on whom the King trusts. The accused may be dismissed, sent to the Tower, or sent
+              If a killing of yours is traced, you are summoned to answer for it before the King: deny it, beg mercy (the Tower for six months
+              rather than the axe), accuse your accuser, or run. A denunciation is judged on proof, on witnesses, and on whom the King trusts. The accused may be dismissed, sent to the Tower, or sent
               to the block. Prisoners confess or name other names. Treason and a murder actually done are hanging matters. A charge the King
               dismisses is not forgotten: the hall heard it, the accused's name is muddied, and for a grave charge the King may set his people to
               keep looking. A lord found murdered is looked into too. Once judged, a charge cannot be brought again unless new proof comes to
@@ -140,8 +141,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <p>
               Couples have children. They grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
               schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
-              mourns a year before she is matched again, and for the first half of it no other man courts her: time enough to make your own
-              offer. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
+              mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole
+              court hears of it, and she takes two months to answer: time enough to make your own offer. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
             </p>
           </section>
           <section>
@@ -161,7 +162,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>A bad end</h3>
             <p>
-              If you die or flee, you can <strong>turn back</strong> to how things stood before the month ended, and choose differently.
+              The game keeps two earlier places: the <strong>start of this month</strong>, and the <strong>end of the last one</strong>. If you
+              die or flee you can turn back to either and choose differently. You can also turn back from the title screen while your game
+              goes on. The same choices bring the same results, so do something different.
             </p>
           </section>
           <p className="credit small muted">

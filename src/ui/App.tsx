@@ -15,7 +15,7 @@ import { Game } from './components/Game';
 import { HowToPlay } from './components/HowToPlay';
 import { TitleScreen } from './components/TitleScreen';
 import { GameCtx, type Ctx, type DeedSpec, type TabId } from './context';
-import { applyTheme, loadGame, loadPrefs, saveGame, savePrefs, turnBack, weekBefore, type Prefs } from './store';
+import { applyTheme, backPoints, loadGame, loadPrefs, saveGame, savePrefs, turnBack, type BackPoint, type Prefs } from './store';
 
 declare global {
   interface Window {
@@ -33,7 +33,7 @@ export function App({ initial }: { initial?: GameState | null }) {
   const [help, setHelp] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const [hasSave, setHasSave] = useState(() => !!loadGame());
-  const [backTo, setBackTo] = useState(() => weekBefore());
+  const [backTo, setBackTo] = useState(() => backPoints());
   const [dawn, setDawn] = useState(false);
 
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
@@ -63,9 +63,14 @@ export function App({ initial }: { initial?: GameState | null }) {
     }
   };
 
-  const goBack = () => {
-    const g = turnBack();
-    if (!g) return setBackTo(null);
+  const goBack = (point: BackPoint) => {
+    // Turning back from a game still being played throws away everything since.
+    if (gameRef.current?.phase === 'playing' || (screen === 'title' && hasSave)) {
+      const ok = window.confirm('Turn back? Your game as it stands now will be lost, and you will play on from that earlier point.');
+      if (!ok) return;
+    }
+    const g = turnBack(point);
+    if (!g) return setBackTo(backPoints());
     gameRef.current = g;
     setSelected(null);
     setScreen('game');
@@ -122,7 +127,7 @@ export function App({ initial }: { initial?: GameState | null }) {
         <TitleScreen
           onStart={start}
           hasSave={hasSave}
-          backTo={hasSave ? null : backTo}
+          backTo={backTo}
           onTurnBack={goBack}
           onContinue={() => {
             const g = loadGame();
@@ -146,7 +151,7 @@ export function App({ initial }: { initial?: GameState | null }) {
             onTheme={toggleTheme}
             onQuit={() => {
               setHasSave(!!loadGame());
-              setBackTo(weekBefore());
+              setBackTo(backPoints());
               setScreen('title');
             }}
             onTurnBack={goBack}

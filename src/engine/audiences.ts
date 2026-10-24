@@ -194,6 +194,8 @@ function resolveAccused(s: GameState, a: Audience, optionId: string): Outcome {
     for (const j of judgments) if (j.accused === P && j.verdict === 'execute') j.verdict = 'imprison';
   }
   const summary = applyJudgments(s, accuser, judgments);
+  // Mercy granted at the hearing holds: the Tower for a time, not the axe later.
+  if (optionId === 'mercy' && s.imprisoned[P]) s.imprisoned[P].spared = true;
   if (plot) plot.status = judgments.some((j) => j.verdict !== 'dismiss' && !j.forgeryFound) ? 'succeeded' : 'foiled';
   let extra = '';
   if (counter && isFree(s, P) && isFree(s, accuser) && s.king) {

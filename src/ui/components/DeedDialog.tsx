@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
   TAIL_COST,
+  suitorsOf,
   traceChance,
   livingSpouse,
   nightOdds,
@@ -766,6 +767,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
                   <input type="radio" name="hand" checked={target === o} onChange={() => setTarget(o)} />
                   <span>
                     <strong>{nm(s, o)}</strong> <span className="muted">{c.age} · {c.spouse ? 'widowed' : 'unmarried'} · House {c.house}</span>{' '}
+                    {suitorsOf(s, o).length > 0 && <span className="chip chip--danger">courted by {suitorsOf(s, o).map((x) => first(s, x)).join(', ')}</span>}{' '}
                     <span className="chip">{proposeOdds(s, P, o)}%</span>
                   </span>
                 </label>

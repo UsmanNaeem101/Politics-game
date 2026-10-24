@@ -14,6 +14,8 @@ import {
   makeSecret,
   marriageable,
   matchmaking,
+  DELIBERATION,
+  proposeOdds,
   perform,
   runSpies,
   wed,
@@ -87,11 +89,37 @@ describe('marrying again', () => {
     s.turn += 11;
     for (let w = 0; w < 300; w++) matchmaking(s);
     expect(s.chars[wife].spouse).toBe(lord);
-    s.turn += 3;
-    for (let w = 0; w < 300 && s.chars[wife].spouse === lord; w++) matchmaking(s);
+    s.turn += 1;
+    // Then suitors call, the court hears of it, and she answers two months later.
+    let began = 0;
+    for (let w = 0; w < 300 && s.chars[wife].spouse === lord; w++) {
+      matchmaking(s);
+      if (!began && s.courtships?.[wife]) began = s.turn;
+      s.turn++;
+    }
     const next = s.chars[wife].spouse!;
     expect(next).not.toBe(lord);
     expect(s.chars[next].spouse).toBe(wife);
+    expect(began).toBeGreaterThan(0);
+    expect(s.turn - 1 - began).toBeGreaterThanOrEqual(DELIBERATION);
+    expect(s.events.some((e) => e.visibleTo === 'all' && /court|match is being sought/.test(e.text) && e.text.includes(s.chars[wife].short))).toBe(true);
+  });
+
+  it('while she deliberates, you may still make your offer; rivals make it harder', () => {
+    const s = generateCourt(5);
+    const { lord, wife } = couple(s);
+    kill(s, lord, 'Died', false);
+    const P = s.player;
+    const mine = s.chars[P].spouse;
+    if (mine) kill(s, mine, 'Died', false);
+    s.turn += 13;
+    s.known[wife] = 3;
+    const alone = proposeOdds(s, P, wife);
+    const rival = s.order.find((id) => s.chars[id].gender === 'm' && id !== P && marriageable(s, id))!;
+    (s.courtships ??= {})[wife] = { suitors: [rival], since: s.turn };
+    expect(proposeOdds(s, P, wife)).toBeLessThanOrEqual(alone);
+    s.ap = 3;
+    expect(check(s, P, { type: 'propose', target: wife })).toBeNull();
   });
 
   it('a widowed player may seek a match: someone at court, or from the provinces', () => {

@@ -717,6 +717,14 @@ export function decidePrisoners(s: GameState): void {
     const rec = s.imprisoned[id];
     if (!rec || ch(s, id).status !== 'imprisoned') continue;
     const secs = rec.charges.map((c) => s.secrets[c]).filter(Boolean);
+    // Spared the axe at a hearing: six months in the Tower, then out, disgraced.
+    if (rec.spared) {
+      if (s.turn - rec.since >= 6) {
+        release(s, id, 'six months in the Tower, by the King’s mercy');
+        if (secs[0] && isFree(s, id)) disgrace(s, id, secs[0]);
+      }
+      continue;
+    }
     const best = secs.reduce((m, sec) => Math.max(m, credence(s, K, sec.id)), 0);
     // A favourite needs more proof before the King will kill him.
     const bar = 75 + Math.max(0, opinion(s, K, id)) * 0.3;

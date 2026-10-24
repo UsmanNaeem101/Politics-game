@@ -37,8 +37,11 @@ before changing anything substantial; it is the plan we are building toward.
 - Families: `family.ts` (children with rank `child`, births, coming of age, weddings, NPC matchmaking, outsiders from the
   provinces, the player's proposals). An unfaithful wife is an affair spy (`Spy.affair`) for her lover in `spies.ts`.
 - Justice: a charge once judged is recorded by crime, not by letter (`GameState.judged`, keyed by `chargeKey()` in
-  `court.ts`); `alreadyJudged()` keeps it from being heard again without +15 proof. The UI keeps the save from before the last week ended (`store.ts`) so an
-  ending can be turned back.
+  `court.ts`); `alreadyJudged()` keeps it from being heard again without +15 proof. The UI keeps two earlier saves (`store.ts`: the start of this month, and
+  before the last month ended) so an ending, or a game in progress, can be turned back. A traced killing by the player
+  is answered at a hearing (`hearingAccuser()` in `actions.ts`); mercy there sets `Imprisonment.spared`.
+- Matches are courtships (`GameState.courtships`, `matchmaking()` in `family.ts`): suitors are announced and the answer
+  comes after `DELIBERATION` months; no one is matched during `MOURNING`.
 - Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); ages tick yearly in `mortality()` (`turn.ts`),
   which never takes the player or the player's spouse.
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own

@@ -8,8 +8,8 @@ import { succeedHouse } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { makeSecret } from './secrets';
 import { affairSpy } from './spies';
-import { first, nm } from './text';
-import { acquaintance, addMod, adjustTrust, ch, gone, hearOf, isChild, isFree, isServant, learn, log, opinion, rename, uid } from './world';
+import { first, names, nm } from './text';
+import { acquaintance, addMod, adjustTrust, ch, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
 
 export const COMING_OF_AGE = 16;
@@ -284,11 +284,47 @@ export function outsider(s: GameState, partner: CharId): Character {
   return c;
 }
 
-/** Widows and widowers marry again after a season's mourning; the unmarried, now and then. */
+/** How long a courted widow, widower or maid takes to give an answer: the player's window to make an offer. */
+export const DELIBERATION = 2;
+
+/** Who is courting this person now, if anyone. */
+export const suitorsOf = (s: GameState, id: CharId): CharId[] => s.courtships?.[id]?.suitors ?? [];
+
+/**
+ * Widows and widowers marry again after a year's mourning; the unmarried, now and then. It is never
+ * sudden: first suitors call, and the court sees who; the answer comes two months later.
+ */
 export function matchmaking(s: GameState): void {
   const P = s.player;
+  const court = (s.courtships ??= {});
+  const courting = new Set(Object.values(court).flatMap((x) => x.suitors));
+
+  // Answers.
+  for (const [id, ct] of Object.entries(court)) {
+    if (!marriageable(s, id)) {
+      // Taken by someone who made a better offer, or gone: the suitors are left at the door.
+      const winner = livingSpouse(s, id);
+      if (winner) for (const x of ct.suitors) if (x !== winner && !gone(s, x)) addMod(s, x, winner, `suitor-${id}`, `Won ${first(s, id)} from me`, -12, 0.3);
+      delete court[id];
+      continue;
+    }
+    ct.suitors = ct.suitors.filter((x) => marriageable(s, x));
+    if (s.turn - ct.since < DELIBERATION) continue;
+    delete court[id];
+    const best = ct.suitors.sort((a, b) => regard(s, id, b) - regard(s, id, a))[0];
+    wed(s, id, best ?? outsider(s, id).id);
+  }
+
+  // The end of mourning is news, to anyone who has an interest.
   for (const id of s.order) {
-    if (id === P || !marriageable(s, id)) continue;
+    if (widowedFor(s, id) === MOURNING && !gone(s, id) && acquaintance(s, id) >= 2) {
+      log(s, `${nm(s, id)}'s year of mourning is over. ${ch(s, id).gender === 'f' ? 'She' : 'He'} may marry again.`, [P], 'neutral', [id]);
+    }
+  }
+
+  // Suitors come calling.
+  for (const id of s.order) {
+    if (id === P || court[id] || courting.has(id) || !marriageable(s, id)) continue;
     const c = ch(s, id);
     const widowed = !!c.spouse;
     if (widowed && (widowedFor(s, id) ?? 0) < MOURNING) continue;
@@ -297,15 +333,39 @@ export function matchmaking(s: GameState): void {
       (o) =>
         o !== id &&
         o !== P &&
+        !court[o] &&
+        !courting.has(o) &&
         marriageable(s, o) &&
         (widowedFor(s, o) ?? MOURNING) >= MOURNING &&
         ch(s, o).gender !== c.gender &&
         !akin(s, id, o) &&
         Math.abs(ch(s, o).age - c.age) <= 20,
     );
-    const partner = pool.length && chance(s, 60) ? weighted(s, pool, (o) => 10 + Math.max(0, opinion(s, id, o)) + Math.max(0, opinion(s, o, id)) + Math.max(0, 20 - Math.abs(ch(s, o).prestige - c.prestige) / 2)) : undefined;
-    wed(s, id, partner ?? outsider(s, id).id);
+    const suitors: CharId[] = [];
+    for (let n = chance(s, 60) ? roll(s, 1, 2) : 0; n > 0; n--) {
+      const x = weighted(s, pool.filter((o) => !suitors.includes(o)), (o) => regard(s, id, o) + Math.max(0, opinion(s, o, id)));
+      if (x) suitors.push(x);
+    }
+    suitors.forEach((x) => courting.add(x));
+    court[id] = { suitors, since: s.turn };
+    const she = c.gender === 'f' ? 'She' : 'He';
+    log(
+      s,
+      suitors.length
+        ? c.gender === 'f'
+          ? `${names(s, suitors)} ${suitors.length > 1 ? 'have' : 'has'} begun to court ${nm(s, id)}. ${she} will give her answer within two months.`
+          : `${names(s, suitors)} ${suitors.length > 1 ? 'have' : 'has'} been offered to ${nm(s, id)} in marriage. ${she} will give his answer within two months.`
+        : `A match is being sought for ${nm(s, id)} in the provinces. ${she} will give ${c.gender === 'f' ? 'her' : 'his'} answer within two months.`,
+      'all',
+      'neutral',
+      [id, ...suitors],
+    );
   }
+}
+
+/** How well a suitor stands with the one they court: liking, and a fair match in standing. */
+function regard(s: GameState, id: CharId, o: CharId): number {
+  return 10 + Math.max(0, opinion(s, id, o)) + Math.max(0, 20 - Math.abs(ch(s, o).prestige - ch(s, id).prestige) / 2);
 }
 
 /** The player asks for a hand. */
@@ -314,7 +374,9 @@ export function proposeOdds(s: GameState, actor: CharId, target: CharId): number
   const head = s.houses[T.householdId]?.head;
   const family = head && head !== target && isFree(s, head) ? opinion(s, head, actor) * 0.3 : 0;
   return clamp(
-    Math.round(20 + opinion(s, target, actor) * 0.6 + (ch(s, actor).prestige - T.prestige) * 0.4 + family + ch(s, actor).traits.charm * 0.15),
+    Math.round(
+      20 + opinion(s, target, actor) * 0.6 + (ch(s, actor).prestige - T.prestige) * 0.4 + family + ch(s, actor).traits.charm * 0.15 - suitorsOf(s, target).length * 6,
+    ),
     3,
     95,
   );

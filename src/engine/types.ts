@@ -212,6 +212,12 @@ export type BusinessKind =
 /** Why a spy serves: it decides how far they can be trusted, and what they will do when caught. */
 export type SpyHook = 'gold' | 'blackmail' | 'devotion' | 'grudge';
 
+/** Someone free to marry, and the suitors calling on them. No suitors: a match is sought in the provinces. */
+export interface Courtship {
+  suitors: CharId[];
+  since: number;
+}
+
 /** A man hired to follow someone for a month. */
 export interface Tail {
   id: string;
@@ -387,6 +393,8 @@ export interface Imprisonment {
   since: number;
   accuser?: CharId;
   questioned: number;
+  /** The King commuted the axe at a hearing: the Tower, for a time, then disgrace. */
+  spared?: boolean;
 }
 
 export interface Insight {
@@ -441,6 +449,8 @@ export interface GameState {
   businesses: Record<string, Business>;
   /** Recruited spies, everyone's. Missing in saves from before spies. */
   spies: Record<string, Spy>;
+  /** Matches being made: who is courting whom, and since when. The answer comes after DELIBERATION months. */
+  courtships?: Record<CharId, Courtship>;
   /** People being followed this month. */
   tails?: Record<string, Tail>;
   offices: Record<OfficeId, CharId | null>;

@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
-import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, dateLabel, type BusinessKind, type TraitKey } from '../../engine';
+import { BUSINESSES, BUSINESS_KINDS, KINGDOM, TRAIT_WORDS, businessesOf, generateCourt, incomeOf, knownSecrets, landsOf, type BusinessKind, type TraitKey } from '../../engine';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Shield } from './Shield';
+import { TurnBackButtons } from './TurnBack';
+import type { BackPoint } from '../store';
 import { TradeCard } from './Trade';
 
 const randomSeed = () => Math.floor(Math.random() * 999999) + 1;
@@ -17,8 +19,8 @@ export function TitleScreen({
   onStart: (seed: number, name: string, trade?: BusinessKind) => void;
   onContinue: () => void;
   hasSave: boolean;
-  backTo: number | null;
-  onTurnBack: () => void;
+  backTo: { point: BackPoint; turn: number }[];
+  onTurnBack: (point: BackPoint) => void;
   onHelp: () => void;
 }) {
   const [seed, setSeed] = useState(randomSeed);
@@ -50,11 +52,7 @@ export function TitleScreen({
               Continue your game
             </button>
           )}
-          {backTo && (
-            <button className="btn btn--primary" onClick={onTurnBack} title="Your last game ended. Go back to how it stood before.">
-              <GIcon name="time" size={16} /> Turn back to {dateLabel(backTo)}
-            </button>
-          )}
+          <TurnBackButtons points={backTo} onTurnBack={onTurnBack} primary={!hasSave} />
           <button className="btn" onClick={onHelp}>
             How to play
           </button>

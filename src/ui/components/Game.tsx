@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { calendar, canEndWeek, ch, incomeOf, knownThreats, opinion, opinionWord, styleOf, type Outcome } from '../../engine';
 import { useGame, type DeedSpec, type TabId } from '../context';
+import type { BackPoint } from '../store';
 import { GIcon, type GIName } from '../icons/GIcon';
 import { Aftermath, AudienceModal } from './AudienceModal';
 import { Briefing } from './Briefing';
@@ -38,7 +39,7 @@ export function Game(props: {
   onQuit: () => void;
   onRestart: (seed: number, name: string) => void;
   onRuleOn: () => void;
-  onTurnBack: () => void;
+  onTurnBack: (point: BackPoint) => void;
 }) {
   const { s, endWeek } = useGame();
   const { tab, setTab } = props;
