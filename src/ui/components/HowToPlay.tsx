@@ -137,9 +137,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             </p>
             <p>
               Couples have children. They grow up, come of age at sixteen, and inherit before their uncles. A child is no part of anyone's
-              schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. The
-              widowed marry again after a season. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand
-              on theirs.
+              schemes. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
+              mourns a year before she is matched again, and for the first half of it no other man courts her: time enough to make your own
+              offer. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
             </p>
           </section>
           <section>

@@ -151,6 +151,15 @@ export function births(s: GameState): void {
 
 // ── Marriage ────────────────────────────────────────────────────────────────
 
+/** A year's mourning before a widow or widower is matched again; the first half of it, no one courts her. */
+export const MOURNING = 12;
+
+/** Months since this person's husband or wife died, if they are widowed. */
+export function widowedFor(s: GameState, id: CharId): number | undefined {
+  const sp = s.chars[id]?.spouse;
+  return sp && gone(s, sp) ? s.turn - (s.chars[sp].statusTurn ?? 0) : undefined;
+}
+
 /** Unmarried, or widowed. */
 export const unwed = (s: GameState, id: CharId) => !s.chars[id].spouse || gone(s, s.chars[id].spouse!);
 
@@ -282,10 +291,17 @@ export function matchmaking(s: GameState): void {
     if (id === P || !marriageable(s, id)) continue;
     const c = ch(s, id);
     const widowed = !!c.spouse;
-    if (widowed && s.turn - (ch(s, c.spouse!).statusTurn ?? 0) < 4) continue;
-    if (!chance(s, widowed ? 10 : 2)) continue;
+    if (widowed && (widowedFor(s, id) ?? 0) < MOURNING) continue;
+    if (!chance(s, widowed ? 5 : 2)) continue;
     const pool = s.order.filter(
-      (o) => o !== id && o !== P && marriageable(s, o) && ch(s, o).gender !== c.gender && !akin(s, id, o) && Math.abs(ch(s, o).age - c.age) <= 20,
+      (o) =>
+        o !== id &&
+        o !== P &&
+        marriageable(s, o) &&
+        (widowedFor(s, o) ?? MOURNING) >= MOURNING &&
+        ch(s, o).gender !== c.gender &&
+        !akin(s, id, o) &&
+        Math.abs(ch(s, o).age - c.age) <= 20,
     );
     const partner = pool.length && chance(s, 60) ? weighted(s, pool, (o) => 10 + Math.max(0, opinion(s, id, o)) + Math.max(0, opinion(s, o, id)) + Math.max(0, 20 - Math.abs(ch(s, o).prestige - c.prestige) / 2)) : undefined;
     wed(s, id, partner ?? outsider(s, id).id);

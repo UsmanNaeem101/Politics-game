@@ -22,6 +22,7 @@ import { secretsAgainst, threatsTo } from './secrets';
 import { alreadyJudged, capital, claimants, officeEligible } from './court';
 import { accessTo, recruitedSpies, spyOdds } from './spies';
 import { loversOf, seduceOdds, seduceProblem } from './love';
+import { MOURNING, widowedFor } from './family';
 import { TAIL_COST } from './tails';
 import {
   addMod,
@@ -317,7 +318,8 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
   if (c.gender === 'm' && !isChild(s, me) && c.traits.honor < 60 && !loversOf(s, me).length) {
     let best: { w: CharId; odds: number } | undefined;
     for (const w of others) {
-      if (ch(s, w).gender !== 'f' || opinion(s, w, me) < 5 || seduceProblem(s, me, w)) continue;
+      // A new widow is left to her grief for half a year.
+      if (ch(s, w).gender !== 'f' || opinion(s, w, me) < 5 || (widowedFor(s, w) ?? MOURNING) < MOURNING / 2 || seduceProblem(s, me, w)) continue;
       const odds = seduceOdds(s, me, w);
       if (!best || odds > best.odds) best = { w, odds };
     }

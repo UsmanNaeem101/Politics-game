@@ -78,12 +78,16 @@ describe('children', () => {
 });
 
 describe('marrying again', () => {
-  it('a widow marries again after a season’s mourning', () => {
+  it('a widow marries again, but not before a year’s mourning', () => {
     const s = generateCourt(5);
     const { lord, wife } = couple(s);
     kill(s, lord, 'Died', false);
     expect(marriageable(s, wife)).toBe(true);
-    s.turn += 14;
+    // Long enough for a suitor to make his case.
+    s.turn += 11;
+    for (let w = 0; w < 300; w++) matchmaking(s);
+    expect(s.chars[wife].spouse).toBe(lord);
+    s.turn += 3;
     for (let w = 0; w < 300 && s.chars[wife].spouse === lord; w++) matchmaking(s);
     const next = s.chars[wife].spouse!;
     expect(next).not.toBe(lord);
