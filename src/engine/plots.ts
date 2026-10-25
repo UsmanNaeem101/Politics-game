@@ -76,11 +76,19 @@ export function strikePower(s: GameState, p: Plot): number {
   return power;
 }
 
+/** A lady goes unarmed and keeps no men-at-arms of her own (the Queen has the King's guard about her). */
+export const unguardedLady = (s: GameState, id: CharId): boolean => ch(s, id).gender === 'f' && ch(s, id).rank !== 'queen';
+export const LADY_EXPOSED = 10;
+
 export function strikeDefence(s: GameState, target: CharId, owner?: CharId): number {
   const t = ch(s, target);
   const retainers = hasPerk(s, target, 'retainers') ? 10 : 0;
-  return t.guard + t.traits.paranoia * 0.15 + t.traits.martial * 0.1 + royalGuard(s, target, owner) + retainers;
+  const base = t.guard + t.traits.paranoia * 0.15 + t.traits.martial * 0.1 + royalGuard(s, target, owner) + retainers;
+  return Math.max(0, base - (unguardedLady(s, target) ? LADY_EXPOSED : 0));
 }
+
+/** How much must be prepared before a strike: less for a lady, whose days are easily learned. */
+export const strikeReady = (s: GameState, p: Plot): number => (p.targets[0] && unguardedLady(s, p.targets[0]) ? 20 : 30);
 
 /** A killing the reigning King has given his leave for. */
 export const sanctioned = (s: GameState, p: Plot): boolean => !!p.warrant && p.warrant === s.king;
@@ -115,7 +123,7 @@ export function canStrike(s: GameState, p: Plot): { ok: boolean; reason?: string
   if (p.status !== 'active') return { ok: false, reason: 'The plot is no longer active.' };
   const t = p.targets[0];
   if (!t || !isFree(s, t)) return { ok: false, reason: 'The target is beyond your reach.' };
-  if (p.progress < 30) return { ok: false, reason: 'Too little is prepared (needs 30).' };
+  if (p.progress < strikeReady(s, p)) return { ok: false, reason: `Too little is prepared (needs ${strikeReady(s, p)}).` };
   return { ok: true };
 }
 

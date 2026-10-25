@@ -103,7 +103,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <section>
             <h3>Schemes</h3>
             <p>
-              A <strong>murder</strong> scheme needs preparation and steady hands; even a clean kill may be traced. Your cunning and preparation
+              A <strong>murder</strong> scheme needs preparation and steady hands; even a clean kill may be traced. A lady is easier to
+              reach than a lord: she goes unarmed and keeps no men-at-arms, and her days are soon learned (the Queen excepted: the King's
+              guard is about her). Your cunning and preparation
               hide you, every conspirator is another mouth, and <strong>hired blades</strong> (bought with gold as you work on the scheme) strike
               harder and do it while you are seen elsewhere (up to ten to a scheme; past 92% each buys less, and no killing is ever surer than 98%). A <strong>ruin</strong> scheme
               gathers charges and witnesses to lay before the King. When you draw someone in, offer a carrot. They may join sincerely, or meaning to

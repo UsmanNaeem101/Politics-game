@@ -11,6 +11,8 @@ import {
   advancePlot,
   leakPlots,
   traceForger,
+  canStrike,
+  strikeDefence,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -449,6 +451,24 @@ describe('a child', () => {
     expect(chargesFor(s, 'hugh', [tale.id])).toEqual([]);
     imprison(s, kid.id, [tale.id]);
     expect(kid.status).toBe('free');
+  });
+});
+
+describe('a lady', () => {
+  it('is easier to reach than a man: no arms, no men-at-arms, her days easily learned', () => {
+    const s = fresh();
+    const p = createPlot(s, 'gareth', 'murder', ['edmund']);
+    p.progress = 25;
+    expect(canStrike(s, p).ok).toBe(false);
+    const asMan = strikeDefence(s, 'edmund');
+    const E = s.chars.edmund;
+    E.gender = 'f';
+    E.traits.martial = 50;
+    expect(strikeDefence(s, 'edmund')).toBe(Math.max(0, asMan - 10));
+    expect(canStrike(s, p).ok).toBe(true);
+    // But not the Queen: the King's guard is about her.
+    E.rank = 'queen';
+    expect(strikeDefence(s, 'edmund')).toBe(asMan);
   });
 });
 
