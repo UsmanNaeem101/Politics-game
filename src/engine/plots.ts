@@ -207,8 +207,8 @@ export const MAX_BLADES = 10;
 /** A lady's days are soon learned, and fewer, cheaper hands will reach her. */
 const againstLady = (s: GameState, p: Plot): boolean => p.kind === 'murder' && !!p.targets[0] && unguardedLady(s, p.targets[0]);
 export const bladeCost = (s: GameState, p: Plot): number => (againstLady(s, p) ? BLADE_COST / 2 : BLADE_COST);
-/** A murder scheme comes together quickly (about +25% to kill a month, with a blade); a lady's quicker still. */
-export const prepPace = (s: GameState, p: Plot): number => (p.kind === 'murder' ? 2 : 1) * (againstLady(s, p) ? 1.5 : 1);
+/** A murder scheme comes together quickly (about +35% to kill a month, with a blade); a lady's quicker still. */
+export const prepPace = (s: GameState, p: Plot): number => (p.kind === 'murder' ? 3 : 1) * (againstLady(s, p) ? 1.5 : 1);
 
 export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): number {
   const a = ch(s, actor);

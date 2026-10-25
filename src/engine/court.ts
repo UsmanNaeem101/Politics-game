@@ -625,7 +625,7 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
   // A scheme laid bare before the King is finished.
   const plot = sec.plotId ? s.plots[sec.plotId] : undefined;
   if (plot && plot.status === 'active' && plot.owner === id) plot.status = 'foiled';
-  if (s.king) addMod(s, s.king, id, 'disgraced', `Found guilty of ${crimeName(sec)}`, -35, 0.5);
+  if (s.king) addMod(s, s.king, id, 'disgraced', `Found guilty of ${crimeName(sec)}`, -35, SUSPICION_FADES);
   let restored = '';
   if (sec.kind === 'theft') {
     for (const land of Object.values(s.lands)) {

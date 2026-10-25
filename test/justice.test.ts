@@ -486,6 +486,14 @@ describe('summoned, not seized', () => {
     expect(s.audiences.some((a) => a.kind === 'accused')).toBe(true);
   });
 
+  it('a guilty verdict fades seven points a month, old saves included', () => {
+    const s = fresh();
+    addMod(s, 'osric', 'anselm', 'disgraced', 'Found guilty of murder', -100, 0.5);
+    repairSave(s);
+    decayMods(s);
+    expect(s.relations.osric.anselm.mods.find((m) => m.key === 'disgraced')!.value).toBeCloseTo(-93);
+  });
+
   it('suspicion fades seven points a month', () => {
     const s = fresh();
     addMod(s, 'osric', 'anselm', 'belief-x', 'Believes: murder', -24, SUSPICION_FADES);
@@ -527,7 +535,7 @@ describe('a lady', () => {
 });
 
 describe('preparing a killing', () => {
-  it('a month of work and a blade raise the odds by about a quarter', () => {
+  it('a month of work and a blade raise the odds by about a third', () => {
     const rises: number[] = [];
     for (let seed = 1; seed <= 20; seed++) {
       const s = fresh(seed);
@@ -539,8 +547,8 @@ describe('preparing a killing', () => {
       rises.push(strikeChance(s, p) - before);
     }
     const avg = rises.reduce((a, b) => a + b, 0) / rises.length;
-    expect(avg).toBeGreaterThanOrEqual(20);
-    expect(avg).toBeLessThanOrEqual(32);
+    expect(avg).toBeGreaterThanOrEqual(28);
+    expect(avg).toBeLessThanOrEqual(45);
   });
 });
 

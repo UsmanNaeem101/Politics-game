@@ -52,6 +52,8 @@ interface Candidate {
 }
 
 const DELEGATED_UNTIL = 4;
+/** Months an NPC lets a murder scheme ripen before striking, unless the target threatens him. */
+const NPC_PATIENCE = 4;
 
 /** What `desire` needs to know about `me`, worked out once rather than for every rival. */
 export interface DesireContext {
@@ -172,7 +174,9 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     const ready = waitCleared(s, p);
     const target = p.targets[0];
     if (p.kind === 'murder') {
-      if (mine && ready && canStrike(s, p).ok) {
+      // However quickly a scheme comes together, a careful man waits for the right night.
+      const ripe = s.turn - p.createdTurn >= NPC_PATIENCE || dctx.threats.has(target);
+      if (mine && ready && ripe && canStrike(s, p).ok) {
         const sc = strikeChance(s, p);
         const threat = dctx.threats.has(target) ? 25 : 0;
         // With the King's leave there is no axe waiting if it goes wrong.

@@ -77,7 +77,7 @@ export function repairSave(s: GameState): void {
   // Suspicion once faded at a point a month; it fades at the new pace now.
   for (const row of Object.values(s.relations)) {
     for (const r of Object.values(row)) {
-      for (const m of r.mods) if ((m.key.startsWith('belief-') || m.key === 'accused') && m.decay && m.decay < SUSPICION_FADES) m.decay = SUSPICION_FADES;
+      for (const m of r.mods) if ((m.key.startsWith('belief-') || m.key === 'accused' || m.key === 'disgraced') && m.decay && m.decay < SUSPICION_FADES) m.decay = SUSPICION_FADES;
     }
   }
   // An unseen killing once put the killer's name in the mouths of strangers at random. Strangers forget it;
