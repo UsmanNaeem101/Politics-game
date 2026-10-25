@@ -13,6 +13,7 @@ import {
   traceForger,
   canStrike,
   strikeDefence,
+  prepPace,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -469,6 +470,20 @@ describe('a lady', () => {
     // But not the Queen: the King's guard is about her.
     E.rank = 'queen';
     expect(strikeDefence(s, 'edmund')).toBe(asMan);
+  });
+
+  it('takes less preparation and cheaper blades', () => {
+    const s = fresh();
+    const lord = createPlot(s, 'gareth', 'murder', ['edmund']);
+    const lady = createPlot(s, 'gareth', 'murder', ['isolde']);
+    expect(prepPace(s, lady)).toBeGreaterThan(prepPace(s, lord));
+    s.chars.gareth.gold = 100;
+    advancePlot(s, lady, 'gareth', 100);
+    expect(lady.hiredBlades).toBe(10);
+    expect(s.chars.gareth.gold).toBe(0);
+    s.chars.gareth.gold = 100;
+    advancePlot(s, lord, 'gareth', 100);
+    expect(lord.hiredBlades).toBe(5);
   });
 });
 

@@ -203,15 +203,21 @@ export function joinPlot(s: GameState, p: Plot, who: CharId, sincere: boolean, o
 export const BLADE_COST = 20;
 export const MAX_BLADES = 10;
 
+/** A lady's days are soon learned, and fewer, cheaper hands will reach her. */
+const againstLady = (s: GameState, p: Plot): boolean => p.kind === 'murder' && !!p.targets[0] && unguardedLady(s, p.targets[0]);
+export const bladeCost = (s: GameState, p: Plot): number => (againstLady(s, p) ? BLADE_COST / 2 : BLADE_COST);
+export const prepPace = (s: GameState, p: Plot): number => (againstLady(s, p) ? 1.5 : 1);
+
 export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): number {
   const a = ch(s, actor);
   const poisons = p.kind === 'murder' && hasPerk(s, actor, 'poisons') ? 4 : 0;
-  const gain = Math.round(8 + a.traits.cunning * 0.12 + p.members.length * 2 + roll(s, 0, 6) + poisons);
+  const gain = Math.round((8 + a.traits.cunning * 0.12 + p.members.length * 2 + roll(s, 0, 6) + poisons) * prepPace(s, p));
   p.progress = clamp(p.progress + gain, 0, 100);
   if (gold > 0 && p.kind === 'murder') {
     // Only the blades actually hired are paid for.
-    const hire = Math.max(0, Math.min(Math.floor(Math.min(gold, a.gold) / BLADE_COST), MAX_BLADES - p.hiredBlades));
-    a.gold -= hire * BLADE_COST;
+    const cost = bladeCost(s, p);
+    const hire = Math.max(0, Math.min(Math.floor(Math.min(gold, a.gold) / cost), MAX_BLADES - p.hiredBlades));
+    a.gold -= hire * cost;
     p.hiredBlades += hire;
   }
   if (p.kind === 'ruin') {

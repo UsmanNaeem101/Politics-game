@@ -64,6 +64,8 @@ import {
   bladeOdds,
   BLADE_COST,
   MAX_BLADES,
+  bladeCost,
+  prepPace,
   STRIKE_MAX,
   STRIKE_SURE,
   betrothOdds,
@@ -205,7 +207,11 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return { type, kind: schemeKind, targets: schemeKind === 'murder' ? targets.slice(0, 1) : targets, charges: schemeKind === 'ruin' ? charges : [] };
       case 'advance':
         return plotId
-          ? { type, plotId, gold: s.plots[plotId]?.kind === 'murder' ? Math.min(amount - (amount % BLADE_COST), (MAX_BLADES - s.plots[plotId].hiredBlades) * BLADE_COST, me.gold) : 0 }
+          ? (() => {
+              const p = s.plots[plotId];
+              const cost = p ? bladeCost(s, p) : BLADE_COST;
+              return { type, plotId, gold: p?.kind === 'murder' ? Math.min(amount - (amount % cost), (MAX_BLADES - p.hiredBlades) * cost, me.gold) : 0 };
+            })()
           : null;
       case 'recruit':
         return target && plotId ? { type, target, plotId, offer } : null;
@@ -547,18 +553,19 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
     case 'advance': {
       const p = s.plots[plotId];
       // Never more than the purse holds, nor more blades than the scheme can use.
-      const bladeRoom = p ? Math.max(0, Math.min((MAX_BLADES - p.hiredBlades) * BLADE_COST, me.gold - (me.gold % BLADE_COST))) : 0;
+      const cost = p ? bladeCost(s, p) : BLADE_COST;
+      const bladeRoom = p ? Math.max(0, Math.min((MAX_BLADES - p.hiredBlades) * cost, me.gold - (me.gold % cost))) : 0;
       fields = (
         <>
           {pick('Which scheme', plotId, setPlotId, workable.map((x) => ({ value: x.id, label: `“${x.name}” (${x.progress}%)` })), 'deed-plot')}
           {p?.kind === 'murder' && p.owner === P && (
             <label className="field">
               <span>
-                Crowns for hired blades ({BLADE_COST} each, up to {MAX_BLADES}; you have {me.gold}). They strike harder, and do it while you are seen elsewhere.{' '}
+                Crowns for hired blades ({cost} each{cost < BLADE_COST ? ', for she is easily reached' : ''}, up to {MAX_BLADES}; you have {me.gold}). They strike harder, and do it while you are seen elsewhere.{' '}
                 {p.hiredBlades ? `${p.hiredBlades} hired so far.` : ''} {p.hiredBlades >= MAX_BLADES ? 'You have all the blades a scheme can use.' : ''}
               </span>
-              <input id="deed-blades" type="range" min={0} max={bladeRoom} step={BLADE_COST} value={Math.min(amount - (amount % BLADE_COST), bladeRoom)} onChange={(e) => setAmount(Number(e.target.value))} />
-              <span className="num">{Math.min(amount - (amount % BLADE_COST), bladeRoom)}</span>
+              <input id="deed-blades" type="range" min={0} max={bladeRoom} step={cost} value={Math.min(amount - (amount % cost), bladeRoom)} onChange={(e) => setAmount(Number(e.target.value))} />
+              <span className="num">{Math.min(amount - (amount % cost), bladeRoom)}</span>
             </label>
           )}
         </>
@@ -1083,7 +1090,12 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     case 'scheme':
       return { lines: [it.kind === 'murder' ? 'A murder scheme starts unprepared. Work on it before you strike.' : 'A ruin scheme bundles your charges. Work on it and draw in witnesses before denouncing.'] };
     case 'advance':
-      return { lines: [`About +${Math.round(11 + me.traits.cunning * 0.12 + (s.plots[it.plotId]?.members.length ?? 0) * 2)} preparation. The more prepared, the more it can leak.`] };
+      return {
+        lines: [
+          `About +${Math.round((11 + me.traits.cunning * 0.12 + (s.plots[it.plotId]?.members.length ?? 0) * 2) * (s.plots[it.plotId] ? prepPace(s, s.plots[it.plotId]) : 1))} preparation. The more prepared, the more it can leak.`,
+          ...(s.plots[it.plotId] && prepPace(s, s.plots[it.plotId]) > 1 ? ['A lady’s days are soon learned: preparation goes quicker, and blades come cheaper.'] : []),
+        ],
+      };
     case 'recruit': {
       const p = s.plots[it.plotId];
       return {

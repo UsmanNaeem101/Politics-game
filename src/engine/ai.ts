@@ -16,7 +16,7 @@ import {
   type Intent,
 } from './actions';
 import {
-  againstTheKing, betrayable, canStrike, isMember, sanctioned, strikeChance, waitCleared } from './plots';
+  againstTheKing, bladeCost, betrayable, canStrike, isMember, sanctioned, strikeChance, waitCleared } from './plots';
 import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
 import { alreadyJudged, capital, claimants, officeEligible } from './court';
@@ -180,7 +180,7 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
       }
       // Sharpening a knife you cannot yet use only leaves a trail.
       const prep = ready ? 26 + E.ambition * 0.12 - (p.progress >= 85 ? 16 : 0) : 8 + E.ambition * 0.08 - (p.progress >= 40 ? 10 : 0);
-      add({ type: 'advance', plotId: p.id, gold: mine && c.gold >= 60 && p.hiredBlades < 3 ? 20 : 0 }, prep);
+      add({ type: 'advance', plotId: p.id, gold: mine && c.gold >= 60 && p.hiredBlades < 3 ? bladeCost(s, p) : 0 }, prep);
     } else if (mine) {
       if (ready && p.progress >= 30) {
         const odds = denounceOdds(s, me, { type: 'denounce', plotId: p.id });
