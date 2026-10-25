@@ -9,6 +9,7 @@ import {
   disgrace,
   markJudged,
   execute,
+  exposeForgery,
   forgeryDetection,
   imprison,
   officeEligible,
@@ -33,8 +34,10 @@ import {
   createPlot,
   isMember,
   joinPlot,
+  againstTheKing,
   leavePlot,
   pledgeText,
+  sanctioned,
   resolveStrike,
   warnCredence,
   warnable,
@@ -137,7 +140,8 @@ export type Intent =
   | { type: 'try-child'; target: CharId }
   | { type: 'take-mistress'; target: CharId }
   | { type: 'acknowledge'; target: CharId }
-  | { type: 'betroth'; target: CharId; partner?: CharId; dowry?: number };
+  | { type: 'betroth'; target: CharId; partner?: CharId; dowry?: number }
+  | { type: 'offer-blade'; target: CharId; secretId: SecretId };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -188,6 +192,7 @@ export const COST: Record<IntentType, number> = {
   'take-mistress': 1,
   acknowledge: 1,
   betroth: 1,
+  'offer-blade': 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -224,6 +229,10 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   plead: { name: 'Ask them to petition for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you. Friends are likelier to risk it.' },
   seduce: { name: 'Woo as a lover', desc: 'Not marriage: make her your lover. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
+  'offer-blade': {
+    name: 'Offer to kill them for the King',
+    desc: 'Go to the King with what you know of their treason, and offer your sword. If he believes you, he gives you his leave: the killing is no crime, and wins his favour.',
+  },
   betroth: { name: 'Arrange a match', desc: 'Find your son or daughter a husband or wife. Grown, they wed at once; young, they are promised, and wed when both are grown. Either way the two houses are bound.' },
   acknowledge: { name: 'Acknowledge as your own', desc: 'Own your natural child before the world: into your house, under your name. A son becomes your heir. No secret after that.' },
   'take-mistress': { name: 'Bring her into your household', desc: 'Your lover comes to live under your roof as your mistress, for all the court to see. Your wife will not forgive it.' },
@@ -411,6 +420,18 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       return mistressProblem(s, actor, it.target);
     case 'acknowledge':
       return acknowledgeProblem(s, actor, it.target);
+    case 'offer-blade': {
+      if (!s.king || s.king === actor) return 'There is no King to serve.';
+      if (it.target === s.king) return 'That is the King.';
+      const sec = s.secrets[it.secretId];
+      if (!sec || !sec.guilty.includes(it.target)) return 'That does not touch them.';
+      if (!againstTheKing(s, sec)) return 'That is no treason against the King.';
+      if (sec.guilty.includes(actor)) return 'You are part of it yourself.';
+      if (!usableCharge(s, actor, it.secretId)) return 'You do not know that well enough.';
+      if (alreadyJudged(s, sec, it.target)) return 'The King has already judged that.';
+      if (Object.values(s.plots).some((p) => p.status === 'active' && p.owner === actor && p.targets.includes(it.target) && sanctioned(s, p))) return 'You have his leave already.';
+      return null;
+    }
     case 'betroth':
       if ((it.dowry ?? 0) < 0 || (it.dowry ?? 0) > a.gold) return 'You do not have the gold.';
       if (it.partner && !s.chars[it.partner]) return 'No such person.';
@@ -520,7 +541,7 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       const p = s.plots[it.plotId];
       const victim = p.targets[0];
       // Your own killing, traced: you answer for it before the King, rather than being taken in the night.
-      const accuser = actor === s.player && s.king && s.king !== actor && victim !== s.king ? hearingAccuser(s, actor, victim) : undefined;
+      const accuser = actor === s.player && s.king && s.king !== actor && victim !== s.king && !sanctioned(s, p) ? hearingAccuser(s, actor, victim) : undefined;
       const r = resolveStrike(s, p, !!accuser);
       if (accuser && r.traced && isFree(s, actor)) {
         pushAudience(s, accusedAudience(s, accuser, [p.secretId]));
@@ -609,6 +630,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return acknowledge(s, actor, it.target);
     case 'betroth':
       return betroth(s, actor, it.target, it.partner, it.dowry ?? 0);
+    case 'offer-blade':
+      return offerBlade(s, actor, it.target, it.secretId);
   }
 }
 
@@ -809,6 +832,48 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
     ok: c >= 45,
     text: `${first(s, target)} ${verdict}${isNew ? '' : ' (it was not news to them)'}.${looked ? ` ${cap(he(s, target))} will have it looked into.` : ''}`,
     tone: c >= 45 ? 'good' : 'neutral',
+  };
+}
+
+/** Will the King give his leave? How far he believes the treason, how much he fears it, and whether you could do it. */
+export function bladeOdds(s: GameState, actor: CharId, secretId: SecretId): number {
+  const K = s.king!;
+  const c = hearCredence(s, K, actor, s.secrets[secretId]);
+  // He need not like you to use your sword: his dislike counts for little against a traitor.
+  return clamp(Math.round(c * 0.9 + (ch(s, K).traits.paranoia - 50) * 0.3 + opinion(s, K, actor) * 0.1 + (ch(s, actor).traits.martial - 50) * 0.15 - 5), 5, 90);
+}
+
+/** Offer to rid the King of a traitor. Accepted, you have his leave: a killing that is no crime, and his favour. */
+function offerBlade(s: GameState, actor: CharId, target: CharId, secretId: SecretId): Outcome {
+  const K = s.king!;
+  const sec = s.secrets[secretId];
+  // Forged letters laid before the King may be seen through, and traced home.
+  if (!sec.truth && chance(s, forgeryDetection(s, sec))) {
+    exposeForgery(s, sec, actor);
+    return { ok: false, text: 'The King’s clerks looked at your proofs and saw a forgery.', tone: 'dire' };
+  }
+  const c = hearCredence(s, K, actor, sec);
+  const odds = bladeOdds(s, actor, secretId);
+  learn(s, K, secretId, c, actor);
+  for (const g of sec.guilty) if (g !== K) addMod(s, K, g, `belief-${secretId}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * 0.35), 0.3);
+  if (!chance(s, odds)) {
+    if (c < 25) addMod(s, K, actor, 'tale-teller', 'Brings me tales', -6, 0.5);
+    log(s, `${nm(s, actor)} offered the King ${his(s, actor)} sword against ${nm(s, target)}. The King would not hear of it.`, [actor, K], 'bad', [actor, target]);
+    kingLooksInto(s, sec, c);
+    return { ok: false, text: c >= 45 ? 'The King believes you, but will not have it done by your hand.' : 'The King does not believe you.', tone: 'bad' };
+  }
+  const p = createPlot(s, actor, 'murder', [target]);
+  p.warrant = K;
+  p.progress = Math.max(p.progress, 30);
+  // No one may charge you with what the King has sanctioned.
+  markJudged(s, s.secrets[p.secretId], actor);
+  learn(s, K, p.secretId, 100, actor);
+  addMod(s, K, actor, 'kings-sword', 'Offered me his sword', 15, 0.3);
+  log(s, `The King heard ${nm(s, actor)} out, and gave ${him(s, actor)} leave: rid him of ${nm(s, target)}, and quietly.`, [actor, K], 'secret', [actor, K, target]);
+  return {
+    ok: true,
+    text: `The King gives you his leave. “${p.name}” is no crime while he reigns: strike when you are ready, and the deed will win his favour.`,
+    tone: 'good',
   };
 }
 

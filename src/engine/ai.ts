@@ -16,7 +16,7 @@ import {
   type Intent,
 } from './actions';
 import {
-  betrayable, canStrike, isMember, strikeChance, waitCleared } from './plots';
+  againstTheKing, betrayable, canStrike, isMember, sanctioned, strikeChance, waitCleared } from './plots';
 import { chance, rand } from './rng';
 import { secretsAgainst, threatsTo } from './secrets';
 import { alreadyJudged, capital, claimants, officeEligible } from './court';
@@ -175,7 +175,8 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
       if (mine && ready && canStrike(s, p).ok) {
         const sc = strikeChance(s, p);
         const threat = dctx.threats.has(target) ? 25 : 0;
-        add({ type: 'strike', plotId: p.id }, sc - (100 - E.boldness) * 0.6 + E.ambition * 0.15 + threat);
+        // With the King's leave there is no axe waiting if it goes wrong.
+        add({ type: 'strike', plotId: p.id }, sc - (100 - E.boldness) * 0.6 + E.ambition * 0.15 + threat + (sanctioned(s, p) ? 15 : 0));
       }
       // Sharpening a knife you cannot yet use only leaves a trail.
       const prep = ready ? 26 + E.ambition * 0.12 - (p.progress >= 85 ? 16 : 0) : 8 + E.ambition * 0.08 - (p.progress >= 40 ? 10 : 0);
@@ -238,6 +239,24 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
         }
         if (want <= 10 || o.pct < 25) continue;
         add({ type: 'denounce', secretId: sid, only: [o.accused] }, want * 0.45 + (o.pct - (100 - E.boldness) * 0.55) * 0.5);
+      }
+    }
+  }
+
+  // ── The King's sword ──────────────────────────────────────────────────────
+  // A man who knows of treason may offer to answer it himself: the King's sworn protectors, and fighting men
+  // who want his favour back or the traitor dead.
+  if (king && !s.interregnum && (c.agenda.kind === 'protect-king' || c.traits.martial >= 55)) {
+    for (const [sid, k] of Object.entries(myRow)) {
+      const sec = s.secrets[sid];
+      if (!sec || !againstTheKing(s, sec) || sec.guilty.includes(me) || (!k.lie && k.credence < 50)) continue;
+      for (const g of sec.guilty) {
+        if (g === king || !isFree(s, g) || alreadyJudged(s, sec, g) || c.spouse === g || c.siblings.includes(g)) continue;
+        if (Object.values(s.plots).some((p) => p.status === 'active' && p.owner === me && p.targets.includes(g))) continue;
+        let u = (c.traits.martial - 50) * 0.15 + Math.max(0, -opinion(s, king, me)) * 0.2 + desire(s, me, g, dctx) * 0.25 - (100 - E.boldness) * 0.1;
+        if (c.agenda.kind === 'protect-king') u += 18;
+        if (c.agenda.kind === 'rise') u += 4;
+        if (u > 12) add({ type: 'offer-blade', target: g, secretId: sid }, u);
       }
     }
   }

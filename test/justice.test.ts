@@ -264,6 +264,49 @@ describe('a plot you were sworn into', () => {
   });
 });
 
+describe('a sword offered to the King', () => {
+  it('wins his leave though he hates you; the killing is no crime, and wins his favour', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = fresh(seed);
+      s.ap = 3;
+      const sid = 's-aldric-regicide';
+      learn(s, 'anselm', sid, 80, 'hugh');
+      addMod(s, 'osric', 'anselm', 'test-hate', 'Loathes him', -60);
+      s.chars.osric.traits.paranoia = 90;
+      const it = { type: 'offer-blade' as const, target: 'aldric', secretId: sid };
+      expect(check(s, 'anselm', it)).toBeNull();
+      const before = opinion(s, 'osric', 'anselm');
+      if (!perform(s, 'anselm', it).ok) continue;
+      const p = Object.values(s.plots).find((x) => x.owner === 'anselm' && x.targets.includes('aldric'))!;
+      expect(p.warrant).toBe('osric');
+      expect(p.progress).toBeGreaterThanOrEqual(30);
+      expect(opinion(s, 'osric', 'anselm')).toBeGreaterThan(before);
+      expect(check(s, 'anselm', it)).toMatch(/leave already/);
+      // Strike, and answer to no one for it.
+      p.progress = 100;
+      p.hiredBlades = 10;
+      s.chars.aldric.guard = 0;
+      s.ap = 3;
+      const mid = opinion(s, 'osric', 'anselm');
+      if (!perform(s, 'anselm', { type: 'strike', plotId: p.id }).ok) continue;
+      expect(s.chars.aldric.status).toBe('dead');
+      expect(s.chars.anselm.status).toBe('free');
+      expect(s.audiences.some((a) => a.kind === 'accused')).toBe(false);
+      expect(chargesFor(s, 'hugh', [p.secretId])).toEqual([]);
+      expect(opinion(s, 'osric', 'anselm')).toBeGreaterThan(mid);
+      return;
+    }
+    throw new Error('the King never gave his leave');
+  });
+
+  it('is only for treason against the King', () => {
+    const s = fresh();
+    const sec = makeSecret(s, { kind: 'theft', guilty: ['gareth'], victims: ['edmund'], truth: true, evidence: 50 });
+    learn(s, 'anselm', sec.id, 80, 'hugh');
+    expect(check(s, 'anselm', { type: 'offer-blade', target: 'gareth', secretId: sec.id })).toMatch(/no treason/);
+  });
+});
+
 describe('a scheme that leaks', () => {
   it('leaks through one of its people or their household, and its leader may hear who talked', () => {
     const s = fresh();

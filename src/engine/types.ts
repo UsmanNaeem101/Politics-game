@@ -326,6 +326,8 @@ export interface Plot {
   /** The owner's own description of the real plan. */
   intent: string;
   hiredBlades: number;
+  /** The King who gave his leave for this killing: while he reigns, it is no crime. */
+  warrant?: CharId;
 }
 
 export type PlotCondition =

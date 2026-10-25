@@ -81,6 +81,7 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
     out.push(
       { type: 'whisper', target: t(), secretId: sid },
       { type: 'denounce', secretId: sid },
+      { type: 'offer-blade', target: pickOf(r, s.secrets[sid].guilty) ?? t(), secretId: sid },
       { type: 'blackmail', target: pickOf(r, s.secrets[sid].guilty) ?? t(), secretId: sid, demand: pickOf(r, ['gold', 'restitution', 'join'] as const)!, plotId: mine[0]?.id },
       { type: 'scheme', kind: 'ruin', targets: s.secrets[sid].guilty.filter((g) => g !== P), charges: [sid] },
     );

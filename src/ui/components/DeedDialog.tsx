@@ -60,6 +60,8 @@ import {
   sellPrice,
   spyChance,
   strikeChance,
+  againstTheKing,
+  bladeOdds,
   BLADE_COST,
   MAX_BLADES,
   STRIKE_MAX,
@@ -260,6 +262,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         return target ? { type, target } : null;
       case 'betroth':
         return target ? { type, target, partner: partner || undefined, dowry: partner ? settle : 0 } : null;
+      case 'offer-blade':
+        return target && secretId ? { type, target, secretId } : null;
     }
   })();
 
@@ -335,6 +339,27 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
         </label>
       );
       break;
+    case 'offer-blade': {
+      // What you know of their treason against the King, to lay before him.
+      const treason = usable.filter((k) => !!target && k.sec.guilty.includes(target) && !k.sec.guilty.includes(P) && againstTheKing(s, k.sec));
+      fields = (
+        <fieldset className="field">
+          <legend>What you will tell the King</legend>
+          {treason.length === 0 && <p className="muted">You know of no treason of theirs against the King.</p>}
+          <div className="secret-choices">
+            {treason.map((k) => (
+              <label key={k.sec.id} className={`secret-choice ${secretId === k.sec.id ? 'is-on' : ''}`}>
+                <input type="radio" name="treason" checked={secretId === k.sec.id} onChange={() => setSecretId(k.sec.id)} />
+                <span>
+                  {k.k.lie ? <span className="chip chip--info">Your forgery</span> : <span className="chip">{k.k.credence}% sure</span>} {k.text}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      );
+      break;
+    }
     case 'betroth': {
       if (!target) break;
       const child = ch(s, target);
@@ -1182,6 +1207,19 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         pct: 100 - spotChance(s, { id: '', by: P, target: it.target, since: s.turn }),
         lines: [`Costs ${TAIL_COST} crowns. You learn where ${first(s, it.target)} goes this month and whom they meet.`, 'The careful and the suspicious may spot your man; the clever may trace him to you.'],
       };
+    case 'offer-blade': {
+      const sec = s.secrets[it.secretId];
+      const K = s.king!;
+      return {
+        pct: bladeOdds(s, P, it.secretId),
+        lines: [
+          `How far ${first(s, K)} believes you counts most, and how much he fears it; your skill at arms helps. His dislike of you counts for little against a traitor.`,
+          `If he gives his leave, a scheme against ${first(s, it.target)} begins half-prepared, and no one can ever charge you with it. Striking wins his favour, and there is no hearing even if you are seen.`,
+          'Whatever he answers, he has heard the charge.',
+          ...(!sec.truth ? [`Your letters may be seen through: ${forgeryDetection(s, sec)}%, and then you are exposed.`] : []),
+        ],
+      };
+    }
     case 'betroth': {
       const C = ch(s, it.target);
       if (!it.partner) return { lines: [`A matchmaker finds ${C.short} a ${C.gender === 'm' ? 'wife' : 'husband'} of good family from the provinces. No house at court is bound by it.`] };

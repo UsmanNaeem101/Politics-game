@@ -109,7 +109,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               gathers charges and witnesses to lay before the King. When you draw someone in, offer a carrot. They may join sincerely, or meaning to
               betray you. You will not be told which. A scheme can leak: a plotter, or a wife or servant under a plotter's roof, says too much,
               and a friend of theirs, the target or the Master of Whispers hears it. The more people in it (above all the false ones) and the
-              longer it runs, the likelier; your cunning keeps it close, and lets you hear who talked.
+              longer it runs, the likelier; your cunning keeps it close, and lets you hear who talked. Know of treason against the King?
+              On the traitor's page, <strong>offer to kill them for the King</strong>. If he believes you he gives his leave, even if he
+              cannot stand you: the scheme is no crime while he reigns, there is no hearing if you are seen, and the deed wins his favour.
             </p>
             <p>
               You can betray a scheme yourself, whether you joined it or lead it: lay it before the King from your Secrets ("Betray it to the

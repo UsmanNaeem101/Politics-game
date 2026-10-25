@@ -1,7 +1,7 @@
 // Schemes: murder plots (a knife in the dark) and ruin plots (charges carried to
 // the King). Members may be sincere, or may have joined only to betray.
 
-import { kill, imprison } from './court';
+import { kill, imprison, markJudged } from './court';
 import { chance, clamp, pick, roll, weighted } from './rng';
 import { deedDone, describe, hearCredence, makeSecret, publish, syncPlotSecret } from './secrets';
 import { first, nm, vary } from './text';
@@ -81,6 +81,13 @@ export function strikeDefence(s: GameState, target: CharId, owner?: CharId): num
   const retainers = hasPerk(s, target, 'retainers') ? 10 : 0;
   return t.guard + t.traits.paranoia * 0.15 + t.traits.martial * 0.1 + royalGuard(s, target, owner) + retainers;
 }
+
+/** A killing the reigning King has given his leave for. */
+export const sanctioned = (s: GameState, p: Plot): boolean => !!p.warrant && p.warrant === s.king;
+
+/** Treason aimed at the King himself: what a loyal sword may offer to answer. */
+export const againstTheKing = (s: GameState, sec: Secret): boolean =>
+  !!s.king && sec.treason && (sec.victims.includes(s.king) || ['regicide', 'pact', 'usurpation'].includes(sec.kind));
 
 /** Past this, each blade and each month of preparation buys less: a killing can be made near certain, never certain. */
 export const STRIKE_SURE = 92;
@@ -255,6 +262,24 @@ export function resolveStrike(s: GameState, p: Plot, hearing = false): StrikeOut
   const insiders = [owner, ...p.members.map((m) => m.id)];
   const wasKing = s.king === target;
 
+  if (success && sanctioned(s, p)) {
+    // The King's leave: no crime, no inquiry, and his favour.
+    const K = s.king!;
+    p.status = 'succeeded';
+    const how = vary(s, ['a knife in the dark', 'poison in the evening wine', 'a fall from the battlements that no one saw', 'an ambush on the road']);
+    kill(s, target, `Killed, ${dateLabel(s.turn)} — ${how}`, false);
+    deedDone(s, sec);
+    for (const g of insiders) markJudged(s, sec, g);
+    learn(s, K, sec.id, 100, owner);
+    addMod(s, K, owner, 'kings-sword', 'Rid me of a traitor', 35, 0.15);
+    ch(s, owner).prestige += 5;
+    log(s, `You struck. ${nm(s, target)} is dead by ${how}, and the King will not ask how.`, insiders, 'secret', insiders);
+    log(s, `${nm(s, target)} is dead — ${how}. It is said the King is not sorry.`, 'all', 'dire', [target]);
+    // His kin may guess whose hand it was, and hate it; the King's leave does not stop that.
+    if (chance(s, traceChance(s, p))) murdererShunned(s, owner, target);
+    return { success, traced: false, text: 'The deed is done, and the King is in your debt.' };
+  }
+
   if (success) {
     const trail = traceChance(s, p);
     const traced = chance(s, trail);
@@ -307,7 +332,7 @@ export function resolveStrike(s: GameState, p: Plot, hearing = false): StrikeOut
     if (s.king && s.king !== owner) learn(s, s.king, sec.id, 85, 'court');
     addMod(s, target, owner, 'tried-kill', 'Tried to murder me', -80);
     log(s, `An attempt on the life of ${nm(s, target)} failed — and the assassins named ${nm(s, owner)}.`, 'all', 'dire', [target, owner]);
-    if (s.king && s.king !== owner && s.king !== s.player && !hearing) seize(s, owner, sec.id, false);
+    if (s.king && s.king !== owner && s.king !== s.player && !hearing && !sanctioned(s, p)) seize(s, owner, sec.id, false);
     return { success, traced: true, text: 'The attempt failed, and your name was spoken.' };
   }
   learn(s, target, sec.id, 30, 'rumour');

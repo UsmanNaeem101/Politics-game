@@ -1,4 +1,5 @@
 import {
+  againstTheKing,
   acknowledgeProblem,
   childMatchProblem,
   promised,
@@ -150,6 +151,8 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
       out.push(gate({ type: 'propose', label: hand, why: matchProblem(s, P, target) ?? undefined }));
     }
     if (!iAmKing) out.push({ type: 'denounce', why: !s.king ? 'There is no King to hear you.' : against.length ? undefined : 'You know nothing against them you could swear to.' });
+    // Treason against the King you could offer to answer with your sword.
+    if (!iAmKing && s.king && target !== s.king && against.some(([sid]) => againstTheKing(s, s.secrets[sid]))) out.push({ type: 'offer-blade' });
     out.push(gate({ type: 'blackmail', why: against.length ? undefined : 'You know nothing to threaten them with.' }));
     out.push({ type: 'fabricate' });
     out.push({ type: 'scheme' });

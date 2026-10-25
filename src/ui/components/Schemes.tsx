@@ -6,6 +6,7 @@ import {
   isRemoved,
   offerLabel,
   plotViews,
+  sanctioned,
   strikeChance,
   traceChance,
   waitCleared,
@@ -122,7 +123,7 @@ function PlotCard({ v }: { v: PlotView }) {
       {owner && plot.kind === 'murder' && active && (
         <p className="small">
           Strike now: <strong>{strikeChance(s, plot)}%</strong> to kill, <strong>{traceChance(s, plot)}%</strong> to be traced if it works. Hired
-          blades: {plot.hiredBlades}.
+          blades: {plot.hiredBlades}.{sanctioned(s, plot) ? ' You have the King’s leave: it is no crime, and the deed will win his favour.' : ''}
         </p>
       )}
       {odds.length > 0 && (

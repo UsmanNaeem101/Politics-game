@@ -58,6 +58,9 @@ before changing anything substantial; it is the plan we are building toward.
   killer, suspect anyone.
 - Secrecy: `leakPlots()` in `plots.ts` leaks a scheme through a real mouth (a plotter, or someone under a plotter's roof) to
   someone close to them, and may tell the leader; `spymasterHears()` only picks up secrets already being whispered.
+- The King's sword: `offer-blade` (`offerBlade()`, `bladeOdds()` in `actions.ts`) lays treason against the King
+  (`againstTheKing()`) before him; accepted, it makes a murder plot with `Plot.warrant`. While that King reigns
+  (`sanctioned()` in `plots.ts`) the killing is no crime: no hearing, no seizure, no inquiry, and his favour.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
   roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.
