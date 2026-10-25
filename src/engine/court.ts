@@ -546,9 +546,10 @@ export function pursueInquiries(s: GameState): void {
     const plain = sec.trail === undefined ? 1 : 0.25 + sec.trail / 60;
     if (!chance(s, (15 + (digger ? ch(s, digger).traits.cunning * 0.3 : 0)) * plain)) continue;
     if (!sec.truth) {
-      // What there is to find are the forged letters. A sharp eye sees through them, and follows the trail home.
-      if (chance(s, forgeryDetection(s, sec))) {
-        exposeForgery(s, sec, sec.fabricatedBy ?? K);
+      // What there is to find is hearsay, and sometimes the forged letters themselves. A sharp eye may see through
+      // them, and follow the trail back from whoever told the King.
+      if (chance(s, forgeryDetection(s, sec) / 2)) {
+        exposeForgery(s, sec, K);
         delete sec.inquiry;
         continue;
       }
@@ -640,7 +641,33 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
   );
 }
 
-/** A forgery comes to light: the forger is disgraced, the accused cleared. */
+/**
+ * Who forged it? The King's people ask the accuser where he had it, and that man where he had it, back along the
+ * tellers. Any of them may not say, or not remember; and at the end the forger may brazen it out. Certain only when
+ * the forger laid it before the King himself.
+ */
+export function traceForger(s: GameState, sec: Secret, accuser: CharId): boolean {
+  const forger = sec.fabricatedBy;
+  if (!forger) return false;
+  if (accuser === forger) return true;
+  let who = accuser;
+  const asked = new Set<CharId>();
+  for (let hop = 0; hop < 8; hop++) {
+    const src = s.knowledge[who]?.[sec.id]?.source;
+    // Heard it at court, from rumour, from spies: the trail goes cold.
+    if (!src || !s.chars[src] || asked.has(src)) return false;
+    asked.add(who);
+    if (!chance(s, TRAIL_HOLDS)) return false;
+    if (src === forger) return chance(s, clamp(90 - ch(s, forger).traits.cunning * 0.5, 25, 85));
+    who = src;
+  }
+  return false;
+}
+
+/** The chance each teller names where he heard it. */
+export const TRAIL_HOLDS = 80;
+
+/** A forgery comes to light: the accused is cleared, and if the trail leads home, the forger is disgraced. */
 export function exposeForgery(s: GameState, sec: Secret, accuser: CharId): void {
   unmaskTurned(s, sec);
   const K = s.king;
@@ -653,7 +680,13 @@ export function exposeForgery(s: GameState, sec: Secret, accuser: CharId): void 
     if (rec && rec.charges.every((c) => c === sec.id || credence(s, K, c) < 40)) release(s, g, 'the letters against them were forged');
   }
   const forger = sec.fabricatedBy;
+  if (accuser !== K && accuser !== forger) addMod(s, K, accuser, 'gullible', 'Repeated a forgery', -10, 0.5);
   if (!forger) return;
+  if (!traceForger(s, sec, accuser)) {
+    log(s, `The King's clerks examined the letters against ${names(s, sec.guilty)} and found the seals counterfeit. Who forged them, no one could say.`, 'all', 'court', [...sec.guilty]);
+    if (forger === s.player) log(s, 'The trail did not lead back to you.', [forger], 'good', [forger]);
+    return;
+  }
   let slander = Object.values(s.secrets).find((x) => x.kind === 'slander' && x.guilty[0] === forger && sameSet(x.victims, sec.guilty));
   if (!slander) {
     slander = makeSecret(s, { kind: 'slander', guilty: [forger], victims: sec.guilty, truth: true, evidence: 70, treason: false });
@@ -661,7 +694,6 @@ export function exposeForgery(s: GameState, sec: Secret, accuser: CharId): void 
   slander.evidence = Math.max(slander.evidence, 70);
   publish(s, slander.id, 75, 'court');
   for (const v of sec.guilty) addMod(s, v, forger, 'forged', 'Forged evidence against me', -60);
-  if (forger !== accuser) addMod(s, K, accuser, 'gullible', 'Repeated a forgery', -10, 0.5);
   log(
     s,
     `The King's clerks examined the letters against ${names(s, sec.guilty)} and found the seals counterfeit. ${forger === accuser ? `${nm(s, forger)} stood exposed as the forger.` : `The forgery was traced to ${nm(s, forger)}.`}`,
@@ -705,7 +737,7 @@ export function questionPrisoner(s: GameState, id: CharId): boolean {
         learn(s, K, sid, 5, 'court');
         s.knowledge[K][sid].credence = Math.min(s.knowledge[K][sid].credence, 10);
         log(s, `${nm(s, id)} held to ${his(s, id)} story through every question. The King began to doubt the charge.`, 'all', 'court', [id]);
-        if (sec.fabricatedBy && chance(s, 50)) exposeForgery(s, sec, rec.accuser ?? sec.fabricatedBy);
+        if (sec.fabricatedBy && chance(s, 50)) exposeForgery(s, sec, rec.accuser ?? K);
         spoke = true;
       }
     }

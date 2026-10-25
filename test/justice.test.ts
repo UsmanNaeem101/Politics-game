@@ -10,6 +10,7 @@ import {
   petitionOdds,
   advancePlot,
   leakPlots,
+  traceForger,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -182,25 +183,40 @@ describe('a forged tale of treason', () => {
     expect(opened).toBeGreaterThan(0);
   });
 
-  it('under inquiry, either convinces with its forged letters or is traced to the forger', () => {
-    let exposed = 0;
+  it('under inquiry, either convinces with its forged letters, or is seen through, and only sometimes traced home', () => {
+    let traced = 0;
+    let untraced = 0;
     let believed = 0;
-    for (let seed = 1; seed <= 60; seed++) {
+    for (let seed = 1; seed <= 120; seed++) {
       const s = fresh(seed);
       const sec = forge(s);
+      // The forger told Hugh, and Hugh told the King: a trail of one hand.
+      learn(s, 'hugh', sec.id, 50, 'anselm');
       learn(s, 'osric', sec.id, 40, 'hugh');
       sec.inquiry = s.turn;
       for (let m = 0; m < 7 && sec.inquiry !== undefined; m++) {
         pursueInquiries(s);
         s.turn++;
       }
+      const seenThrough = credence(s, 'osric', sec.id) <= 5;
       if (Object.values(s.secrets).some((x) => x.kind === 'slander' && x.guilty[0] === 'anselm')) {
-        exposed++;
-        expect(credence(s, 'osric', sec.id)).toBeLessThanOrEqual(5);
-      } else if (credence(s, 'osric', sec.id) > 40) believed++;
+        traced++;
+        expect(seenThrough).toBe(true);
+      } else if (seenThrough) untraced++;
+      else if (credence(s, 'osric', sec.id) > 40) believed++;
     }
-    expect(exposed).toBeGreaterThan(0);
+    expect(traced).toBeGreaterThan(0);
+    expect(untraced).toBeGreaterThan(0);
     expect(believed).toBeGreaterThan(0);
+  });
+
+  it('is traced for certain only when the forger lays it before the King himself', () => {
+    const s = fresh();
+    const sec = forge(s);
+    expect(traceForger(s, sec, 'anselm')).toBe(true);
+    // Heard as a rumour: no one to ask.
+    learn(s, 'hugh', sec.id, 50, 'rumour');
+    for (let i = 0; i < 20; i++) expect(traceForger(s, sec, 'hugh')).toBe(false);
   });
 });
 

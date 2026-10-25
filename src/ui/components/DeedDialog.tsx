@@ -75,6 +75,7 @@ import {
   warnFound,
   warnable,
   type BusinessKind,
+  type Secret,
   type SpyHook,
   type CharId,
   type DirectiveSpec,
@@ -1062,7 +1063,17 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       return { pct: c, lines };
     }
     case 'fabricate':
-      return { lines: [`Your forgery will carry proof of about ${fabricateEvidence(s, P)}–${fabricateEvidence(s, P) + 15}. Working on a ruin scheme that uses it makes it better.`] };
+      return {
+        lines: [
+          `Your forgery will carry proof of about ${fabricateEvidence(s, P)}–${fabricateEvidence(s, P) + 15}. Working on a ruin scheme that uses it makes it better.`,
+          ...(s.king
+            ? [
+                `Each time the letters are examined at a hearing, the chance they are seen through is about ${forgeryDetection(s, { truth: false, fabricatedBy: P, evidence: fabricateEvidence(s, P) + 7 } as Secret)}%; the King's people asking questions see through them half as often.`,
+                'Seen through, they are traced back from teller to teller. Lay them before the King yourself and they lead straight to you; let others carry them and the trail may go cold, likelier the more hands it passed through and the more cunning you are.',
+              ]
+            : []),
+        ],
+      };
     case 'spy':
       return { pct: spyChance(s, P, it.target), lines: ['If your man is caught, they may learn you were prying.'] };
     case 'introduce': {

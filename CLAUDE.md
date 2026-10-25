@@ -61,6 +61,8 @@ before changing anything substantial; it is the plan we are building toward.
 - The King's sword: `offer-blade` (`offerBlade()`, `bladeOdds()` in `actions.ts`) lays treason against the King
   (`againstTheKing()`) before him; accepted, it makes a murder plot with `Plot.warrant`. While that King reigns
   (`sanctioned()` in `plots.ts`) the killing is no crime: no hearing, no seizure, no inquiry, and his favour.
+- Forgeries: `forgeryDetection()` rolls at each hearing (half as often for an inquiry); `exposeForgery()` clears the accused
+  and names the forger only if `traceForger()` follows the tellers back to him (certain if he laid it himself).
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
   roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.
