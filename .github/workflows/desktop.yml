@@ -1,21 +1,11 @@
 # Builds the desktop apps (Windows installer, macOS disk image), checks each one
 # launches and plays a week, then publishes both to the "desktop" release:
 # https://github.com/UsmanNaeem101/Politics-game/releases/tag/desktop
+# Run by hand only (Actions → Desktop apps → Run workflow): the owner's account cannot run
+# Actions until its billing is sorted, so building on every push only piled up failed runs.
 name: Desktop apps
 
 on:
-  push:
-    paths:
-      - src/**
-      - electron/**
-      - build/**
-      - index.html
-      - package.json
-      - package-lock.json
-      - vite.config.ts
-      - electron-builder.yml
-      - scripts/desktop-smoke.cjs
-      - .github/workflows/desktop.yml
   workflow_dispatch:
 
 permissions:
