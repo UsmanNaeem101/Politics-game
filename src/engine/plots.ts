@@ -183,15 +183,20 @@ export function joinPlot(s: GameState, p: Plot, who: CharId, sincere: boolean, o
 }
 
 /** Work on a plot. Gold buys hired blades for murder plots. */
+/** Blades for hire: what each costs, and how many one scheme can use. */
+export const BLADE_COST = 20;
+export const MAX_BLADES = 10;
+
 export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): number {
   const a = ch(s, actor);
   const poisons = p.kind === 'murder' && hasPerk(s, actor, 'poisons') ? 4 : 0;
   const gain = Math.round(8 + a.traits.cunning * 0.12 + p.members.length * 2 + roll(s, 0, 6) + poisons);
   p.progress = clamp(p.progress + gain, 0, 100);
   if (gold > 0 && p.kind === 'murder') {
-    const spend = Math.min(gold, a.gold);
-    a.gold -= spend;
-    p.hiredBlades = clamp(p.hiredBlades + Math.floor(spend / 20), 0, 4);
+    // Only the blades actually hired are paid for.
+    const hire = Math.max(0, Math.min(Math.floor(Math.min(gold, a.gold) / BLADE_COST), MAX_BLADES - p.hiredBlades));
+    a.gold -= hire * BLADE_COST;
+    p.hiredBlades += hire;
   }
   if (p.kind === 'ruin') {
     for (const cid of p.charges) {

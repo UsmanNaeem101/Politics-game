@@ -8,6 +8,7 @@ import {
   decayMods,
   knows,
   petitionOdds,
+  advancePlot,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -259,6 +260,36 @@ describe('a plot you were sworn into', () => {
       expect(strikeChance(s, p)).toBeLessThan(kill);
       expect(opinion(s, 'edmund', 'anselm')).toBeGreaterThan(before);
     }
+  });
+});
+
+describe('the King’s inquiry into a death', () => {
+  it('names the dead when it ends, not the killer no one suspected', () => {
+    const s = fresh();
+    const sec = makeSecret(s, { kind: 'murder', guilty: ['anselm'], victims: ['edmund'], truth: true, evidence: 20 });
+    deedDone(s, sec);
+    kill(s, 'edmund', 'Murdered', false);
+    sec.inquiry = s.turn;
+    sec.trail = 5;
+    s.turn += 7;
+    pursueInquiries(s);
+    const last = s.events.at(-1)!.text;
+    expect(last).toMatch(/death of/);
+    expect(last).not.toMatch(new RegExp(s.chars.anselm.short));
+  });
+});
+
+describe('blades for hire', () => {
+  it('are paid for only when hired, up to ten a scheme', () => {
+    const s = fresh();
+    const p = createPlot(s, 'anselm', 'murder', ['edmund']);
+    s.chars.anselm.gold = 300;
+    advancePlot(s, p, 'anselm', 260);
+    expect(p.hiredBlades).toBe(10);
+    expect(s.chars.anselm.gold).toBe(100);
+    advancePlot(s, p, 'anselm', 100);
+    expect(p.hiredBlades).toBe(10);
+    expect(s.chars.anselm.gold).toBe(100);
   });
 });
 

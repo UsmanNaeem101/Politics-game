@@ -530,7 +530,13 @@ export function pursueInquiries(s: GameState): void {
     if (sec.inquiry === undefined) continue;
     const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K && !isChild(s, g) && !alreadyJudged(s, sec, g));
     if (!K || !suspects.length || s.turn - sec.inquiry > 6) {
-      if (K && suspects.length && K !== s.player) log(s, `The King’s people have stopped asking questions about ${names(s, suspects)}.`, 'all', 'court', suspects);
+      // Name only those the King was told of. Asking about a death names no one: the court cannot know who did it.
+      if (K && suspects.length && K !== s.player) {
+        const accused = credence(s, K, sec.id) >= 25 ? suspects : [];
+        const victim = sec.deed ? sec.victims.find((v) => s.chars[v]) : undefined;
+        if (accused.length) log(s, `The King’s people have stopped asking questions about ${names(s, accused)}.`, 'all', 'court', accused);
+        else if (victim) log(s, `The King’s people have stopped asking questions about the death of ${nm(s, victim)}.`, 'all', 'court', [victim]);
+      }
       delete sec.inquiry;
       continue;
     }

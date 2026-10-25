@@ -60,6 +60,8 @@ import {
   sellPrice,
   spyChance,
   strikeChance,
+  BLADE_COST,
+  MAX_BLADES,
   STRIKE_MAX,
   STRIKE_SURE,
   betrothOdds,
@@ -199,7 +201,9 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'scheme':
         return { type, kind: schemeKind, targets: schemeKind === 'murder' ? targets.slice(0, 1) : targets, charges: schemeKind === 'ruin' ? charges : [] };
       case 'advance':
-        return plotId ? { type, plotId, gold: s.plots[plotId]?.kind === 'murder' ? amount : 0 } : null;
+        return plotId
+          ? { type, plotId, gold: s.plots[plotId]?.kind === 'murder' ? Math.min(amount - (amount % BLADE_COST), (MAX_BLADES - s.plots[plotId].hiredBlades) * BLADE_COST, me.gold) : 0 }
+          : null;
       case 'recruit':
         return target && plotId ? { type, target, plotId, offer } : null;
       case 'denounce': {
@@ -516,16 +520,19 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
     }
     case 'advance': {
       const p = s.plots[plotId];
+      // Never more than the purse holds, nor more blades than the scheme can use.
+      const bladeRoom = p ? Math.max(0, Math.min((MAX_BLADES - p.hiredBlades) * BLADE_COST, me.gold - (me.gold % BLADE_COST))) : 0;
       fields = (
         <>
           {pick('Which scheme', plotId, setPlotId, workable.map((x) => ({ value: x.id, label: `“${x.name}” (${x.progress}%)` })), 'deed-plot')}
           {p?.kind === 'murder' && p.owner === P && (
             <label className="field">
               <span>
-                Crowns for hired blades (20 each, up to 4; you have {me.gold}). They strike harder, and do it while you are seen elsewhere. {p.hiredBlades ? `${p.hiredBlades} hired so far.` : ''}
+                Crowns for hired blades ({BLADE_COST} each, up to {MAX_BLADES}; you have {me.gold}). They strike harder, and do it while you are seen elsewhere.{' '}
+                {p.hiredBlades ? `${p.hiredBlades} hired so far.` : ''} {p.hiredBlades >= MAX_BLADES ? 'You have all the blades a scheme can use.' : ''}
               </span>
-              <input id="deed-blades" type="range" min={0} max={Math.min(80, me.gold - (me.gold % 20))} step={20} value={Math.min(amount - (amount % 20), me.gold)} onChange={(e) => setAmount(Number(e.target.value))} />
-              <span className="num">{Math.min(amount - (amount % 20), me.gold)}</span>
+              <input id="deed-blades" type="range" min={0} max={bladeRoom} step={BLADE_COST} value={Math.min(amount - (amount % BLADE_COST), bladeRoom)} onChange={(e) => setAmount(Number(e.target.value))} />
+              <span className="num">{Math.min(amount - (amount % BLADE_COST), bladeRoom)}</span>
             </label>
           )}
         </>
