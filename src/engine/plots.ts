@@ -81,10 +81,16 @@ export function strikeDefence(s: GameState, target: CharId, owner?: CharId): num
   return t.guard + t.traits.paranoia * 0.15 + t.traits.martial * 0.1 + royalGuard(s, target, owner) + retainers;
 }
 
+/** Past this, each blade and each month of preparation buys less: a killing can be made near certain, never certain. */
+export const STRIKE_SURE = 92;
+export const STRIKE_MAX = 98;
+
 export function strikeChance(s: GameState, p: Plot): number {
   const target = p.targets[0];
   if (!target) return 0;
-  return clamp(Math.round(strikePower(s, p) - strikeDefence(s, target, p.owner) + 20), 5, 92);
+  const raw = strikePower(s, p) - strikeDefence(s, target, p.owner) + 20;
+  const pct = raw <= STRIKE_SURE ? raw : STRIKE_SURE + (raw - STRIKE_SURE) * 0.25;
+  return clamp(Math.round(pct), 5, STRIKE_MAX);
 }
 
 /**

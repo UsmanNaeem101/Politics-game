@@ -4,6 +4,7 @@ import {
   addMod,
   candidates,
   readCase,
+  bearChild,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -258,6 +259,34 @@ describe('a plot you were sworn into', () => {
   });
 });
 
+describe('a child', () => {
+  it('cannot be named in a forgery, charged, or jailed', () => {
+    const s = fresh();
+    const kid = bearChild(s, 'isolde', 'edmund', 8);
+    s.known[kid.id] = 3;
+    expect(check(s, 'anselm', { type: 'fabricate', kind: 'regicide', guilty: [kid.id], victim: 'osric' })).toMatch(/child/);
+    const tale = makeSecret(s, { kind: 'regicide', guilty: [kid.id], victims: ['osric'], truth: false, fabricatedBy: 'anselm', evidence: 90 });
+    expect(chargesFor(s, 'hugh', [tale.id])).toEqual([]);
+    imprison(s, kid.id, [tale.id]);
+    expect(kid.status).toBe('free');
+  });
+});
+
+describe('a strike bought with gold', () => {
+  it('keeps getting surer past 92%, each blade buying less, and never past 98%', () => {
+    const s = fresh();
+    const p = createPlot(s, 'gareth', 'murder', ['edmund']);
+    p.progress = 100;
+    s.chars.edmund.guard = 0;
+    const by = (n: number) => ((p.hiredBlades = n), strikeChance(s, p));
+    let n = 0;
+    while (by(n) < 92) n++;
+    expect(by(n + 4)).toBeGreaterThan(by(n));
+    expect(by(n + 4) - by(n)).toBeLessThan(20 - 4);
+    expect(by(n + 100)).toBe(98);
+  });
+});
+
 describe('a strike retried after turning back', () => {
   it('draws fresh dice, rather than failing the same way again', () => {
     for (let seed = 1; seed <= 200; seed++) {
@@ -267,7 +296,7 @@ describe('a strike retried after turning back', () => {
       p.hiredBlades = 6;
       s.chars.edmund.guard = 0;
       s.ap = 3;
-      if (strikeChance(s, p) !== 92) continue;
+      if (strikeChance(s, p) < 90) continue;
       const saved = JSON.stringify(s);
       if (perform(s, 'anselm', { type: 'strike', plotId: p.id }).ok) continue;
       // The same dice, the same failure.
@@ -281,7 +310,7 @@ describe('a strike retried after turning back', () => {
       expect(killed).toBeGreaterThanOrEqual(7);
       return;
     }
-    throw new Error('no failed strike at 92%');
+    throw new Error('no failed strike at 90% or better');
   });
 });
 

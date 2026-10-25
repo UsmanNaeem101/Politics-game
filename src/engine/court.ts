@@ -14,6 +14,7 @@ import {
   dateLabel,
   hasPerk,
   isAlive,
+  isChild,
   isFree,
   learn,
   log,
@@ -157,7 +158,7 @@ export function vacate(s: GameState, id: CharId): OfficeId | undefined {
 
 export function imprison(s: GameState, id: CharId, charges: SecretId[], accuser?: CharId): void {
   const c = ch(s, id);
-  if (c.status !== 'free') return;
+  if (c.status !== 'free' || c.rank === 'child') return;
   c.status = 'imprisoned';
   c.statusTurn = s.turn;
   s.imprisoned[id] = { charges: charges.slice(), since: s.turn, accuser, questioned: 0 };
@@ -382,7 +383,8 @@ export function chargesFor(
     const sec = s.secrets[sid];
     if (!sec) continue;
     for (const g of sec.guilty) {
-      if (g === accuser || g === s.king || !isFree(s, g) || spared.includes(g) || alreadyJudged(s, sec, g)) continue;
+      // A child is no one's accused, whatever is said of them.
+      if (g === accuser || g === s.king || !isFree(s, g) || isChild(s, g) || spared.includes(g) || alreadyJudged(s, sec, g)) continue;
       if (only && !only.includes(g)) continue;
       if (out.some((o) => o.accused === g)) continue;
       out.push({ secretId: sid, accused: g });
@@ -526,7 +528,7 @@ export function pursueInquiries(s: GameState): void {
   const K = s.king;
   for (const sec of Object.values(s.secrets)) {
     if (sec.inquiry === undefined) continue;
-    const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K && !alreadyJudged(s, sec, g));
+    const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== K && !isChild(s, g) && !alreadyJudged(s, sec, g));
     if (!K || !suspects.length || s.turn - sec.inquiry > 6) {
       if (K && suspects.length && K !== s.player) log(s, `The King’s people have stopped asking questions about ${names(s, suspects)}.`, 'all', 'court', suspects);
       delete sec.inquiry;

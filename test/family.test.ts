@@ -474,19 +474,19 @@ describe('matching your children', () => {
     throw new Error('never agreed');
   }
 
-  it('youth passes a year every season; grown men age a year a year', () => {
+  it('youth passes a year every month; grown men age a year a year', () => {
     const s = generateCourt(5);
     const { lord, wife } = couple(s);
     const kid = bearChild(s, wife, lord, 2);
     const man = s.chars[lord];
     const [k0, m0] = [kid.age, man.age];
-    // Three years of months.
-    for (let t = 2; t <= 37; t++) {
+    // A year of months.
+    for (let t = 2; t <= 13; t++) {
       s.turn = t;
       growOlder(s);
     }
     expect(kid.age).toBe(k0 + 12);
-    expect(man.age).toBe(m0 + 3);
+    expect(man.age).toBe(m0 + 1);
   });
 
   it('a young son is promised to a girl of another house, and they wed when both are grown', () => {

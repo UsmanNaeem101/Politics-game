@@ -50,7 +50,7 @@ before changing anything substantial; it is the plan we are building toward.
   comes after `DELIBERATION` months; no one is matched during `MOURNING`.
 - Time: a turn is a month (`MONTHS_PER_YEAR`, `dateLabel()` in `world.ts`); opinion modifiers fade `FADE_PER_MONTH` times
   their `decay` each month (the rates were set for weekly turns); ages tick in `growOlder()` (`turn.ts`): yearly, but
-  every season until `MARRYING_AGE`, so children grow up within a few years of play. Old age is `mortality()`,
+  every month until `MARRYING_AGE`, so children grow up within a year or two of play. Old age is `mortality()`,
   which never takes the player or the player's spouse.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own

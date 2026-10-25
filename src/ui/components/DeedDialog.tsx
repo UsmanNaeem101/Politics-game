@@ -59,6 +59,8 @@ import {
   sellPrice,
   spyChance,
   strikeChance,
+  STRIKE_MAX,
+  STRIKE_SURE,
   betrothOdds,
   betrothProblem,
   matchKeeper,
@@ -408,7 +410,7 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       break;
     }
     case 'fabricate': {
-      const living = others(s, (id) => ['free', 'imprisoned'].includes(ch(s, id).status));
+      const living = others(s, (id) => ['free', 'imprisoned'].includes(ch(s, id).status) && ch(s, id).rank !== 'child');
       fields = (
         <>
           <fieldset className="field">
@@ -1050,7 +1052,11 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
           p.hiredBlades
             ? `${p.hiredBlades} hired blade${p.hiredBlades > 1 ? 's' : ''} will do the work while you are seen elsewhere.`
             : 'No hired blades: your own hands will be on it. Work on the scheme with gold to hire some.',
-          ...(strikeChance(s, p) >= 92 ? ['This is as sure as a killing gets. Even so, about one strike in twelve goes wrong.'] : []),
+          ...(strikeChance(s, p) >= STRIKE_MAX
+            ? [`This is as sure as a killing gets. Even so, about one strike in ${Math.round(100 / (100 - STRIKE_MAX))} goes wrong.`]
+            : strikeChance(s, p) >= STRIKE_SURE
+              ? [`About one strike in ${Math.round(100 / (100 - strikeChance(s, p)))} goes wrong. More blades and preparation still help, though each buys less, up to ${STRIKE_MAX}%.`]
+              : []),
         ],
       };
     }

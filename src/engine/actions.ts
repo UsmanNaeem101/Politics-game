@@ -279,6 +279,7 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       if (!it.guilty.length) return 'Name the guilty.';
       if (it.guilty.includes(actor)) return 'You would not accuse yourself.';
       if (it.guilty.includes(it.victim)) return 'The victim cannot be the plotter.';
+      if ([...it.guilty, it.victim].some((g) => isChild(s, g))) return 'A child is no part of this.';
       if (it.kind === 'pact' && it.guilty.length < 2) return 'A pact needs at least two conspirators.';
       if (it.guilty.some((g) => !isAlive(s, g)) || !isAlive(s, it.victim)) return 'They must be living.';
       if ((it.kind === 'regicide' || it.kind === 'pact') && it.victim !== s.king) return 'There is no King to plot against.';
@@ -813,7 +814,7 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
  */
 function kingLooksInto(s: GameState, sec: Secret, c: number): boolean {
   if (c < 25 || sec.inquiry !== undefined || s.king === s.player || !(sec.treason || sec.kind === 'murder')) return false;
-  const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== s.king && !alreadyJudged(s, sec, g));
+  const suspects = sec.guilty.filter((g) => isFree(s, g) && g !== s.king && !isChild(s, g) && !alreadyJudged(s, sec, g));
   if (!suspects.length) return false;
   sec.inquiry = s.turn;
   log(s, `Word goes round that the King’s people are asking questions about ${names(s, suspects)}.`, 'all', 'court', suspects);

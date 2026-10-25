@@ -28,7 +28,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               call. Each season opens with a feast where the whole court gathers.
             </p>
             <p>
-              Time passes and people age. Children grow up (a year of childhood passes every season) and the old die, but you and your wife will not die of old age: only a blade, the axe
+              Time passes and people age. Children grow up (a year of childhood passes every month) and the old die, but you and your wife will not die of old age: only a blade, the axe
               or poison can end you.
             </p>
           </section>
@@ -105,7 +105,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <p>
               A <strong>murder</strong> scheme needs preparation and steady hands; even a clean kill may be traced. Your cunning and preparation
               hide you, every conspirator is another mouth, and <strong>hired blades</strong> (bought with gold as you work on the scheme) strike
-              harder and do it while you are seen elsewhere. A <strong>ruin</strong> scheme
+              harder and do it while you are seen elsewhere (past 92% each buys less, and no killing is ever surer than 98%). A <strong>ruin</strong> scheme
               gathers charges and witnesses to lay before the King. When you draw someone in, offer a carrot. They may join sincerely, or meaning to
               betray you. You will not be told which.
             </p>
@@ -151,7 +151,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               Couples have children, and lovers may too: a widow's or a maid's child by her lover is born into her house, and the father is
               told. <strong>Try for a child</strong> with your wife or your lover: it draws her closer, and a child (born nine months on)
               binds her to you as its father. <strong>Acknowledge</strong> a natural child of yours (on the child's page) and they come
-              into your house under your name; a son is named your heir. Children grow up quickly (until seventeen, a year passes every season),
+              into your house under your name; a son is named your heir. Children grow up quickly (until seventeen, a year passes every month),
               come of age at sixteen, and inherit before their uncles. A child is no part of anyone's schemes. On a son's or daughter's page,{' '}
               <strong>Arrange a match</strong>: a grown child weds at once, a young one is promised and weds when both are grown. The other
               family gives the answer, and crowns settled on the match help. A match binds the two houses. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow

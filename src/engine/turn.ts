@@ -71,6 +71,12 @@ function noteRisingHouses(s: GameState): void {
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   s.spies ??= {};
+  // A child is no one's prisoner: any jailed on a forged tale go home.
+  for (const c of Object.values(s.chars)) {
+    if (c.rank !== 'child' || c.status !== 'imprisoned') continue;
+    c.status = 'free';
+    delete s.imprisoned[c.id];
+  }
   affairsAsSpies(s);
   // Trades came after this save was made: every house takes one up now.
   if (!s.businesses) {
@@ -242,13 +248,13 @@ function worldTurns(s: GameState): void {
   newcomers(s);
 }
 
-/** Birthdays. Youth passes quickly: until they are of an age to marry, a year goes by every season. */
+/** Birthdays. Youth passes quickly: until they are of an age to marry, a year goes by every month. */
 export function growOlder(s: GameState): void {
-  const season = s.turn > 1 && (s.turn - 1) % MONTHS_PER_SEASON === 0;
-  const year = s.turn > 1 && (s.turn - 1) % MONTHS_PER_YEAR === 0;
+  if (s.turn <= 1) return;
+  const year = (s.turn - 1) % MONTHS_PER_YEAR === 0;
   for (const c of Object.values(s.chars)) {
     if (c.status !== 'free' && c.status !== 'imprisoned') continue;
-    if (c.age < MARRYING_AGE ? season : year) c.age++;
+    if (c.age < MARRYING_AGE || year) c.age++;
   }
 }
 
