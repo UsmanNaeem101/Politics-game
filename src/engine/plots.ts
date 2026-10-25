@@ -97,7 +97,7 @@ export const sanctioned = (s: GameState, p: Plot): boolean => !!p.warrant && p.w
 export const againstTheKing = (s: GameState, sec: Secret): boolean =>
   !!s.king && sec.treason && (sec.victims.includes(s.king) || ['regicide', 'pact', 'usurpation'].includes(sec.kind));
 
-/** Past this, each blade and each month of preparation buys less: a killing can be made near certain, never certain. */
+/** Past this, each blade and each month of preparation buys half as much: a killing can be made near certain, never certain. */
 export const STRIKE_SURE = 92;
 export const STRIKE_MAX = 98;
 
@@ -105,7 +105,7 @@ export function strikeChance(s: GameState, p: Plot): number {
   const target = p.targets[0];
   if (!target) return 0;
   const raw = strikePower(s, p) - strikeDefence(s, target, p.owner) + 20;
-  const pct = raw <= STRIKE_SURE ? raw : STRIKE_SURE + (raw - STRIKE_SURE) * 0.25;
+  const pct = raw <= STRIKE_SURE ? raw : STRIKE_SURE + (raw - STRIKE_SURE) * 0.5;
   return clamp(Math.round(pct), 5, STRIKE_MAX);
 }
 
@@ -200,7 +200,7 @@ export function joinPlot(s: GameState, p: Plot, who: CharId, sincere: boolean, o
 
 /** Work on a plot. Gold buys hired blades for murder plots. */
 /** Blades for hire: what each costs, and how many one scheme can use. */
-export const BLADE_COST = 20;
+export const BLADE_COST = 10;
 export const MAX_BLADES = 10;
 
 /** A lady's days are soon learned, and fewer, cheaper hands will reach her. */
@@ -415,8 +415,8 @@ export function leakPlots(s: GameState): void {
     if (mouth !== source) learn(s, mouth, p.secretId, roll(s, 40, 60), source);
     learn(s, heard, p.secretId, roll(s, 35, 60), mouth);
     log(s, `${loose(s, mouth, source)} said too much in your hearing: ${sec.text}`, [heard], 'secret', [mouth, heard]);
-    // The leader may come to hear of it, and whose tongue it was.
-    if (chance(s, clamp(30 + ch(s, p.owner).traits.cunning * 0.5, 20, 85))) {
+    // The leader may come to hear of it, and whose tongue it was. The player always does: he would hear the talk.
+    if (p.owner === s.player || chance(s, clamp(30 + ch(s, p.owner).traits.cunning * 0.5, 20, 85))) {
       const who = mouth === p.owner ? (p.owner === s.player ? 'You yourself' : nm(s, mouth)) : loose(s, mouth, source);
       log(s, `“${p.name}” is being talked of. ${who} said too much, and ${nm(s, heard)} heard it.`, [p.owner], 'bad', [mouth, heard]);
     }

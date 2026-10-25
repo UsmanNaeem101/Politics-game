@@ -14,6 +14,7 @@ import {
   canStrike,
   strikeDefence,
   prepPace,
+  SUSPICION_FADES,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -360,16 +361,17 @@ describe('the King’s inquiry into a death', () => {
 });
 
 describe('blades for hire', () => {
-  it('are paid for only when hired, up to ten a scheme', () => {
+  it('are paid for only when hired, ten crowns each, up to ten a scheme', () => {
     const s = fresh();
     const p = createPlot(s, 'anselm', 'murder', ['edmund']);
     s.chars.anselm.gold = 300;
-    advancePlot(s, p, 'anselm', 260);
+    advancePlot(s, p, 'anselm', 40);
+    expect(p.hiredBlades).toBe(4);
+    advancePlot(s, p, 'anselm', 200);
     expect(p.hiredBlades).toBe(10);
-    expect(s.chars.anselm.gold).toBe(100);
+    expect(s.chars.anselm.gold).toBe(200);
     advancePlot(s, p, 'anselm', 100);
-    expect(p.hiredBlades).toBe(10);
-    expect(s.chars.anselm.gold).toBe(100);
+    expect(s.chars.anselm.gold).toBe(200);
   });
 });
 
@@ -455,6 +457,42 @@ describe('a child', () => {
   });
 });
 
+describe('summoned, not seized', () => {
+  it('when the King’s people find enough on your scheme, you answer at a hearing', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = fresh(seed);
+      const p = createPlot(s, 'anselm', 'murder', ['edmund']);
+      p.progress = 60;
+      const sec = s.secrets[p.secretId];
+      learn(s, 'osric', sec.id, 65, 'hugh');
+      sec.inquiry = s.turn;
+      let summons: { accuser: string; secretId: string }[] = [];
+      for (let i = 0; i < 30 && !summons.length; i++) summons = pursueInquiries(s);
+      if (!summons.length) continue;
+      expect(s.chars.anselm.status).toBe('free');
+      expect(summons[0].secretId).toBe(sec.id);
+      return;
+    }
+    throw new Error('never summoned');
+  });
+
+  it('when the King would seize you, he sends for you to answer instead', () => {
+    const s = fresh();
+    const tale = makeSecret(s, { kind: 'regicide', guilty: ['anselm'], victims: ['osric'], truth: true, evidence: 50 });
+    learn(s, 'osric', tale.id, 80, 'hugh');
+    perform(s, 'osric', { type: 'arrest', target: 'anselm' });
+    expect(s.chars.anselm.status).toBe('free');
+    expect(s.audiences.some((a) => a.kind === 'accused')).toBe(true);
+  });
+
+  it('suspicion fades seven points a month', () => {
+    const s = fresh();
+    addMod(s, 'osric', 'anselm', 'belief-x', 'Believes: murder', -24, SUSPICION_FADES);
+    decayMods(s);
+    expect(s.relations.osric.anselm.mods.find((m) => m.key === 'belief-x')!.value).toBeCloseTo(-17);
+  });
+});
+
 describe('a lady', () => {
   it('is easier to reach than a man: no arms, no men-at-arms, her days easily learned', () => {
     const s = fresh();
@@ -477,12 +515,12 @@ describe('a lady', () => {
     const lord = createPlot(s, 'gareth', 'murder', ['edmund']);
     const lady = createPlot(s, 'gareth', 'murder', ['isolde']);
     expect(prepPace(s, lady)).toBeGreaterThan(prepPace(s, lord));
-    s.chars.gareth.gold = 100;
-    advancePlot(s, lady, 'gareth', 100);
+    s.chars.gareth.gold = 50;
+    advancePlot(s, lady, 'gareth', 50);
     expect(lady.hiredBlades).toBe(10);
     expect(s.chars.gareth.gold).toBe(0);
-    s.chars.gareth.gold = 100;
-    advancePlot(s, lord, 'gareth', 100);
+    s.chars.gareth.gold = 50;
+    advancePlot(s, lord, 'gareth', 50);
     expect(lord.hiredBlades).toBe(5);
   });
 });

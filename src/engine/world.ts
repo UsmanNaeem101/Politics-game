@@ -319,6 +319,9 @@ export function adjustTrust(s: GameState, a: CharId, b: CharId, delta: number): 
  */
 export const FADE_PER_MONTH = 3;
 
+/** How fast suspicion fades: what someone believes of you, or heard you accused of. Seven points a month. */
+export const SUSPICION_FADES = 7 / 3;
+
 /** How far friendship goes. It fades only slowly: it outlives a season apart, or in the Tower. */
 export const FRIENDSHIP_MAX = 30;
 

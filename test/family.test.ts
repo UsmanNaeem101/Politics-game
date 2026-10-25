@@ -442,6 +442,18 @@ describe('marrying your mistress', () => {
   });
 });
 
+describe('a widow who kept a house', () => {
+  it('passes it on when she dies, though she married into another', () => {
+    const s = generateCourt(4);
+    const { lord, wife } = couple(s);
+    // She still heads a house of her own, though she lives in her husband's.
+    const own = Object.values(s.houses).find((h) => h.id !== s.chars[lord].householdId && h.head && h.head !== s.player && h.head !== s.king)!;
+    own.head = wife;
+    kill(s, wife, 'Died', false);
+    expect(own.head).not.toBe(wife);
+  });
+});
+
 describe('matching your children', () => {
   /** The player as a father, with a wife; and another house with children of its own. */
   function families(seed = 4) {

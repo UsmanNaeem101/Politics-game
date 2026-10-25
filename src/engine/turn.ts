@@ -1,6 +1,7 @@
 // The rhythm of a month: you act, the court acts in the night, the world turns.
 // The game is open-ended: it runs until the player dies, flees or is crowned.
 
+import { accusedAudience, pushAudience } from './actions';
 import { evolveAgendas, expireDirectives, npcTurn } from './ai';
 import { witanAudience } from './audiences';
 import { decidePrisoners, fillOffices, holdWitan, kill, markJudged, pursueInquiries, questionPrisoner } from './court';
@@ -23,6 +24,7 @@ import {
   MONTHS_PER_YEAR,
   acquaintance,
   FRIENDSHIP_MAX,
+  SUSPICION_FADES,
   addMod,
   ch,
   credence,
@@ -72,6 +74,12 @@ function noteRisingHouses(s: GameState): void {
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   s.spies ??= {};
+  // Suspicion once faded at a point a month; it fades at the new pace now.
+  for (const row of Object.values(s.relations)) {
+    for (const r of Object.values(row)) {
+      for (const m of r.mods) if ((m.key.startsWith('belief-') || m.key === 'accused') && m.decay && m.decay < SUSPICION_FADES) m.decay = SUSPICION_FADES;
+    }
+  }
   // An unseen killing once put the killer's name in the mouths of strangers at random. Strangers forget it;
   // the dead man's kin and friends keep their suspicions.
   for (const sec of Object.values(s.secrets)) {
@@ -250,7 +258,11 @@ function worldTurns(s: GameState): void {
   }
   leakPlots(s);
   spymasterHears(s);
-  pursueInquiries(s);
+  for (const x of pursueInquiries(s)) {
+    if (!isFree(s, s.player) || s.audiences.some((a) => a.kind === 'accused')) continue;
+    log(s, `${nm(s, x.accuser)} brings what the King’s people found before the throne: you are summoned to answer it.`, [s.player], 'dire', [x.accuser]);
+    pushAudience(s, accusedAudience(s, x.accuser, [x.secretId], undefined, [s.player]));
+  }
   runBusinesses(s);
   runSpies(s);
   runTails(s);

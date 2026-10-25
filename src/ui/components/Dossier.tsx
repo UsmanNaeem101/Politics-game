@@ -152,7 +152,13 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
     }
     if (!iAmKing) out.push({ type: 'denounce', why: !s.king ? 'There is no King to hear you.' : against.length ? undefined : 'You know nothing against them you could swear to.' });
     // Treason against the King you could offer to answer with your sword.
-    if (!iAmKing && s.king && target !== s.king && against.some(([sid]) => againstTheKing(s, s.secrets[sid]))) out.push({ type: 'offer-blade' });
+    if (!iAmKing && s.king && target !== s.king) {
+      const proof = against.some(([sid]) => againstTheKing(s, s.secrets[sid]));
+      // You may know what he wants before you know what he is doing: the King needs more than a motive.
+      const aims = knowsAgenda(s, P, target) && (t.agenda.kind === 'crown' || t.agenda.targets.includes(s.king));
+      if (proof) out.push({ type: 'offer-blade' });
+      else if (aims) out.push({ type: 'offer-blade', why: 'You know what they want, but of no plot against the King. Have their schemes watched, or track them, to find one.' });
+    }
     out.push(gate({ type: 'blackmail', why: against.length ? undefined : 'You know nothing to threaten them with.' }));
     out.push({ type: 'fabricate' });
     out.push({ type: 'scheme' });

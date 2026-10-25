@@ -7,6 +7,7 @@ import { kindLabel, makeSecret, publish, refreshText, syncPlotSecret } from './s
 import { unmaskTurned } from './spies';
 import { He, His, first, his, names, nm, vary } from './text';
 import {
+  SUSPICION_FADES,
   addMod,
   adjustTrust,
   ch,
@@ -24,7 +25,7 @@ import {
   rename,
   trust,
 } from './world';
-import type { CharId, GameState, OfficeId, Plot, Secret, SecretId } from './types';
+import type { CharId, GameState, House, OfficeId, Plot, Secret, SecretId } from './types';
 
 /** Crimes the King may punish with death: treason, and a murder actually done. */
 export const capital = (sec: Secret): boolean => sec.treason || (sec.kind === 'murder' && !!sec.deed);
@@ -76,9 +77,12 @@ export function kill(s: GameState, id: CharId, fate: string, attainted: boolean)
 
 /** When a head of house dies or flees, the next of kin takes his place. */
 export function succeedHouse(s: GameState, id: CharId): void {
+  // Every house they headed: a widow who kept her house and married into another still heads the first.
+  for (const house of Object.values(s.houses)) if (house.head === id) succeedTo(s, id, house);
+}
+
+function succeedTo(s: GameState, id: CharId, house: House): void {
   const c = ch(s, id);
-  const house = s.houses[c.householdId];
-  if (!house || house.head !== id) return;
   // Grown sons, eldest first; then brothers; then grown daughters, sisters, the widow; then a boy lord.
   const here = (k: CharId) => isFree(s, k) && ch(s, k).householdId === house.id;
   const byAge = (a: CharId, b: CharId) => ch(s, b).age - ch(s, a).age;
@@ -496,7 +500,7 @@ function markDismissed(s: GameState, accused: CharId, sec: Secret, score: number
   const K = s.king!;
   const doubt = clamp(score, 0, 100);
   const grave = capital(sec);
-  addMod(s, K, accused, 'accused', grave ? 'Accused of a hanging crime' : 'Accused before me', -Math.round(5 + doubt / 5), grave ? 0.25 : 0.5);
+  addMod(s, K, accused, 'accused', grave ? 'Accused of a hanging crime' : 'Accused before me', -Math.round(5 + doubt / 5), grave ? SUSPICION_FADES : SUSPICION_FADES * 1.5);
   if (doubt >= 35) adjustTrust(s, K, accused, -Math.round(doubt / 5));
   const A = ch(s, accused);
   A.prestige = Math.max(0, A.prestige - Math.round(3 + doubt / 10));
@@ -514,7 +518,7 @@ function hallHears(s: GameState, sec: Secret, cred: number): void {
     if (credence(s, id, sec.id) >= cred) continue;
     learn(s, id, sec.id, cred, 'court');
     for (const g of sec.guilty) {
-      addMod(s, id, g, `belief-${sec.id}`, `Heard it charged: ${kindLabel(sec).toLowerCase()}`, -Math.round(cred * (capital(sec) ? 0.3 : 0.15)), 0.3);
+      addMod(s, id, g, `belief-${sec.id}`, `Heard it charged: ${kindLabel(sec).toLowerCase()}`, -Math.round(cred * (capital(sec) ? 0.3 : 0.15)), SUSPICION_FADES);
     }
   }
 }
@@ -524,7 +528,9 @@ function hallHears(s: GameState, sec: Secret, cred: number): void {
  * lord found murdered. More proof may turn up, and with enough of it the Guard
  * comes. A season without a find, and the matter is let drop.
  */
-export function pursueInquiries(s: GameState): void {
+/** The King's people at work. Returns the charges the player must answer at a hearing, rather than be seized for. */
+export function pursueInquiries(s: GameState): { accuser: CharId; secretId: SecretId }[] {
+  const summons: { accuser: CharId; secretId: SecretId }[] = [];
   const K = s.king;
   for (const sec of Object.values(s.secrets)) {
     if (sec.inquiry === undefined) continue;
@@ -570,10 +576,14 @@ export function pursueInquiries(s: GameState): void {
     if (K === s.player || credence(s, K, sec.id) < 70) continue;
     const fresh = suspects.filter((g) => !alreadyJudged(s, sec, g));
     if (!fresh.length) continue;
-    for (const g of fresh) imprison(s, g, [sec.id], digger);
-    log(s, `The Guard came for ${names(s, fresh)}. The King’s people had been asking questions, and found answers.`, 'all', 'court', fresh);
+    // The player is summoned to answer, as for a traced killing; anyone else the Guard simply takes.
+    if (fresh.includes(s.player)) summons.push({ accuser: digger ?? K, secretId: sec.id });
+    const taken = fresh.filter((g) => g !== s.player);
+    for (const g of taken) imprison(s, g, [sec.id], digger);
+    if (taken.length) log(s, `The Guard came for ${names(s, taken)}. The King’s people had been asking questions, and found answers.`, 'all', 'court', taken);
     delete sec.inquiry;
   }
+  return summons;
 }
 
 export function crimeName(sec: Secret): string {

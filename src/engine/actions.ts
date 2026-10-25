@@ -56,6 +56,7 @@ import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
   OFFICE_NAMES,
   acquaintance,
+  SUSPICION_FADES,
   addMod,
   befriend,
   adjustTrust,
@@ -817,7 +818,7 @@ function whisper(s: GameState, actor: CharId, target: CharId, secretId: SecretId
   for (const g of sec.guilty) {
     if (g === target) continue;
     const sev = capital(sec) ? 0.35 : 0.2;
-    addMod(s, target, g, `belief-${secretId}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * sev), 0.3);
+    addMod(s, target, g, `belief-${secretId}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * sev), SUSPICION_FADES);
   }
   if (c >= 50) {
     addMod(s, target, actor, 'confided', 'Confided in me', 4, 0.5);
@@ -855,7 +856,7 @@ function offerBlade(s: GameState, actor: CharId, target: CharId, secretId: Secre
   const c = hearCredence(s, K, actor, sec);
   const odds = bladeOdds(s, actor, secretId);
   learn(s, K, secretId, c, actor);
-  for (const g of sec.guilty) if (g !== K) addMod(s, K, g, `belief-${secretId}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * 0.35), 0.3);
+  for (const g of sec.guilty) if (g !== K) addMod(s, K, g, `belief-${secretId}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * 0.35), SUSPICION_FADES);
   if (!chance(s, odds)) {
     if (c < 25) addMod(s, K, actor, 'tale-teller', 'Brings me tales', -6, 0.5);
     log(s, `${nm(s, actor)} offered the King ${his(s, actor)} sword against ${nm(s, target)}. The King would not hear of it.`, [actor, K], 'bad', [actor, target]);
@@ -902,7 +903,7 @@ function warn(s: GameState, actor: CharId, target: CharId, p: Plot): Outcome {
   learn(s, target, sec.id, c, actor);
   for (const g of sec.guilty) {
     if (g === target) continue;
-    addMod(s, target, g, `belief-${sec.id}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * (capital(sec) ? 0.35 : 0.2)), 0.3);
+    addMod(s, target, g, `belief-${sec.id}`, `Believes: ${kindLabel(sec).toLowerCase()}`, -Math.round(c * (capital(sec) ? 0.35 : 0.2)), SUSPICION_FADES);
   }
   const murder = p.kind === 'murder';
   if (murder) T.guard = Math.max(T.guard, Math.min(60, T.guard + 20));
@@ -1297,7 +1298,7 @@ function hearingAccuser(s: GameState, killer: CharId, victim: CharId): CharId | 
   return [s.offices.captain, ...kin].find(fit) ?? s.order.find((id) => fit(id) && ch(s, id).rank === 'great');
 }
 
-function accusedAudience(s: GameState, accuser: CharId, charges: SecretId[], plot?: Plot, only?: CharId[]): Audience {
+export function accusedAudience(s: GameState, accuser: CharId, charges: SecretId[], plot?: Plot, only?: CharId[]): Audience {
   const P = s.player;
   const counters = Object.entries(s.knowledge[P] ?? {})
     .filter(([sid, k]) => (k.lie || k.credence >= 40) && s.secrets[sid]?.guilty.includes(accuser))
@@ -1687,6 +1688,13 @@ function arrest(s: GameState, king: CharId, target: CharId): Outcome {
     .filter(([sid, k]) => !k.lie && k.credence >= 25 && s.secrets[sid]?.guilty.includes(target) && !alreadyJudged(s, s.secrets[sid], target))
     .map(([sid]) => sid);
   const belief = charges.reduce((m, c) => Math.max(m, credence(s, king, c)), 0);
+  // The player is summoned to answer before the throne, not taken in the night.
+  if (target === s.player && charges.length) {
+    if (s.audiences.some((a) => a.kind === 'accused')) return { ok: false, text: 'They are already summoned.', tone: 'neutral' };
+    log(s, `The King has sent for you: you are to answer before the throne for what he has heard.`, [target], 'dire', [king]);
+    pushAudience(s, accusedAudience(s, king, charges, undefined, [target]));
+    return { ok: true, text: `${first(s, target)} is summoned to answer.`, tone: 'neutral' };
+  }
   imprison(s, target, charges, king);
   if (belief < 40) {
     for (const id of s.order) {
