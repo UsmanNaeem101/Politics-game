@@ -209,6 +209,26 @@ export function loadGame(): GameState | null {
   }
 }
 
+/** The saved game as text, to keep in a file. */
+export const savedText = (): string | null => get(KEY);
+
+/**
+ * A game brought in from a file becomes the saved game (repaired if it was made by an older version). The places
+ * to turn back to belonged to the game it replaces, so they go. Returns null if the text is not a game in play.
+ */
+export function importGame(raw: string): GameState | null {
+  try {
+    const s = restore(raw);
+    if (!s) return null;
+    set(KEY, JSON.stringify(s));
+    drop('start');
+    drop('end');
+    return s;
+  } catch {
+    return null;
+  }
+}
+
 /** The places a game can be turned back to, latest first: the end of a month, then the start of one. */
 export function backPoints(): { point: BackPoint; turn: number }[] {
   const out: { point: BackPoint; turn: number }[] = [];

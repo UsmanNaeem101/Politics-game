@@ -201,6 +201,10 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               die or flee you can turn back to either and choose differently. You can also turn back from the title screen while your game
               goes on. The dice are cast afresh when you turn back: a gamble that failed may go your way the next time, and one that came off may not.
             </p>
+            <p>
+              Your game saves itself as you play. To keep a copy, or to carry it to another computer or to the desktop app,{' '}
+              <strong>save it to a file</strong> (the button at the top, or on the title screen) and <strong>load it from the file</strong> there.
+            </p>
           </section>
           <p className="credit small muted">
             Icons by Lorc, Delapouite and contributors from <a href="https://game-icons.net" target="_blank" rel="noreferrer">game-icons.net</a>, CC BY 3.0.

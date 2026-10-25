@@ -67,6 +67,8 @@ before changing anything substantial; it is the plan we are building toward.
   and names the forger only if `traceForger()` follows the tellers back to him (certain if he laid it himself).
 - Saves: `src/ui/store.ts` keeps them in IndexedDB (localStorage only as a fallback; it allows about 5 MB, and a long
   game's full history outgrows it), read from an in-memory copy loaded by `openStore()` before the app renders.
+  Save to / load from a file: `src/ui/saveFile.ts` (on the published page through the viewer's `downloads` capability,
+  so publish with `capabilities: {downloads: true}`; elsewhere an ordinary download) and `importGame()` in `store.ts`.
 - The King forgets: every negative opinion mod the reigning King holds fades `KINGS_GRUDGE_FADES` (7) a month (`decayMods()`).
   No more than `MAX_NEW_HOUSES` (15) houses arrive in a game (`newcomers()` in `turn.ts`).
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).

@@ -35,6 +35,7 @@ export function Game(props: {
   dawn: boolean;
   closeDawn: () => void;
   onHelp: () => void;
+  onSaveFile: () => void;
   onTheme: () => void;
   onQuit: () => void;
   onRestart: (seed: number, name: string) => void;
@@ -53,7 +54,7 @@ export function Game(props: {
 
   return (
     <div className="game">
-      <TopBar onHelp={props.onHelp} onTheme={props.onTheme} onQuit={props.onQuit} onEnd={endWeek} />
+      <TopBar onHelp={props.onHelp} onSaveFile={props.onSaveFile} onTheme={props.onTheme} onQuit={props.onQuit} onEnd={endWeek} />
       <nav className="tabs" aria-label="Views">
         {TABS.map((t) => (
           <button
@@ -100,7 +101,19 @@ export function Game(props: {
   );
 }
 
-function TopBar({ onHelp, onTheme, onQuit, onEnd }: { onHelp: () => void; onTheme: () => void; onQuit: () => void; onEnd: () => void }) {
+function TopBar({
+  onHelp,
+  onSaveFile,
+  onTheme,
+  onQuit,
+  onEnd,
+}: {
+  onHelp: () => void;
+  onSaveFile: () => void;
+  onTheme: () => void;
+  onQuit: () => void;
+  onEnd: () => void;
+}) {
   const { s, select } = useGame();
   const me = ch(s, s.player);
   const blocked = canEndWeek(s);
@@ -174,6 +187,9 @@ function TopBar({ onHelp, onTheme, onQuit, onEnd }: { onHelp: () => void; onThem
       <div className="topbar-menu">
         <button className="icon-btn" onClick={onHelp} title="How to play" aria-label="How to play">
           ?
+        </button>
+        <button className="icon-btn" onClick={onSaveFile} title="Save your game to a file" aria-label="Save your game to a file">
+          <GIcon name="save" size={16} />
         </button>
         <button className="icon-btn" onClick={onTheme} title="Light or dark" aria-label="Toggle light or dark">
           <Icon name="moon" />

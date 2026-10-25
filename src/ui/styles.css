@@ -2787,6 +2787,7 @@ details > summary {
   vertical-align: -0.2em;
 }
 
+.app-notice,
 .save-warning {
   position: fixed;
   left: 50%;
@@ -2802,4 +2803,8 @@ details > summary {
   font-size: var(--t-sm);
   z-index: 100;
   box-shadow: var(--shadow);
+}
+
+.app-notice {
+  border-color: var(--gold);
 }

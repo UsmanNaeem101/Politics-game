@@ -15,6 +15,8 @@ export function TitleScreen({
   backTo,
   onTurnBack,
   onHelp,
+  onExport,
+  onImport,
 }: {
   onStart: (seed: number, name: string, trade?: BusinessKind) => void;
   onContinue: () => void;
@@ -22,6 +24,8 @@ export function TitleScreen({
   backTo: { point: BackPoint; turn: number }[];
   onTurnBack: (point: BackPoint) => void;
   onHelp: () => void;
+  onExport: () => void;
+  onImport: () => void;
 }) {
   const [seed, setSeed] = useState(randomSeed);
   const [name, setName] = useState('');
@@ -55,6 +59,14 @@ export function TitleScreen({
           <TurnBackButtons points={backTo} onTurnBack={onTurnBack} primary={!hasSave} />
           <button className="btn" onClick={onHelp}>
             How to play
+          </button>
+          {hasSave && (
+            <button className="btn" onClick={onExport} title="Keep your game in a file: a copy to keep, or to carry to another computer">
+              <GIcon name="save" size={16} /> Save to a file
+            </button>
+          )}
+          <button className="btn" onClick={onImport} title="Bring back a game you saved to a file">
+            <GIcon name="load" size={16} /> Load from a file
           </button>
         </div>
       </header>

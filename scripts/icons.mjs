@@ -35,6 +35,8 @@ const MAP = {
   racket: 'robber', invest: 'shop', divest: 'sell-card', trade: 'swap-bag',
   // spies
   plant: 'eye-target', 'dismiss-spy': 'cancel', sweep: 'secret-door', agent: 'domino-mask',
+  // saving to and loading from a file
+  save: 'save', load: 'open-folder',
   // families
   child: 'baby-face', propose: 'linked-rings', betroth: 'big-diamond-ring', plead: 'envelope',
   // love, tails and the night
