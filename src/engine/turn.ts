@@ -7,7 +7,7 @@ import { witanAudience } from './audiences';
 import { decidePrisoners, fillOffices, holdWitan, kill, markJudged, pursueInquiries, questionPrisoner } from './court';
 import { arriveHouse, generateCourt, type GenerateOptions } from './generate';
 import { evaluate } from './objectives';
-import { leakPlots, spymasterHears } from './plots';
+import { heardOfYourSchemes, leakPlots, spymasterHears } from './plots';
 import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
@@ -280,6 +280,7 @@ function worldTurns(s: GameState): void {
   widowsUpkeep(s);
   matchmaking(s);
   newcomers(s);
+  heardOfYourSchemes(s);
 }
 
 /** Birthdays. Youth passes quickly: until they are of an age to marry, a year goes by every month. */

@@ -15,6 +15,7 @@ import {
   strikeDefence,
   prepPace,
   SUSPICION_FADES,
+  BLADE_COST,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -522,6 +523,24 @@ describe('a lady', () => {
     s.chars.gareth.gold = 50;
     advancePlot(s, lord, 'gareth', 50);
     expect(lord.hiredBlades).toBe(5);
+  });
+});
+
+describe('preparing a killing', () => {
+  it('a month of work and a blade raise the odds by about a quarter', () => {
+    const rises: number[] = [];
+    for (let seed = 1; seed <= 20; seed++) {
+      const s = fresh(seed);
+      const p = createPlot(s, 'gareth', 'murder', ['edmund']);
+      p.progress = 20;
+      s.chars.gareth.gold = 100;
+      const before = strikeChance(s, p);
+      advancePlot(s, p, 'gareth', BLADE_COST);
+      rises.push(strikeChance(s, p) - before);
+    }
+    const avg = rises.reduce((a, b) => a + b, 0) / rises.length;
+    expect(avg).toBeGreaterThanOrEqual(20);
+    expect(avg).toBeLessThanOrEqual(32);
   });
 });
 

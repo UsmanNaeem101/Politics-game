@@ -36,6 +36,7 @@ import {
   first,
   incomeOf,
   knowsAgenda,
+  isFree,
   landsOf,
   nm,
   officeEligible,
@@ -152,6 +153,13 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
     }
     if (!iAmKing) out.push({ type: 'denounce', why: !s.king ? 'There is no King to hear you.' : against.length ? undefined : 'You know nothing against them you could swear to.' });
     // Treason against the King you could offer to answer with your sword.
+    // On the King's own page: offer him your sword against any traitor you know of.
+    if (!iAmKing && target === s.king) {
+      const traitors = known.some(
+        ([sid, k]) => (k.lie || k.credence >= 40) && againstTheKing(s, s.secrets[sid]) && !s.secrets[sid].guilty.includes(P) && s.secrets[sid].guilty.some((g) => g !== s.king && isFree(s, g)),
+      );
+      out.push({ type: 'offer-blade', label: 'Offer your sword against a traitor', why: traitors ? undefined : 'You know of no plot against him to offer your sword against.' });
+    }
     if (!iAmKing && s.king && target !== s.king) {
       const proof = against.some(([sid]) => againstTheKing(s, s.secrets[sid]));
       // You may know what he wants before you know what he is doing: the King needs more than a motive.

@@ -6,6 +6,7 @@ import {
   isRemoved,
   offerLabel,
   plotViews,
+  againstTheKing,
   sanctioned,
   strikeChance,
   traceChance,
@@ -130,6 +131,13 @@ function PlotCard({ v }: { v: PlotView }) {
         <p className="small">
           Denounce now: {odds.map((o) => `${first(s, o.accused)} ${o.pct}%`).join(' · ')}
         </p>
+      )}
+      {active && s.phase === 'playing' && role === 'known' && ch(s, P).status === 'free' && s.king && s.king !== P && plot.owner !== s.king && v.belief >= 40 && againstTheKing(s, s.secrets[plot.secretId]) && (
+        <div className="row-actions">
+          <button className="btn btn--sm" disabled={s.ap < 1} onClick={() => openDeed({ type: 'offer-blade', target: plot.owner, secretId: plot.secretId })}>
+            Offer to kill {first(s, plot.owner)} for the King…
+          </button>
+        </div>
       )}
       {active && s.phase === 'playing' && role !== 'known' && ch(s, P).status === 'free' && (
         <div className="row-actions">

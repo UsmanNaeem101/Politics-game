@@ -57,7 +57,9 @@ before changing anything substantial; it is the plan we are building toward.
   much the King's inquiry can find; only those who knew the plot, or the victim's circle if he quarrelled with the
   killer, suspect anyone.
 - Secrecy: `leakPlots()` in `plots.ts` leaks a scheme through a real mouth (a plotter, or someone under a plotter's roof) to
-  someone close to them, and may tell the leader; `spymasterHears()` only picks up secrets already being whispered.
+  someone close to them, and may tell the leader; a solo scheme hardly leaks except through its hired blades.
+  `heardOfYourSchemes()` tells the player monthly who else has come to know of their scheme, with a hint of how.
+  `spymasterHears()` only picks up secrets already being whispered.
 - The King's sword: `offer-blade` (`offerBlade()`, `bladeOdds()` in `actions.ts`) lays treason against the King
   (`againstTheKing()`) before him; accepted, it makes a murder plot with `Plot.warrant`. While that King reigns
   (`sanctioned()` in `plots.ts`) the killing is no crime: no hearing, no seizure, no inquiry, and his favour.

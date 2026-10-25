@@ -348,8 +348,10 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       );
       break;
     case 'offer-blade': {
-      // What you know of their treason against the King, to lay before him.
-      const treason = usable.filter((k) => !!target && k.sec.guilty.includes(target) && !k.sec.guilty.includes(P) && againstTheKing(s, k.sec));
+      // What you know of their treason against the King, to lay before him. From the King's own page, any traitor.
+      const choosing = !spec.target || spec.target === s.king;
+      const traitor = (sec: (typeof usable)[number]['sec']) => sec.guilty.find((g) => g !== P && g !== s.king && ch(s, g).status === 'free');
+      const treason = usable.filter((k) => !k.sec.guilty.includes(P) && againstTheKing(s, k.sec) && !!traitor(k.sec) && (choosing || (!!target && k.sec.guilty.includes(target))));
       fields = (
         <fieldset className="field">
           <legend>What you will tell the King</legend>
@@ -357,7 +359,15 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
           <div className="secret-choices">
             {treason.map((k) => (
               <label key={k.sec.id} className={`secret-choice ${secretId === k.sec.id ? 'is-on' : ''}`}>
-                <input type="radio" name="treason" checked={secretId === k.sec.id} onChange={() => setSecretId(k.sec.id)} />
+                <input
+                  type="radio"
+                  name="treason"
+                  checked={secretId === k.sec.id}
+                  onChange={() => {
+                    setSecretId(k.sec.id);
+                    if (choosing) setTarget(traitor(k.sec)!);
+                  }}
+                />
                 <span>
                   {k.k.lie ? <span className="chip chip--info">Your forgery</span> : <span className="chip">{k.k.credence}% sure</span>} {k.text}
                 </span>
@@ -1099,8 +1109,19 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     case 'advance':
       return {
         lines: [
-          `About +${Math.round((11 + me.traits.cunning * 0.12 + (s.plots[it.plotId]?.members.length ?? 0) * 2) * (s.plots[it.plotId] ? prepPace(s, s.plots[it.plotId]) : 1))} preparation. The more prepared, the more it can leak.`,
-          ...(s.plots[it.plotId] && prepPace(s, s.plots[it.plotId]) > 1 ? ['A lady’s days are soon learned: preparation goes quicker, and blades come cheaper.'] : []),
+          ...(() => {
+            const p = s.plots[it.plotId];
+            const gain = Math.round((11 + me.traits.cunning * 0.12 + (p?.members.length ?? 0) * 2) * (p ? prepPace(s, p) : 1));
+            if (!p || p.kind !== 'murder') return [`About +${gain} preparation. The more prepared, the more it can leak.`];
+            const blades = Math.floor(it.gold / bladeCost(s, p));
+            const now = strikeChance(s, p);
+            const then = strikeChance(s, p, { progress: gain, blades });
+            return [
+              `About +${gain} preparation${blades ? ` and ${blades} more blade${blades > 1 ? 's' : ''}` : ''}: the odds of a kill go from ${now}% to about ${then}%.`,
+              'The more prepared, and the more hands in it, the more it can leak.',
+              ...(bladeCost(s, p) < BLADE_COST ? ['A lady’s days are soon learned: preparation goes quicker, and blades come cheaper.'] : []),
+            ];
+          })(),
         ],
       };
     case 'recruit': {

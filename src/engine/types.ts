@@ -328,6 +328,8 @@ export interface Plot {
   hiredBlades: number;
   /** The King who gave his leave for this killing: while he reigns, it is no crime. */
   warrant?: CharId;
+  /** Outsiders the player, as its leader, has learned know of it. */
+  heard?: CharId[];
 }
 
 export type PlotCondition =

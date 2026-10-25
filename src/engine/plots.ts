@@ -62,14 +62,14 @@ export function royalGuard(s: GameState, target: CharId, plotOwner?: CharId): nu
   return g;
 }
 
-export function strikePower(s: GameState, p: Plot): number {
+export function strikePower(s: GameState, p: Plot, more = { progress: 0, blades: 0 }): number {
   const o = ch(s, p.owner);
-  let power = p.progress * 0.55 + o.traits.martial * 0.15 + o.traits.cunning * 0.15;
+  let power = Math.min(100, p.progress + more.progress) * 0.55 + o.traits.martial * 0.15 + o.traits.cunning * 0.15;
   for (const m of p.members) {
     if (!m.sincere || !isFree(s, m.id)) continue;
     power += 6 + ch(s, m.id).traits.martial * 0.08;
   }
-  power += p.hiredBlades * 5;
+  power += Math.min(MAX_BLADES, p.hiredBlades + more.blades) * 5;
   if (officeOf(s, p.owner) === 'marshal') power += 10;
   if (hasPerk(s, p.owner, 'cutthroats')) power += 10;
   if (hasPerk(s, p.owner, 'poisons')) power += 6;
@@ -101,10 +101,11 @@ export const againstTheKing = (s: GameState, sec: Secret): boolean =>
 export const STRIKE_SURE = 92;
 export const STRIKE_MAX = 98;
 
-export function strikeChance(s: GameState, p: Plot): number {
+/** The odds of a kill; `more` asks what they would be with more preparation and blades. */
+export function strikeChance(s: GameState, p: Plot, more = { progress: 0, blades: 0 }): number {
   const target = p.targets[0];
   if (!target) return 0;
-  const raw = strikePower(s, p) - strikeDefence(s, target, p.owner) + 20;
+  const raw = strikePower(s, p, more) - strikeDefence(s, target, p.owner) + 20;
   const pct = raw <= STRIKE_SURE ? raw : STRIKE_SURE + (raw - STRIKE_SURE) * 0.5;
   return clamp(Math.round(pct), 5, STRIKE_MAX);
 }
@@ -206,7 +207,8 @@ export const MAX_BLADES = 10;
 /** A lady's days are soon learned, and fewer, cheaper hands will reach her. */
 const againstLady = (s: GameState, p: Plot): boolean => p.kind === 'murder' && !!p.targets[0] && unguardedLady(s, p.targets[0]);
 export const bladeCost = (s: GameState, p: Plot): number => (againstLady(s, p) ? BLADE_COST / 2 : BLADE_COST);
-export const prepPace = (s: GameState, p: Plot): number => (againstLady(s, p) ? 1.5 : 1);
+/** A murder scheme comes together quickly (about +25% to kill a month, with a blade); a lady's quicker still. */
+export const prepPace = (s: GameState, p: Plot): number => (p.kind === 'murder' ? 2 : 1) * (againstLady(s, p) ? 1.5 : 1);
 
 export function advancePlot(s: GameState, p: Plot, actor: CharId, gold = 0): number {
   const a = ch(s, actor);
@@ -393,8 +395,27 @@ export function leakPlots(s: GameState): void {
   for (const p of Object.values(s.plots)) {
     if (p.status !== 'active' || !isFree(s, p.owner)) continue;
     const insincere = p.members.filter((m) => !m.sincere).length;
-    const pct = clamp(3 + p.members.length * 4 + insincere * 5 + p.progress / 12 - ch(s, p.owner).traits.cunning / 10, 1, 40);
+    const cunning = ch(s, p.owner).traits.cunning;
+    // A man who keeps his own counsel rarely leaks; it is the people in it, and the hired men, who talk.
+    const solo = p.members.length === 0;
+    const pct = solo
+      ? clamp(0.5 + p.hiredBlades * 0.2 + p.progress / 60 - cunning / 25, 0.5, 4)
+      : clamp(3 + p.members.length * 4 + insincere * 5 + p.hiredBlades * 0.2 + p.progress / 12 - cunning / 10, 1, 40);
     if (!chance(s, pct)) continue;
+    const sec0 = s.secrets[p.secretId];
+    // A sellsword in his cups.
+    if (p.hiredBlades && chance(s, clamp(p.hiredBlades * 5, 0, solo ? 50 : 30))) {
+      const pool = s.order.filter((id) => isFree(s, id) && !isMember(p, id) && !isChild(s, id) && credence(s, id, p.secretId) < 40);
+      const heard = weighted(s, pool, (id) => (s.offices.spymaster === id ? 3 : s.offices.captain === id || p.targets.includes(id) ? 2 : 0.5));
+      if (!heard) continue;
+      learn(s, heard, p.secretId, roll(s, 30, 50), 'rumour');
+      log(s, `A sellsword drinking in a tavern let slip: ${sec0.text}`, [heard], 'secret', [heard]);
+      if (p.owner === s.player || chance(s, clamp(30 + cunning * 0.5, 20, 85))) {
+        log(s, `“${p.name}” is being talked of. A sellsword in your pay talked in his cups, and ${nm(s, heard)} heard it.`, [p.owner], 'bad', [heard]);
+        (p.heard ??= []).push(heard);
+      }
+      continue;
+    }
     // Whose people talked: the careless, and those who swore falsely, most of all.
     const insiders = [p.owner, ...p.members.map((m) => m.id)].filter((id) => isFree(s, id));
     const source = weighted(s, insiders, (id) => (p.members.some((m) => m.id === id && !m.sincere) ? 3 : 1) * (1.5 - ch(s, id).traits.cunning / 100));
@@ -419,6 +440,44 @@ export function leakPlots(s: GameState): void {
     if (p.owner === s.player || chance(s, clamp(30 + ch(s, p.owner).traits.cunning * 0.5, 20, 85))) {
       const who = mouth === p.owner ? (p.owner === s.player ? 'You yourself' : nm(s, mouth)) : loose(s, mouth, source);
       log(s, `“${p.name}” is being talked of. ${who} said too much, and ${nm(s, heard)} heard it.`, [p.owner], 'bad', [mouth, heard]);
+      (p.heard ??= []).push(heard);
+      if (mouth !== p.owner) p.heard.push(mouth);
+    }
+  }
+}
+
+/**
+ * Every month: the player hears who else has come to know of a scheme of his, and a hint of how. A spy's report or a
+ * wife's pillow talk is no less a leak for being quiet.
+ */
+export function heardOfYourSchemes(s: GameState): void {
+  const P = s.player;
+  if (!isFree(s, P)) return;
+  const home = s.houses[ch(s, P).householdId]?.members ?? [];
+  for (const p of Object.values(s.plots)) {
+    if (p.status !== 'active' || p.owner !== P || sanctioned(s, p)) continue;
+    const told = (p.heard ??= []);
+    for (const id of s.order) {
+      if (id === P || isMember(p, id) || told.includes(id) || !isFree(s, id)) continue;
+      const k = s.knowledge[id]?.[p.secretId];
+      if (!k || k.lie || k.credence < 20) continue;
+      told.push(id);
+      const src = k.source;
+      const how =
+        src === 'spies'
+          ? 'Someone has been prying into your affairs.'
+          : src === 'rumour'
+            ? 'It is going about the court.'
+            : src === 'court' || src === 'confession'
+              ? 'It was spoken of openly.'
+              : src === P
+                ? 'You told them yourself.'
+                : home.includes(src) || ch(s, P).spouse === src
+                  ? 'Someone close to you has been talking.'
+                  : s.chars[src]
+                    ? `They had it from ${nm(s, src)}.`
+                    : '';
+      log(s, `Word reaches you that ${nm(s, id)} has heard of “${p.name}”. ${how}`, [P], 'bad', [id]);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  againstTheKing,
   betrayable,
   credenceWord,
   dateLabel,
@@ -135,6 +136,18 @@ export function Ledger() {
                           disabled={s.ap < 1}
                         >
                           Blackmail…
+                        </button>
+                      )}
+                      {s.king && s.king !== P && (k.k.lie || k.k.credence >= 40) && againstTheKing(s, k.sec) && k.sec.guilty.some((x) => x !== P && x !== s.king && s.chars[x].status === 'free') && (
+                        <button
+                          className="btn btn--sm"
+                          onClick={() => {
+                            const named = k.sec.guilty.filter((x) => x !== P && x !== s.king && s.chars[x].status === 'free');
+                            openDeed({ type: 'offer-blade', secretId: k.sec.id, target: named[0] });
+                          }}
+                          disabled={s.ap < 1}
+                        >
+                          Offer to kill them for the King…
                         </button>
                       )}
                     </div>
