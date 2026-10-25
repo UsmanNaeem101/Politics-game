@@ -16,6 +16,7 @@ import {
   isChild,
   isFree,
   isRemoved,
+  isServant,
   knows,
   learn,
   log,
@@ -348,25 +349,49 @@ function seize(s: GameState, killer: CharId, secretId: SecretId, victimWasKing: 
 
 // ── Secrecy ─────────────────────────────────────────────────────────────────
 
-/** Every month, crowded or sloppy plots leak. */
+/** Every month, crowded or sloppy plots leak: one of its people, or someone under their roof, says too much. */
 export function leakPlots(s: GameState): void {
   for (const p of Object.values(s.plots)) {
     if (p.status !== 'active' || !isFree(s, p.owner)) continue;
     const insincere = p.members.filter((m) => !m.sincere).length;
     const pct = clamp(3 + p.members.length * 4 + insincere * 5 + p.progress / 12 - ch(s, p.owner).traits.cunning / 10, 1, 40);
     if (!chance(s, pct)) continue;
-    const pool = s.order.filter((id) => isFree(s, id) && !isMember(p, id) && credence(s, id, p.secretId) < 40);
-    const who = weighted(s, pool, (id) => {
+    // Whose people talked: the careless, and those who swore falsely, most of all.
+    const insiders = [p.owner, ...p.members.map((m) => m.id)].filter((id) => isFree(s, id));
+    const source = weighted(s, insiders, (id) => (p.members.some((m) => m.id === id && !m.sincere) ? 3 : 1) * (1.5 - ch(s, id).traits.cunning / 100));
+    if (!source) continue;
+    // The plotter himself, or a wife, a servant, a brother under his roof who overheard.
+    const roof = (s.houses[ch(s, source).householdId]?.members ?? []).filter((id) => id !== source && isFree(s, id) && !isChild(s, id) && !isMember(p, id));
+    const mouth = roof.length && chance(s, 60) ? pick(s, roof) : source;
+    // It goes to those close to the mouth; the Master of Whispers has ears everywhere, and the quarry listens hardest.
+    const pool = s.order.filter((id) => isFree(s, id) && id !== mouth && !isMember(p, id) && !isChild(s, id) && credence(s, id, p.secretId) < 40);
+    const heard = weighted(s, pool, (id) => {
       if (s.offices.spymaster === id) return 3;
-      if (p.targets.includes(id)) return 2;
-      if (s.offices.captain === id) return 2;
-      return 1;
+      if (ch(s, id).householdId === ch(s, mouth).householdId || opinion(s, mouth, id) >= 20) return 3;
+      if (p.targets.includes(id) || s.offices.captain === id) return 2;
+      return 0.3;
     });
-    if (!who) continue;
+    if (!heard) continue;
     const sec = s.secrets[p.secretId];
-    learn(s, who, p.secretId, roll(s, 35, 60), 'rumour');
-    log(s, `${vary(s, ['A servant’s gossip', 'A half-burned letter', 'A drunk groom', 'Your own sharp ears'])} gave you a thread: ${sec.text}`, [who], 'secret', [who]);
+    if (mouth !== source) learn(s, mouth, p.secretId, roll(s, 40, 60), source);
+    learn(s, heard, p.secretId, roll(s, 35, 60), mouth);
+    log(s, `${loose(s, mouth, source)} said too much in your hearing: ${sec.text}`, [heard], 'secret', [mouth, heard]);
+    // The leader may come to hear of it, and whose tongue it was.
+    if (chance(s, clamp(30 + ch(s, p.owner).traits.cunning * 0.5, 20, 85))) {
+      const who = mouth === p.owner ? (p.owner === s.player ? 'You yourself' : nm(s, mouth)) : loose(s, mouth, source);
+      log(s, `“${p.name}” is being talked of. ${who} said too much, and ${nm(s, heard)} heard it.`, [p.owner], 'bad', [mouth, heard]);
+    }
   }
+}
+
+/** Who let it slip, by their place in the plotter's house. */
+function loose(s: GameState, mouth: CharId, source: CharId): string {
+  if (mouth === source) return nm(s, mouth);
+  const M = ch(s, mouth);
+  const whose = source === s.player ? 'your' : `${first(s, source)}’s`;
+  if (ch(s, source).spouse === mouth) return `${nm(s, mouth)}, ${whose} ${M.gender === 'f' ? 'wife' : 'husband'},`;
+  if (isServant(s, mouth)) return `${first(s, mouth)}, a servant of ${whose} household,`;
+  return `${nm(s, mouth)}, of ${whose} household,`;
 }
 
 /** The Master of Whispers hears things. */
@@ -374,8 +399,16 @@ export function spymasterHears(s: GameState): void {
   const spy = s.offices.spymaster;
   if (!spy || !isFree(s, spy)) return;
   if (!chance(s, ch(s, spy).traits.cunning / 4)) return;
+  // His informers hear what is already being whispered: a secret no one has let slip is safe from them.
+  const talked = (sec: Secret) => s.order.some((id) => id !== spy && !sec.guilty.includes(id) && credence(s, id, sec.id) >= 20);
   const unknown = Object.values(s.secrets).filter(
-    (sec) => sec.truth && credence(s, spy, sec.id) < 30 && !sec.guilty.includes(spy) && sec.guilty.some((g) => isFree(s, g)) && (!sec.plotId || s.plots[sec.plotId]?.status === 'active'),
+    (sec) =>
+      sec.truth &&
+      credence(s, spy, sec.id) < 30 &&
+      !sec.guilty.includes(spy) &&
+      sec.guilty.some((g) => isFree(s, g)) &&
+      (!sec.plotId || s.plots[sec.plotId]?.status === 'active') &&
+      talked(sec),
   );
   if (!unknown.length) return;
   const sec = pick(s, unknown);

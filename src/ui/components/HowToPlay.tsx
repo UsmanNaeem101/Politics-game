@@ -107,7 +107,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               hide you, every conspirator is another mouth, and <strong>hired blades</strong> (bought with gold as you work on the scheme) strike
               harder and do it while you are seen elsewhere (up to ten to a scheme; past 92% each buys less, and no killing is ever surer than 98%). A <strong>ruin</strong> scheme
               gathers charges and witnesses to lay before the King. When you draw someone in, offer a carrot. They may join sincerely, or meaning to
-              betray you. You will not be told which.
+              betray you. You will not be told which. A scheme can leak: a plotter, or a wife or servant under a plotter's roof, says too much,
+              and a friend of theirs, the target or the Master of Whispers hears it. The more people in it (above all the false ones) and the
+              longer it runs, the likelier; your cunning keeps it close, and lets you hear who talked.
             </p>
             <p>
               You can betray a scheme yourself, whether you joined it or lead it: lay it before the King from your Secrets ("Betray it to the

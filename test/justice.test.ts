@@ -9,6 +9,7 @@ import {
   knows,
   petitionOdds,
   advancePlot,
+  leakPlots,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -260,6 +261,23 @@ describe('a plot you were sworn into', () => {
       expect(strikeChance(s, p)).toBeLessThan(kill);
       expect(opinion(s, 'edmund', 'anselm')).toBeGreaterThan(before);
     }
+  });
+});
+
+describe('a scheme that leaks', () => {
+  it('leaks through one of its people or their household, and its leader may hear who talked', () => {
+    const s = fresh();
+    const p = createPlot(s, 'anselm', 'murder', ['edmund']);
+    p.progress = 100;
+    joinPlot(s, p, 'gareth', false);
+    s.chars.anselm.traits.cunning = 0;
+    const insiders = ['anselm', 'gareth'];
+    const roofs = insiders.flatMap((id) => s.houses[s.chars[id].householdId].members);
+    for (let m = 0; m < 60; m++) leakPlots(s);
+    const heard = s.order.filter((id) => !insiders.includes(id) && s.knowledge[id]?.[p.secretId]);
+    expect(heard.length).toBeGreaterThan(0);
+    for (const id of heard) expect([...insiders, ...roofs]).toContain(s.knowledge[id][p.secretId].source);
+    expect(s.events.some((e) => e.text.includes('is being talked of') && e.visibleTo !== 'all')).toBe(true);
   });
 });
 

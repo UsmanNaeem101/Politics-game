@@ -56,6 +56,8 @@ before changing anything substantial; it is the plan we are building toward.
   mercy for a prisoner unasked (`ai.ts`). An unseen killing leaves `Secret.trail` (its trace chance), which scales how
   much the King's inquiry can find; only those who knew the plot, or the victim's circle if he quarrelled with the
   killer, suspect anyone.
+- Secrecy: `leakPlots()` in `plots.ts` leaks a scheme through a real mouth (a plotter, or someone under a plotter's roof) to
+  someone close to them, and may tell the leader; `spymasterHears()` only picks up secrets already being whispered.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
   roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.
