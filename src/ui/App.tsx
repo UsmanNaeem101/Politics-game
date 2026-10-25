@@ -15,7 +15,7 @@ import { Game } from './components/Game';
 import { HowToPlay } from './components/HowToPlay';
 import { TitleScreen } from './components/TitleScreen';
 import { GameCtx, type Ctx, type DeedSpec, type TabId } from './context';
-import { applyTheme, backPoints, loadGame, loadPrefs, saveGame, savePrefs, turnBack, type BackPoint, type Prefs } from './store';
+import { applyTheme, backPoints, loadGame, loadPrefs, saveFailed, saveGame, savePrefs, turnBack, type BackPoint, type Prefs } from './store';
 
 declare global {
   interface Window {
@@ -35,6 +35,7 @@ export function App({ initial }: { initial?: GameState | null }) {
   const [hasSave, setHasSave] = useState(() => !!loadGame());
   const [backTo, setBackTo] = useState(() => backPoints());
   const [dawn, setDawn] = useState(false);
+  const [unsaved, setUnsaved] = useState(false);
 
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
 
@@ -46,6 +47,7 @@ export function App({ initial }: { initial?: GameState | null }) {
   const bump = useCallback(() => {
     setTick((t) => t + 1);
     saveGame(gameRef.current);
+    setUnsaved(saveFailed());
   }, []);
 
   const start = (seed: number, name: string, trade?: BusinessKind) => {
@@ -164,6 +166,11 @@ export function App({ initial }: { initial?: GameState | null }) {
         </GameCtx.Provider>
       )}
       {help && <HowToPlay onClose={() => setHelp(false)} />}
+      {unsaved && (
+        <p className="save-warning" role="alert">
+          Your game could not be saved: this browser’s storage is full. Play on, but a refresh will lose what has happened since.
+        </p>
+      )}
     </>
   );
 }

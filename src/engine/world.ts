@@ -470,6 +470,22 @@ export function knowsAgenda(s: GameState, observer: CharId, subject: CharId): bo
 
 // ── Event log ────────────────────────────────────────────────────────────────
 
+/** How long the chronicle keeps everything, and how much of what the player saw it keeps beyond that. */
+export const EVENTS_KEPT_MONTHS = 12;
+export const OLD_EVENTS_KEPT = 1500;
+
+/**
+ * The chronicle grows by a hundred lines a month, and a long game would outgrow the browser's storage (a save that
+ * cannot be written is lost). Keep the last year whole; before that, only what the player saw, and only so much.
+ */
+export function pruneEvents(s: GameState): void {
+  const P = s.player;
+  const recent = s.turn - EVENTS_KEPT_MONTHS;
+  const old = s.events.filter((e) => e.turn < recent && (e.visibleTo === 'all' || e.visibleTo.includes(P)));
+  const keepOld = new Set(old.slice(-OLD_EVENTS_KEPT));
+  s.events = s.events.filter((e) => e.turn >= recent || keepOld.has(e));
+}
+
 export function log(
   s: GameState,
   text: string,

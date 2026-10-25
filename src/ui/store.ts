@@ -38,13 +38,34 @@ function drop(point: BackPoint): void {
   }
 }
 
+/** Whether the last save could not be written, even after giving up the copies to turn back to. */
+let failed = false;
+export const saveFailed = (): boolean => failed;
+
+function put(key: string, raw: string): boolean {
+  try {
+    localStorage.setItem(key, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function saveGame(s: GameState | null): void {
   try {
     const last = localStorage.getItem(KEY);
     const same = !!s && !!saved && saved.seed === s.seed;
     const raw = s && s.phase === 'playing' ? JSON.stringify(s) : null;
-    if (raw) localStorage.setItem(KEY, raw);
-    else localStorage.removeItem(KEY);
+    if (raw) {
+      // The game itself comes first: if storage is full, the copies to turn back to make room for it.
+      failed = !put(KEY, raw);
+      if (failed) {
+        drop('start');
+        drop('end');
+        failed = !put(KEY, raw);
+      }
+      if (failed) return;
+    } else localStorage.removeItem(KEY);
     if (s && s.phase === 'playing') {
       if (s.turn === 1) drop('end');
       // A month has ended: what stood before it is the place to turn back to.

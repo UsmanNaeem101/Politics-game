@@ -2786,3 +2786,20 @@ details > summary {
   color: var(--gold);
   vertical-align: -0.2em;
 }
+
+.save-warning {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--rubric);
+  border-radius: var(--radius);
+  background: var(--raised);
+  color: var(--ink);
+  font-size: var(--t-sm);
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
