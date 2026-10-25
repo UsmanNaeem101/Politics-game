@@ -126,7 +126,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
   const [target, setTarget] = useState<CharId>(spec.target ?? '');
   const [secretId, setSecretId] = useState<string>(spec.secretId ?? '');
   const [plotId, setPlotId] = useState<string>(spec.plotId ?? '');
-  const [amount, setAmount] = useState<number>(Math.min(25, me.gold));
+  // Working on a scheme starts at one blade's worth; a gift at a modest purse.
+  const [amount, setAmount] = useState<number>(type === 'advance' ? Math.min(BLADE_COST, me.gold) : Math.min(25, me.gold));
   const [settle, setSettle] = useState<number>(0);
   const [partner, setPartner] = useState<CharId>('');
   const [focus, setFocus] = useState<SpyFocus>('motive');
@@ -565,7 +566,13 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
                 {p.hiredBlades ? `${p.hiredBlades} hired so far.` : ''} {p.hiredBlades >= MAX_BLADES ? 'You have all the blades a scheme can use.' : ''}
               </span>
               <input id="deed-blades" type="range" min={0} max={bladeRoom} step={cost} value={Math.min(amount - (amount % cost), bladeRoom)} onChange={(e) => setAmount(Number(e.target.value))} />
-              <span className="num">{Math.min(amount - (amount % cost), bladeRoom)}</span>
+              <span className="num">
+                {(() => {
+                  const spend = Math.min(amount - (amount % cost), bladeRoom);
+                  const n = spend / cost;
+                  return spend ? `${spend} crowns: ${n} blade${n > 1 ? 's' : ''}` : 'no blades';
+                })()}
+              </span>
             </label>
           )}
         </>
