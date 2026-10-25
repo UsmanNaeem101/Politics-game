@@ -325,9 +325,9 @@ export const FRIENDSHIP_MAX = 30;
 /** `a` already enjoys `b`'s company: another warm hour deepens their friendship. */
 export function befriend(s: GameState, a: CharId, b: CharId): void {
   const company = s.relations[a]?.[b]?.mods.find((m) => m.key === 'company')?.value ?? 0;
-  if (company < 12 || opinion(s, a, b) < 20) return;
+  if (company < 6 || opinion(s, a, b) < 15) return;
   const now = s.relations[a]?.[b]?.mods.find((m) => m.key === 'friend')?.value ?? 0;
-  const gain = Math.min(4, FRIENDSHIP_MAX - now);
+  const gain = Math.min(8, FRIENDSHIP_MAX - now);
   if (gain > 0) addMod(s, a, b, 'friend', 'Old friend', gain, 0.1);
 }
 

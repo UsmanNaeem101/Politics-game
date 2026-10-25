@@ -1255,6 +1255,7 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
         lines: [
           `Chance ${first(s, it.target)} goes to the King for you: ${will}%. Chance the King then relents: ${odds}%.`,
           'Their regard for you counts most, and kin and old friends are likelier to risk it. The more the King believes the charge, the fewer dare. Friends may go to him unasked.',
+          `The King softens with time served${s.imprisoned[P] ? ` (${Math.max(0, s.turn - s.imprisoned[P].since)} months so far)` : ''}, and every plea he has refused makes the next likelier${s.imprisoned[P]?.pleas ? ` (${s.imprisoned[P].pleas} so far)` : ''}.`,
         ],
       };
     }

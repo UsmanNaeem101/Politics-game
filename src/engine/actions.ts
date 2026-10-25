@@ -618,7 +618,7 @@ export function pleadWillingness(s: GameState, prisoner: CharId, friend: CharId)
   const charges = s.imprisoned[prisoner]?.charges ?? [];
   const belief = s.king ? charges.reduce((m, c) => Math.max(m, credence(s, s.king!, c)), 0) : 0;
   const close = F.spouse === prisoner ? 30 : F.siblings.includes(prisoner) || F.parents?.includes(prisoner) || F.children?.includes(prisoner) ? 20 : 0;
-  return clamp(Math.round(15 + opinion(s, friend, prisoner) * 0.7 + close + (trust(s, friend, prisoner) - 40) * 0.2 - belief * 0.2 - F.traits.paranoia * 0.1), 3, 95);
+  return clamp(Math.round(20 + opinion(s, friend, prisoner) * 0.7 + close + (trust(s, friend, prisoner) - 40) * 0.2 - belief * 0.12 - F.traits.paranoia * 0.1), 3, 95);
 }
 
 function plead(s: GameState, actor: CharId, friend: CharId): Outcome {
@@ -1365,20 +1365,27 @@ function basePetitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { typ
   if (it.kind === 'office') {
     return clamp(Math.round(10 + opinion(s, K, actor) * 0.6 + ch(s, actor).prestige * 0.3), 5, 85);
   }
-  const charges = s.imprisoned[it.target!]?.charges ?? [];
+  const rec = s.imprisoned[it.target!];
+  const charges = rec?.charges ?? [];
   const belief = charges.reduce((m, c) => Math.max(m, credence(s, K, c)), 0);
   const hanging = charges.some((c) => s.secrets[c] && capital(s.secrets[c]));
   // A King hardly forgives a man he believes tried to kill him.
   const mine = charges.some((c) => s.secrets[c]?.victims.includes(K) && capital(s.secrets[c]) && credence(s, K, c) >= 50);
+  // Time in the Tower softens him, and so does every voice already raised for the prisoner.
+  const served = rec ? Math.min(20, (s.turn - rec.since) * 3) : 0;
+  const voices = Math.min(24, (rec?.pleas ?? 0) * 8);
   return clamp(
     Math.round(
       15 +
         opinion(s, K, actor) * 0.4 +
+        opinion(s, K, it.target!) * 0.2 +
         ch(s, actor).traits.charm * 0.2 +
         (officeOf(s, actor) === 'confessor' ? 15 : 0) +
-        (ch(s, actor).spouse === it.target ? 15 : 0) -
-        belief * (hanging ? 0.6 : 0.4) -
-        (mine ? 60 : 0) +
+        (ch(s, actor).spouse === it.target ? 15 : 0) +
+        served +
+        voices -
+        belief * (hanging ? 0.45 : 0.3) -
+        (mine ? 50 : 0) +
         (100 - king.traits.wrath) * 0.25,
     ),
     3,
@@ -1389,8 +1396,11 @@ function basePetitionOdds(s: GameState, actor: CharId, it: Extract<Intent, { typ
 export function applyPetition(s: GameState, actor: CharId, it: Extract<Intent, { type: 'petition' }>, granted: boolean): Outcome {
   const K = s.king!;
   if (!granted) {
-    // A lord refused waits a season or more before he asks again.
-    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', -20, 0.5);
+    // A lord refused waits a season or more before he asks again. Begging for another costs him less.
+    addMod(s, K, actor, 'petitions', 'Pesters me with petitions', it.kind === 'mercy' ? -8 : -20, 0.5);
+    // But every voice raised for a prisoner is remembered, and they add up.
+    const rec = it.kind === 'mercy' ? s.imprisoned[it.target!] : undefined;
+    if (rec) rec.pleas = (rec.pleas ?? 0) + 1;
     log(s, `The King refused ${nm(s, actor)}'s petition.`, [actor, K], 'court', [actor]);
     return { ok: false, text: 'The King refuses you.', tone: 'bad' };
   }

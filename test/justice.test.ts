@@ -7,6 +7,7 @@ import {
   bearChild,
   decayMods,
   knows,
+  petitionOdds,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -296,6 +297,29 @@ describe('friends, when you are in the Tower', () => {
     for (let m = 0; m < 12; m++) decayMods(s);
     expect(s.relations.hugh.anselm.mods.find((m) => m.key === 'company')).toBeUndefined();
     expect(friend()).toBeGreaterThanOrEqual(8);
+  });
+
+  it('a friendship takes root in a few warm conversations', () => {
+    const s = fresh();
+    for (let i = 0; i < 3; i++) {
+      s.ap = 3;
+      perform(s, 'anselm', { type: 'converse', target: 'hugh' });
+    }
+    expect(s.relations.hugh.anselm.mods.find((m) => m.key === 'friend')?.value ?? 0).toBeGreaterThanOrEqual(16);
+  });
+
+  it('the King softens with time served, and with every plea he has refused', () => {
+    const s = fresh();
+    const tale = makeSecret(s, { kind: 'murder', guilty: ['anselm'], victims: ['edmund'], truth: true, evidence: 50 });
+    deedDone(s, tale);
+    imprison(s, 'anselm', [tale.id]);
+    learn(s, 'osric', tale.id, 60, 'hugh');
+    const it = { type: 'petition' as const, kind: 'mercy' as const, target: 'anselm' };
+    const first = petitionOdds(s, 'hugh', it);
+    s.turn += 4;
+    applyPetition(s, 'cedric', it, false);
+    applyPetition(s, 'bertrand', it, false);
+    expect(petitionOdds(s, 'hugh', it)).toBeGreaterThanOrEqual(first + 20);
   });
 
   it('a friend goes to the King for you unasked', () => {

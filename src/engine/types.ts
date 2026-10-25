@@ -413,6 +413,8 @@ export interface Imprisonment {
   questioned: number;
   /** The King commuted the axe at a hearing: the Tower, for a time, then disgrace. */
   spared?: boolean;
+  /** Pleas for mercy the King has already heard and refused: each makes the next likelier. */
+  pleas?: number;
 }
 
 export interface Insight {

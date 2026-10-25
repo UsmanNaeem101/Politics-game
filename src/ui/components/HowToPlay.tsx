@@ -125,7 +125,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               to the block. Prisoners confess or name other names. Treason and a murder actually done are hanging matters. A charge the King
               dismisses is not forgotten: the hall heard it, the accused's name is muddied, and for a grave charge the King may set his people to
               keep looking. A lord found murdered is looked into too. No one is tried twice for the same crime. If you are thrown in the Tower, you can <strong>ask someone to petition</strong> the King for you; the letter shows who is
-              likeliest to risk it. A spouse, kin and old friends are, and friends may go to the King unasked. Keep company with someone you
+              likeliest to risk it. A spouse, kin and old friends are, and friends may go to the King unasked. The King softens with every month you
+              serve and every plea he has already refused, so keep asking. Keep company with someone you
               get on with and an <strong>old friendship</strong> grows that fades only slowly: it outlasts a season in the Tower.
               A killing no one saw puts no name in strangers' mouths: those who had heard of the plot know what it was, and the dead
               man's kin and friends may suspect whoever he quarrelled with. The King's people look into it, and find little where
