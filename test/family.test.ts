@@ -29,6 +29,9 @@ import {
   betrothProblem,
   growOlder,
   livingSpouse,
+  arriveHouse,
+  newcomers,
+  MAX_NEW_HOUSES,
   matchProblem,
   outsider,
   promised,
@@ -439,6 +442,18 @@ describe('marrying your mistress', () => {
     expect(s.relations[priest][P].mods.some((m) => m.key === 'mistress-scandal')).toBe(false);
     if (kin) expect(s.relations[kin][P].mods.some((m) => m.key === 'dishonour')).toBe(false);
     expect(s.chars[widow].mistressOf).toBeUndefined();
+  });
+});
+
+describe('new houses', () => {
+  it('stop coming once fifteen have arrived', () => {
+    const s = generateCourt(4);
+    s.turn = 6;
+    for (let i = 0; i < 15; i++) arriveHouse(s);
+    const count = () => Object.values(s.houses).filter((h) => h.arrived > 0).length;
+    expect(count()).toBe(MAX_NEW_HOUSES);
+    for (let i = 0; i < 40; i++) newcomers(s);
+    expect(count()).toBe(MAX_NEW_HOUSES);
   });
 });
 

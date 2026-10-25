@@ -65,6 +65,8 @@ before changing anything substantial; it is the plan we are building toward.
   (`sanctioned()` in `plots.ts`) the killing is no crime: no hearing, no seizure, no inquiry, and his favour.
 - Forgeries: `forgeryDetection()` rolls at each hearing (half as often for an inquiry); `exposeForgery()` clears the accused
   and names the forger only if `traceForger()` follows the tellers back to him (certain if he laid it himself).
+- The King forgets: every negative opinion mod the reigning King holds fades `KINGS_GRUDGE_FADES` (7) a month (`decayMods()`).
+  No more than `MAX_NEW_HOUSES` (15) houses arrive in a game (`newcomers()` in `turn.ts`).
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
   roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.

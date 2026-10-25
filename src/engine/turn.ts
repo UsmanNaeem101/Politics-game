@@ -310,8 +310,12 @@ function mortality(s: GameState): void {
 }
 
 /** New families come to court, so an open-ended game never runs dry. */
-function newcomers(s: GameState): void {
+/** No more than this many houses come to court in a game: the court fills, and then it only thins. */
+export const MAX_NEW_HOUSES = 15;
+
+export function newcomers(s: GameState): void {
   if (s.turn % (MONTHS_PER_SEASON * 2) !== 0) return;
+  if (Object.values(s.houses).filter((h) => h.arrived > 0).length >= MAX_NEW_HOUSES) return;
   const nobles = s.order.filter((id) => isFree(s, id) && !isServant(s, id) && ch(s, id).rank !== 'clergy' && ch(s, id).rank !== 'child').length;
   if (s.order.filter((id) => !gone(s, id)).length >= 75) return;
   if (nobles < 20 || chance(s, 40)) arriveHouse(s);

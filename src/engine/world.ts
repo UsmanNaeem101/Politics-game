@@ -334,11 +334,17 @@ export function befriend(s: GameState, a: CharId, b: CharId): void {
   if (gain > 0) addMod(s, a, b, 'friend', 'Old friend', gain, 0.1);
 }
 
+/** The King's grudges, every one of them, fade this much a month. */
+export const KINGS_GRUDGE_FADES = 7;
+
 export function decayMods(s: GameState): void {
-  for (const row of Object.values(s.relations)) {
+  for (const [holder, row] of Object.entries(s.relations)) {
+    const king = holder === s.king;
     for (const r of Object.values(row)) {
       r.mods = r.mods
         .map((m): OpinionMod => {
+          // A king has too many enemies to nurse every grudge.
+          if (king && m.value < 0) return { ...m, value: Math.min(0, m.value + Math.max(KINGS_GRUDGE_FADES, (m.decay ?? 0) * FADE_PER_MONTH)), decay: m.decay || 1 };
           if (!m.decay) return m;
           const step = m.decay * FADE_PER_MONTH;
           const v = m.value > 0 ? Math.max(0, m.value - step) : Math.min(0, m.value + step);

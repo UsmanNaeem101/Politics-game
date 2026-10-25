@@ -494,6 +494,17 @@ describe('summoned, not seized', () => {
     expect(s.relations.osric.anselm.mods.find((m) => m.key === 'disgraced')!.value).toBeCloseTo(-93);
   });
 
+  it('every grudge the King holds fades seven points a month, even ones that never faded', () => {
+    const s = fresh();
+    addMod(s, 'osric', 'anselm', 'tried-kill', 'Tried to murder me', -40);
+    addMod(s, 'hugh', 'anselm', 'tried-kill', 'Tried to murder me', -40);
+    decayMods(s);
+    expect(s.relations.osric.anselm.mods.find((m) => m.key === 'tried-kill')!.value).toBe(-33);
+    expect(s.relations.hugh.anselm.mods.find((m) => m.key === 'tried-kill')!.value).toBe(-40);
+    for (let i = 0; i < 6; i++) decayMods(s);
+    expect(s.relations.osric.anselm.mods.find((m) => m.key === 'tried-kill')).toBeUndefined();
+  });
+
   it('suspicion fades seven points a month', () => {
     const s = fresh();
     addMod(s, 'osric', 'anselm', 'belief-x', 'Believes: murder', -24, SUSPICION_FADES);
