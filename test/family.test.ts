@@ -32,9 +32,6 @@ import {
   arriveHouse,
   newcomers,
   MAX_NEW_HOUSES,
-  pruneEvents,
-  EVENTS_KEPT_MONTHS,
-  OLD_EVENTS_KEPT,
   matchProblem,
   outsider,
   promised,
@@ -445,21 +442,6 @@ describe('marrying your mistress', () => {
     expect(s.relations[priest][P].mods.some((m) => m.key === 'mistress-scandal')).toBe(false);
     if (kin) expect(s.relations[kin][P].mods.some((m) => m.key === 'dishonour')).toBe(false);
     expect(s.chars[widow].mistressOf).toBeUndefined();
-  });
-});
-
-describe('a long game’s chronicle', () => {
-  it('keeps the last year whole, and only so much the player saw before that', () => {
-    const s = generateCourt(4);
-    s.turn = 120;
-    for (let m = 1; m <= 120; m++) {
-      for (let i = 0; i < 60; i++) s.events.push({ id: s.nextId++, turn: m, text: 'x', visibleTo: i % 3 ? [] : [s.player], actors: [], tone: 'neutral' });
-    }
-    pruneEvents(s);
-    const old = s.events.filter((e) => e.turn < 120 - EVENTS_KEPT_MONTHS);
-    expect(old.length).toBeLessThanOrEqual(OLD_EVENTS_KEPT);
-    expect(old.every((e) => e.visibleTo === 'all' || e.visibleTo.includes(s.player))).toBe(true);
-    expect(s.events.filter((e) => e.turn >= 120 - EVENTS_KEPT_MONTHS).length).toBe(13 * 60);
   });
 });
 

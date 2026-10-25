@@ -25,7 +25,6 @@ import {
   acquaintance,
   FRIENDSHIP_MAX,
   SUSPICION_FADES,
-  pruneEvents,
   addMod,
   ch,
   credence,
@@ -75,8 +74,6 @@ function noteRisingHouses(s: GameState): void {
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   s.spies ??= {};
-  // A long game's chronicle outgrew the browser's storage, and saves stopped being written: trim it.
-  pruneEvents(s);
   // Suspicion once faded at a point a month; it fades at the new pace now.
   for (const row of Object.values(s.relations)) {
     for (const r of Object.values(row)) {
@@ -221,7 +218,6 @@ export function canEndWeek(s: GameState): string | null {
 
 export function endWeek(s: GameState): void {
   if (canEndWeek(s)) return;
-  pruneEvents(s);
   s.nightStart = s.nextId;
 
   // The night: everyone else moves, in an order no one can predict.

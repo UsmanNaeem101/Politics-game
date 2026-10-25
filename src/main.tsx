@@ -2,15 +2,19 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { GameState } from './engine';
 import { App } from './ui/App';
+import { openStore } from './ui/store';
 import 'virtual:fonts';
 import './ui/styles.css';
 
 function start(data?: unknown) {
   const initial = (data as { game?: GameState } | undefined)?.game ?? null;
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <App initial={initial && initial.phase === 'playing' ? initial : null} />
-    </StrictMode>,
+  // Saves are read from memory once the database has been opened and loaded.
+  void openStore().finally(() =>
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App initial={initial && initial.phase === 'playing' ? initial : null} />
+      </StrictMode>,
+    ),
   );
 }
 
