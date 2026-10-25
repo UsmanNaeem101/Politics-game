@@ -319,6 +319,18 @@ export function adjustTrust(s: GameState, a: CharId, b: CharId, delta: number): 
  */
 export const FADE_PER_MONTH = 3;
 
+/** How far friendship goes. It fades only slowly: it outlives a season apart, or in the Tower. */
+export const FRIENDSHIP_MAX = 30;
+
+/** `a` already enjoys `b`'s company: another warm hour deepens their friendship. */
+export function befriend(s: GameState, a: CharId, b: CharId): void {
+  const company = s.relations[a]?.[b]?.mods.find((m) => m.key === 'company')?.value ?? 0;
+  if (company < 12 || opinion(s, a, b) < 20) return;
+  const now = s.relations[a]?.[b]?.mods.find((m) => m.key === 'friend')?.value ?? 0;
+  const gain = Math.min(4, FRIENDSHIP_MAX - now);
+  if (gain > 0) addMod(s, a, b, 'friend', 'Old friend', gain, 0.1);
+}
+
 export function decayMods(s: GameState): void {
   for (const row of Object.values(s.relations)) {
     for (const r of Object.values(row)) {

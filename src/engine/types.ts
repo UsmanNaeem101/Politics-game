@@ -202,6 +202,8 @@ export interface Secret {
   deed?: boolean;
   /** Month the King set his people to look into it (a dismissed charge, an unsolved murder). */
   inquiry?: number;
+  /** How plain a trail the deed left (its chance of being traced, 0–100): an inquiry finds little where little was left. */
+  trail?: number;
   /** For concealment: the treason it hides. When that is old news, so is this. */
   about?: SecretId;
   /** For a racket: the business it is about, and what kind. */

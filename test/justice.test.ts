@@ -5,6 +5,8 @@ import {
   candidates,
   readCase,
   bearChild,
+  decayMods,
+  knows,
   applyJudgments,
   decidePrisoners,
   murdererShunned,
@@ -256,6 +258,52 @@ describe('a plot you were sworn into', () => {
       expect(strikeChance(s, p)).toBeLessThan(kill);
       expect(opinion(s, 'edmund', 'anselm')).toBeGreaterThan(before);
     }
+  });
+});
+
+describe('a killing no one saw', () => {
+  it('puts no name in the mouths of strangers', () => {
+    for (let seed = 1; seed <= 80; seed++) {
+      const s = fresh(seed);
+      const p = createPlot(s, 'anselm', 'murder', ['edmund']);
+      p.progress = 100;
+      p.hiredBlades = 6;
+      s.chars.edmund.guard = 0;
+      s.ap = 3;
+      const before = new Set(s.order.filter((id) => knows(s, id, p.secretId)));
+      const r = perform(s, 'anselm', { type: 'strike', plotId: p.id });
+      if (!r.ok || r.tone !== 'good') continue;
+      const E = s.chars.edmund;
+      const close = (id: string) => E.spouse === id || E.siblings.includes(id) || !!E.parents?.includes(id) || !!E.children?.includes(id) || opinion(s, id, 'edmund') >= 30;
+      const strangers = s.order.filter((id) => id !== 'anselm' && !before.has(id) && !close(id) && knows(s, id, p.secretId));
+      expect(strangers).toEqual([]);
+      expect(s.secrets[p.secretId].trail).toBeLessThan(30);
+      return;
+    }
+    throw new Error('never an unseen killing');
+  });
+});
+
+describe('friends, when you are in the Tower', () => {
+  it('good company kept up becomes a friendship that outlasts a year apart', () => {
+    const s = fresh();
+    for (let i = 0; i < 8; i++) {
+      s.ap = 3;
+      perform(s, 'anselm', { type: 'converse', target: 'hugh' });
+    }
+    const friend = () => s.relations.hugh.anselm.mods.find((m) => m.key === 'friend')?.value ?? 0;
+    expect(friend()).toBeGreaterThanOrEqual(12);
+    for (let m = 0; m < 12; m++) decayMods(s);
+    expect(s.relations.hugh.anselm.mods.find((m) => m.key === 'company')).toBeUndefined();
+    expect(friend()).toBeGreaterThanOrEqual(8);
+  });
+
+  it('a friend goes to the King for you unasked', () => {
+    const s = fresh();
+    addMod(s, 'hugh', 'anselm', 'friend', 'Old friend', 60);
+    const tale = makeSecret(s, { kind: 'regicide', guilty: ['anselm'], victims: ['osric'], truth: false, evidence: 40 });
+    imprison(s, 'anselm', [tale.id]);
+    expect(candidates(s, 'hugh').some((c) => c.intent.type === 'petition' && c.intent.kind === 'mercy' && c.intent.target === 'anselm')).toBe(true);
   });
 });
 

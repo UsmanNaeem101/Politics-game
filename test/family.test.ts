@@ -522,6 +522,16 @@ describe('matching your children', () => {
     expect(betrothProblem(s, P, young.id, maid.id)).toMatch(/Already promised/);
   });
 
+  it('a grown son or daughter of yours is put forward for marriage at once', () => {
+    const { s, P, wife, child } = families();
+    const daughter = child(wife, P, 17, 'f');
+    matchmaking(s);
+    expect(s.courtships?.[daughter.id]).toBeDefined();
+    s.turn += DELIBERATION;
+    matchmaking(s);
+    expect(daughter.spouse).toBeDefined();
+  });
+
   it('is only for your own children, and not across a wide gap in age', () => {
     const { s, P, wife, other, child } = families();
     const theirs = child(other.wife, other.lord, 8, 'm');

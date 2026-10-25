@@ -250,7 +250,8 @@ export function resolveStrike(s: GameState, p: Plot, hearing = false): StrikeOut
   const wasKing = s.king === target;
 
   if (success) {
-    const traced = chance(s, traceChance(s, p));
+    const trail = traceChance(s, p);
+    const traced = chance(s, trail);
     p.status = 'succeeded';
     const how = vary(s, [
       'a crossbow bolt from the trees during the hunt',
@@ -270,14 +271,22 @@ export function resolveStrike(s: GameState, p: Plot, hearing = false): StrikeOut
       if (!hearing) seize(s, owner, sec.id, wasKing);
     } else {
       log(s, `${nm(s, target)} was found dead — ${how}. No one has been named.`, 'all', 'dire', [target]);
-      // A murdered lord is the King's business: his people start asking questions.
+      // A murdered lord is the King's business: his people start asking questions, and find what was left to find.
       if (!wasKing && s.king) sec.inquiry = s.turn;
-      // Suspicion settles on whoever was already suspected.
+      sec.trail = trail;
+      // No one saw. Those who had heard of the plot know what this was; the dead man's kin and friends suspect
+      // whoever he was known to quarrel with, faintly. No one else has a name to give.
+      const T = ch(s, target);
+      const quarrel = opinion(s, target, owner) <= -25;
       for (const id of s.order) {
         if (!isAlive(s, id) || insiders.includes(id)) continue;
         const k = knows(s, id, sec.id);
-        if (k) learn(s, id, sec.id, k.credence + 25, 'rumour');
-        else if (chance(s, 15)) learn(s, id, sec.id, roll(s, 15, 35), 'rumour');
+        if (k) {
+          learn(s, id, sec.id, k.credence + 25, 'rumour');
+          continue;
+        }
+        const close = T.spouse === id || T.siblings.includes(id) || !!T.parents?.includes(id) || !!T.children?.includes(id) || opinion(s, id, target) >= 30;
+        if (quarrel && close && !isChild(s, id) && chance(s, 50)) learn(s, id, sec.id, roll(s, 10, 25), 'rumour');
       }
     }
     return { success, traced, text: traced ? 'The deed is done, but you were seen.' : 'The deed is done. No one saw.' };

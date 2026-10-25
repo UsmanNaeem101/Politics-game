@@ -17,6 +17,7 @@ import {
   spotChance,
   matchProblem,
   pleadWillingness,
+  opinion,
   proposeOdds,
   betrayable,
   SPY_HOOKS,
@@ -881,9 +882,31 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       );
       break;
     }
-    case 'plead':
-      fields = !spec.target && personPick('To whom will you write', (id) => met(s)(id) && id !== s.king);
+    case 'plead': {
+      if (spec.target) break;
+      // Everyone who could reach the King, likeliest to risk it first.
+      const roster = others(s, (id) => met(s)(id) && id !== s.king && ch(s, id).rank !== 'servant', 3).sort((a, b) => pleadWillingness(s, P, b) - pleadWillingness(s, P, a));
+      fields = (
+        <fieldset className="field">
+          <legend>To whom will you write</legend>
+          <div className="secret-choices roster">
+            {roster.map((o) => {
+              const op = opinion(s, o, P);
+              return (
+                <label key={o} className={`secret-choice ${target === o ? 'is-on' : ''}`}>
+                  <input type="radio" name="plea" checked={target === o} onChange={() => setTarget(o)} />
+                  <span>
+                    <strong>{nm(s, o)}</strong> <span className="muted">regard {op > 0 ? `+${op}` : op}</span> <span className="chip">{pleadWillingness(s, P, o)}%</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {roster.length === 0 && <p className="muted small">You know no one at court well enough to write to.</p>}
+        </fieldset>
+      );
       break;
+    }
     case 'divest':
       fields = (
         <fieldset className="field">
@@ -1229,7 +1252,10 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
       const odds = petitionOdds(s, it.target, { type: 'petition', kind: 'mercy', target: P });
       return {
         pct: clampPct((will * odds) / 100),
-        lines: [`Chance ${first(s, it.target)} goes to the King for you: ${will}%. Chance the King then relents: ${odds}%.`],
+        lines: [
+          `Chance ${first(s, it.target)} goes to the King for you: ${will}%. Chance the King then relents: ${odds}%.`,
+          'Their regard for you counts most, and kin and old friends are likelier to risk it. The more the King believes the charge, the fewer dare. Friends may go to him unasked.',
+        ],
       };
     }
     default:

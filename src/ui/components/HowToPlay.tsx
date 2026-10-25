@@ -124,8 +124,12 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               rather than the axe), accuse your accuser, or run. A denunciation is judged on proof, on witnesses, and on whom the King trusts. The accused may be dismissed, sent to the Tower, or sent
               to the block. Prisoners confess or name other names. Treason and a murder actually done are hanging matters. A charge the King
               dismisses is not forgotten: the hall heard it, the accused's name is muddied, and for a grave charge the King may set his people to
-              keep looking. A lord found murdered is looked into too. No one is tried twice for the same crime. If you are thrown in the Tower, you can ask someone to <strong>plead your case</strong> before the King. A spouse or kin is
-              likelier to risk it.
+              keep looking. A lord found murdered is looked into too. No one is tried twice for the same crime. If you are thrown in the Tower, you can <strong>ask someone to petition</strong> the King for you; the letter shows who is
+              likeliest to risk it. A spouse, kin and old friends are, and friends may go to the King unasked. Keep company with someone you
+              get on with and an <strong>old friendship</strong> grows that fades only slowly: it outlasts a season in the Tower.
+              A killing no one saw puts no name in strangers' mouths: those who had heard of the plot know what it was, and the dead
+              man's kin and friends may suspect whoever he quarrelled with. The King's people look into it, and find little where
+              hired blades and a cunning hand left little to find.
             </p>
           </section>
           <section>
@@ -154,7 +158,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               into your house under your name; a son is named your heir. Children grow up quickly (until seventeen, a year passes every month),
               come of age at sixteen, and inherit before their uncles. A child is no part of anyone's schemes. On a son's or daughter's page,{' '}
               <strong>Arrange a match</strong>: a grown child weds at once, a young one is promised and weds when both are grown. The other
-              family gives the answer, and crowns settled on the match help. A match binds the two houses. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
+              family gives the answer, and crowns settled on the match help. A match binds the two houses. A grown son or daughter you have not matched is put forward for marriage at once: suitors call,
+              and they wed the best of them (or a match from the provinces) two months on. A wife with a lover tells him what her husband says at supper, and she may carry his lies home. Watch for letters. A widow
               mourns a year before she is matched again, and for the first half of it no other man courts her. When suitors do call, the whole
               court hears of it, and she takes two months to answer: time enough to make your own offer. A woman who has a lover is not married off to anyone else; your lover will marry no one but you. If you are unwed, <strong>Seek a match</strong> on your own page, or ask for someone's hand on theirs.
             </p>

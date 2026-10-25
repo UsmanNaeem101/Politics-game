@@ -536,7 +536,9 @@ export function pursueInquiries(s: GameState): void {
     }
     const spy = s.offices.spymaster;
     const digger = spy && isFree(s, spy) && !sec.guilty.includes(spy) ? spy : undefined;
-    if (!chance(s, 15 + (digger ? ch(s, digger).traits.cunning * 0.3 : 0))) continue;
+    // A careful killing (hired blades, a cunning hand) leaves little to find.
+    const plain = sec.trail === undefined ? 1 : 0.25 + sec.trail / 60;
+    if (!chance(s, (15 + (digger ? ch(s, digger).traits.cunning * 0.3 : 0)) * plain)) continue;
     if (!sec.truth) {
       // What there is to find are the forged letters. A sharp eye sees through them, and follows the trail home.
       if (chance(s, forgeryDetection(s, sec))) {

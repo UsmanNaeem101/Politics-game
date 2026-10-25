@@ -461,6 +461,12 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
       if (c.agenda.kind === 'peace' && opinion(s, me, pid) >= 30) u = 12 + opinion(s, me, pid) * 0.2;
       if (c.spouse === pid) u = 45;
       if (c.siblings.includes(pid) && opinion(s, me, pid) > 10) u = 25;
+      // A friend goes to the King unasked, if the charge does not frighten him off.
+      const friend = opinion(s, me, pid) >= 35;
+      if (friend && !u) {
+        const belief = (s.imprisoned[pid]?.charges ?? []).reduce((m, sid) => Math.max(m, credence(s, king ?? me, sid)), 0);
+        u = Math.max(0, 6 + (opinion(s, me, pid) - 35) * 0.4 + (trust(s, me, pid) - 40) * 0.1 + c.traits.honor * 0.05 - belief * 0.1);
+      }
       if (u) add({ type: 'petition', kind: 'mercy', target: pid }, u);
     }
     const vacant = (Object.keys(s.offices) as (keyof typeof s.offices)[]).find((o) => !s.offices[o] && officeEligible(s, me, o));

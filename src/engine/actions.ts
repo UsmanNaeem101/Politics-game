@@ -54,6 +54,7 @@ import {
   OFFICE_NAMES,
   acquaintance,
   addMod,
+  befriend,
   adjustTrust,
   ch,
   credence,
@@ -220,7 +221,7 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   'dismiss-spy': { name: 'Dismiss a spy', desc: 'End their service.' },
   sweep: { name: 'Search your household', desc: 'Look for someone else’s spy among your people.' },
   propose: { name: 'Seek a match', desc: 'Ask for someone’s hand, or have a match found for you in the provinces.' },
-  plead: { name: 'Beg them to plead for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you.' },
+  plead: { name: 'Ask them to petition for you', desc: 'A letter from the Tower: ask them to go to the King and beg mercy for you. Friends are likelier to risk it.' },
   seduce: { name: 'Woo as a lover', desc: 'Not marriage: make her your lover. A married lover will tell you what her husband says at home. A refusal may reach him.' },
   track: { name: 'Track their movements', desc: `Pay a man ${TAIL_COST} crowns to follow them for a month: where they go, and whom they meet.` },
   betroth: { name: 'Arrange a match', desc: 'Find your son or daughter a husband or wife. Grown, they wed at once; young, they are promised, and wed when both are grown. Either way the two houses are bound.' },
@@ -667,6 +668,9 @@ function converse(s: GameState, actor: CharId, target: CharId): Outcome {
   const room = 25 - (r?.value ?? 0);
   addMod(s, target, actor, 'company', 'Pleasant company', Math.max(0, Math.min(gain, room)), 1);
   addMod(s, actor, target, 'company', 'Pleasant company', 3, 1);
+  // Good company kept up becomes friendship, and friendship lasts: it outlives a season apart, or in the Tower.
+  befriend(s, target, actor);
+  befriend(s, actor, target);
   adjustTrust(s, target, actor, 3);
   adjustTrust(s, actor, target, 2);
   const mended = (A.spouse === target || ch(s, target).spouse === actor) && mendMarriage(s, actor, target, 6);

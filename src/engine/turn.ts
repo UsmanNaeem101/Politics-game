@@ -22,6 +22,7 @@ import {
   MONTHS_PER_SEASON,
   MONTHS_PER_YEAR,
   acquaintance,
+  FRIENDSHIP_MAX,
   addMod,
   ch,
   credence,
@@ -71,6 +72,27 @@ function noteRisingHouses(s: GameState): void {
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   s.spies ??= {};
+  // An unseen killing once put the killer's name in the mouths of strangers at random. Strangers forget it;
+  // the dead man's kin and friends keep their suspicions.
+  for (const sec of Object.values(s.secrets)) {
+    if (sec.kind !== 'murder' || !sec.deed || !sec.truth) continue;
+    const victim = s.chars[sec.victims[0]];
+    if (!victim) continue;
+    for (const [id, row] of Object.entries(s.knowledge)) {
+      const k = row[sec.id];
+      if (!k || k.source !== 'rumour' || k.credence > 35 || sec.guilty.includes(id)) continue;
+      const close = victim.spouse === id || victim.siblings.includes(id) || !!victim.parents?.includes(id) || !!victim.children?.includes(id) || opinion(s, id, victim.id) >= 30;
+      if (!close) delete row[sec.id];
+    }
+  }
+  // Friendship came after this save was made: those you have kept company with are old friends already.
+  for (const [id, talks] of Object.entries(s.company ?? {})) {
+    if (talks < 3 || !s.chars[id] || s.chars[id].status === 'dead') continue;
+    for (const [a, b] of [[id, s.player], [s.player, id]]) {
+      if (s.relations[a]?.[b]?.mods.some((m) => m.key === 'friend') || opinion(s, a, b) < 10) continue;
+      addMod(s, a, b, 'friend', 'Old friend', Math.min(FRIENDSHIP_MAX, talks * 3), 0.1);
+    }
+  }
   // A child is no one's prisoner: any jailed on a forged tale go home.
   for (const c of Object.values(s.chars)) {
     if (c.rank !== 'child' || c.status !== 'imprisoned') continue;

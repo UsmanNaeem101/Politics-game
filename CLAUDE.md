@@ -52,6 +52,10 @@ before changing anything substantial; it is the plan we are building toward.
   their `decay` each month (the rates were set for weekly turns); ages tick in `growOlder()` (`turn.ts`): yearly, but
   every month until `MARRYING_AGE`, so children grow up within a year or two of play. Old age is `mortality()`,
   which never takes the player or the player's spouse.
+- Friendship: warm company kept up builds a slow-fading `friend` mod (`befriend()` in `world.ts`); NPC friends petition
+  mercy for a prisoner unasked (`ai.ts`). An unseen killing leaves `Secret.trail` (its trace chance), which scales how
+  much the King's inquiry can find; only those who knew the plot, or the victim's circle if he quarrelled with the
+  killer, suspect anyone.
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
   roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.

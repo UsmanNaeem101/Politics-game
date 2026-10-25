@@ -614,7 +614,9 @@ export function matchmaking(s: GameState): void {
     // if the lover is the player, or married, there is no match to make.
     const lovers = loversOf(s, id);
     if (lovers.length && !lovers.some((l) => l !== P && marriageable(s, l) && !court[l] && !courting.has(l))) continue;
-    if (!chance(s, widowed ? 5 : 2)) continue;
+    // Your own sons and daughters are matched as soon as they are of an age to marry.
+    const yours = !!c.parents?.includes(P);
+    if (!yours && !chance(s, widowed ? 5 : 2)) continue;
     const pool = s.order.filter(
       (o) =>
         o !== id &&
@@ -631,7 +633,7 @@ export function matchmaking(s: GameState): void {
         Math.abs(ch(s, o).age - c.age) <= 20,
     );
     const suitors: CharId[] = [];
-    for (let n = lovers.length ? 1 : chance(s, 60) ? roll(s, 1, 2) : 0; n > 0; n--) {
+    for (let n = lovers.length ? 1 : yours ? roll(s, 1, 3) : chance(s, 60) ? roll(s, 1, 2) : 0; n > 0; n--) {
       const x = weighted(s, pool.filter((o) => !suitors.includes(o)), (o) => regard(s, id, o) + Math.max(0, opinion(s, o, id)));
       if (x) suitors.push(x);
     }
