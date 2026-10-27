@@ -54,6 +54,9 @@ npm run build:single                          # dist-single/crown-of-whispers.ht
 - Solo schemes rarely leak (hired blades are the risk); you are told every month who has heard of
   your scheme and roughly how. A seen-through forgery is traced teller by teller, not straight to you.
   The King's inquiry ends in a hearing for the player, never a seizure.
+- Prestige lost to charges or disgrace comes back 2 points a month. It is earned by feasts (30 crowns, every 2 months,
+  +4 under 30 prestige down to +1 above 60, +1 if the King comes), the King's favour (a point a month while he holds you
+  at 70+, up to 60), upheld charges (+3 to +5), a match into a higher house (up to +8), and office (+10).
 - "Offer to kill them for the King" (on the traitor's page, the King's page, Secrets, Schemes) gives a
   royal warrant: no crime, King's favour.
 

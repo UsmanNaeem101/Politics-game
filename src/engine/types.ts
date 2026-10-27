@@ -109,6 +109,10 @@ export interface Character {
   fate?: string;
   gold: number;
   prestige: number;
+  /** Prestige lost to charges and disgrace that is still coming back, a little each month. */
+  tarnish?: number;
+  /** The month they last kept a feast. */
+  feasted?: number;
   spouse?: CharId;
   siblings: CharId[];
   /** Mother and father (as the world believes; a secret may say otherwise). */
@@ -483,6 +487,8 @@ export interface GameState {
   imprisoned: Record<CharId, Imprisonment>;
   /** The player's chosen candidate while the Witan is pending. */
   witanVote?: CharId;
+  /** The month lost prestige began to mend (0 in a game begun since). An older save is mended on load. */
+  mendingSince?: number;
   directives: Record<CharId, Directive>;
   insight: Record<CharId, Insight>;
   ap: number;

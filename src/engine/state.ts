@@ -9,6 +9,7 @@ export function emptyState(seed: number, player: CharId = ''): GameState {
     rng: seed | 0,
     turn: 1,
     maxTurns: 0,
+    mendingSince: 0,
     player,
     phase: 'playing',
     chars: {},

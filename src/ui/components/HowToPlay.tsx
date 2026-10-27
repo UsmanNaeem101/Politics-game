@@ -82,6 +82,13 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               out. If it does, it is a scandal and a crime: a secret like any other, to be whispered, used for blackmail, or laid before the
               King. Set up or sell a trade from the Briefing or your own page.
             </p>
+            <p>
+              <strong>Prestige</strong> places your house on the map: at 45 it stands among the great houses. It rises when you
+              <strong> hold a feast</strong> (from your own page: 30 crowns, every two months, more for a lesser name and more again if the
+              King comes), while the King holds you dear (a point a month at 70 or warmer, up to 60), when you take office, when a charge you
+              bring is upheld, and when you or your child marry into a house that stands higher. A charge laid against you, or a disgrace,
+              costs prestige, but it comes back two points a month while you are free.
+            </p>
           </section>
           <section>
             <h3>Motives are hidden</h3>

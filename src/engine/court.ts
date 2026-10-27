@@ -5,6 +5,8 @@ import { BUSINESSES } from './content/businesses';
 import { chance, clamp, rand, roll } from './rng';
 import { kindLabel, makeSecret, publish, refreshText, syncPlotSecret } from './secrets';
 import { unmaskTurned } from './spies';
+import { RENOWN } from './content/renown';
+import { raise, tarnish } from './renown';
 import { He, His, first, his, names, nm, vary } from './text';
 import {
   SUSPICION_FADES,
@@ -456,6 +458,8 @@ export function applyJudgments(s: GameState, accuser: CharId, judgments: Judgmen
       forged.add(j.secretId);
       continue;
     }
+    // The court remembers who brought a true bill.
+    if (j.verdict !== 'dismiss') raise(s, accuser, RENOWN.upheld[j.verdict]);
     switch (j.verdict) {
       case 'execute':
         addMod(s, K, accuser, 'unmasked', 'Unmasked a traitor', 15, 1);
@@ -502,8 +506,7 @@ function markDismissed(s: GameState, accused: CharId, sec: Secret, score: number
   const grave = capital(sec);
   addMod(s, K, accused, 'accused', grave ? 'Accused of a hanging crime' : 'Accused before me', -Math.round(5 + doubt / 5), grave ? SUSPICION_FADES : SUSPICION_FADES * 1.5);
   if (doubt >= 35) adjustTrust(s, K, accused, -Math.round(doubt / 5));
-  const A = ch(s, accused);
-  A.prestige = Math.max(0, A.prestige - Math.round(3 + doubt / 10));
+  tarnish(s, accused, 3 + doubt / 10);
   hallHears(s, sec, Math.round(doubt * 0.6));
   if (!grave || doubt < 30) return false;
   sec.inquiry ??= s.turn;
@@ -619,7 +622,7 @@ export function disgrace(s: GameState, id: CharId, sec: Secret): void {
   const fine = Math.floor(c.gold / 2);
   c.gold -= fine;
   if (s.king) ch(s, s.king).gold += fine;
-  c.prestige = Math.max(0, c.prestige - 20);
+  tarnish(s, id, 20);
   c.lieLow = s.turn + 6;
   markJudged(s, sec, id);
   // A scheme laid bare before the King is finished.

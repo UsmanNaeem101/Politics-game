@@ -7,6 +7,7 @@ import {
   tryProblem,
   akin,
   dineProblem,
+  feastProblem,
   dateLabel,
   DELIBERATION,
   livingSpouse,
@@ -99,6 +100,7 @@ export function deedsFor(s: GameState, target: CharId): DeedButton[] {
   if (target === P) {
     if (jailed) return [{ type: 'escape' }, ...(s.king ? [{ type: 'plead' as const }] : [])];
     out.push({ type: 'scheme' }, { type: 'fabricate' }, { type: 'guard', why: me.gold < 20 ? 'You need 20 crowns.' : undefined });
+    out.push({ type: 'feast', why: feastProblem(s, P) ?? undefined });
     if (!iAmKing && s.king) out.push({ type: 'petition' });
     out.push({ type: 'invest' }, { type: 'sweep' });
     if (marriageable(s, P)) out.push({ type: 'propose' });

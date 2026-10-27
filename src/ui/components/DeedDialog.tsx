@@ -1,7 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   ACTION_INFO,
+  RENOWN,
   TAIL_COST,
+  feastGain,
+  feastGuests,
+  kingWouldCome,
   conceiveOdds,
   mistressOdds,
   fertilityWord,
@@ -231,6 +235,8 @@ export function DeedDialog({ spec, onClose }: { spec: DeedSpec; onClose: () => v
       case 'counsel':
         return me.spouse ? { type, target: me.spouse, mode, directive } : null;
       case 'guard':
+        return { type };
+      case 'feast':
         return { type };
       case 'flee':
         return { type };
@@ -1179,6 +1185,24 @@ export function estimate(s: GameState, P: CharId, it: Intent): Estimate {
     }
     case 'guard':
       return { lines: ['+15 protection against knives, fading over a few months.'] };
+    case 'feast': {
+      const king = kingWouldCome(s, P);
+      const guests = feastGuests(s, P);
+      const strangers = guests.filter((g) => acquaintance(s, g) < 3);
+      return {
+        lines: [
+          `${RENOWN.feast.cost} crowns. Your prestige rises by ${feastGain(me.prestige) + (king ? RENOWN.feast.kingBonus : 0)} (${me.prestige} now; the great houses begin at 45).`,
+          king
+            ? `The King will come (+${RENOWN.feast.kingBonus} more prestige): he thinks well enough of you. He warms to you as well.`
+            : s.king && s.king !== P
+              ? `The King will not come: he must hold you at ${RENOWN.feast.kingComes} or warmer (now ${opinion(s, s.king, P)}).`
+              : '',
+          guests.length ? `At your table: ${guests.map((g) => first(s, g)).join(', ')}. Each warms to you by about ${RENOWN.feast.warmth}.` : 'No one of note would come.',
+          ...(strangers.length ? [`You will be introduced to ${first(s, strangers[0])} over the wine.`] : []),
+          `You can feast once every ${RENOWN.feast.every} months.`,
+        ].filter(Boolean),
+      };
+    }
     case 'flee':
       return { lines: ['You will live. Your lands are forfeit, and your part in this story ends tonight.'] };
     case 'escape':

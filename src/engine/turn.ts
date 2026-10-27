@@ -12,6 +12,7 @@ import { deedDone, secretMatters, syncPlotSecret } from './secrets';
 import { endowTrades, runBusinesses } from './economy';
 import { runSpies } from './spies';
 import { runTails } from './tails';
+import { renownMonth } from './renown';
 import { MARRYING_AGE, affairsAsSpies, annul, births, forgetCuckolding, honestWoman, matchmaking, widowsUpkeep } from './family';
 import { loversOf, mistressOf } from './love';
 import { seasonalFeast } from './tensions';
@@ -71,6 +72,27 @@ function noteRisingHouses(s: GameState): void {
   }
 }
 
+/**
+ * Prestige lost to charges and disgrace once stayed lost. In a save from before it mended, what each person
+ * has lost since the court began (the same seed gives the same court) starts coming back now.
+ */
+function mendOldLosses(s: GameState): void {
+  s.mendingSince = s.turn;
+  let start: GameState;
+  try {
+    start = generateCourt(s.seed);
+  } catch {
+    return;
+  }
+  // Only trust the comparison if it is the same court.
+  if (start.player !== s.player || start.order.some((id) => s.chars[id]?.archetype !== start.chars[id].archetype || s.chars[id]?.gender !== start.chars[id].gender)) return;
+  for (const id of start.order) {
+    const c = s.chars[id];
+    const lost = start.chars[id].prestige - c.prestige;
+    if (lost > 0 && c.status !== 'dead' && c.status !== 'fled') c.tarnish = (c.tarnish ?? 0) + lost;
+  }
+}
+
 /** Bring a game saved under older rules up to the current ones. Safe to run on any save. */
 export function repairSave(s: GameState): void {
   s.spies ??= {};
@@ -108,6 +130,7 @@ export function repairSave(s: GameState): void {
     delete s.imprisoned[c.id];
   }
   affairsAsSpies(s);
+  if (s.mendingSince === undefined) mendOldLosses(s);
   // Trades came after this save was made: every house takes one up now.
   if (!s.businesses) {
     s.businesses = {};
@@ -266,6 +289,7 @@ function worldTurns(s: GameState): void {
   runBusinesses(s);
   runSpies(s);
   runTails(s);
+  renownMonth(s);
   noteRisingHouses(s);
   if (s.interregnum && s.interregnum.since < s.turn) {
     holdWitan(s, s.witanVote);

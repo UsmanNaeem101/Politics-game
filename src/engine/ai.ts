@@ -25,6 +25,8 @@ import { loversOf, mistressProblem, nightProblem, seduceOdds, seduceProblem } fr
 import { MOURNING, widowedFor } from './family';
 import { TAIL_COST } from './tails';
 import { dineProblem } from './wives';
+import { feastProblem } from './renown';
+import { RENOWN } from './content/renown';
 import {
   FAITHLESS_FADES,
   addMod,
@@ -530,6 +532,10 @@ export function candidates(s: GameState, me: CharId): Candidate[] {
     if (c.spouse === l) v += 2;
     add({ type: 'converse', target: l }, v);
     if (c.gold >= 80 && (l === king || claimant)) add({ type: 'gift', target: l, amount: 25 }, v - 1);
+  }
+  // A man on the rise keeps a table, when he has crowns to spare.
+  if ((c.agenda.kind === 'rise' || c.traits.ambition >= 60) && c.gold >= RENOWN.feast.cost * 3 && !feastProblem(s, me)) {
+    add({ type: 'feast' }, 3 + c.traits.ambition * 0.05 + c.traits.charm * 0.03);
   }
 
   return out;

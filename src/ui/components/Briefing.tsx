@@ -1,5 +1,6 @@
 import {
   MAX_SPIES,
+  renownNote,
   SPY_HOOKS,
   spiesOf,
   type SpyHook,
@@ -55,7 +56,7 @@ export function Briefing() {
         </h3>
         <p>{PLAYER_AIM.goal}</p>
         <div className="stat-row">
-          <span className="stat" title="Your renown at court; it weighs your voice in the Witan">
+          <span className="stat" title={renownNote(s, me.id)}>
             <GIcon name="ambition" size={18} /> <strong>{me.prestige}</strong> <small>prestige</small>
           </span>
           {favour !== null && (

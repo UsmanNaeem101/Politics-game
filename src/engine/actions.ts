@@ -51,6 +51,8 @@ import { acknowledge, acknowledgeProblem, betroth, betrothProblem, marriageable,
 import { killInTheNight, mistressProblem, nightProblem, seduce, seduceProblem, takeMistress } from './love';
 import { TAIL_COST, setTail, tailProblem } from './tails';
 import { dineProblem, sendToDine } from './wives';
+import { feastProblem, holdFeast } from './renown';
+import { RENOWN } from './content/renown';
 import { MAX_SPIES, endSpy, hookProblem, marksFor, recruitSpy, recruitedSpies, sweepHousehold } from './spies';
 import { PLACES, first, he, him, his, names, nm, vary } from './text';
 import {
@@ -142,7 +144,8 @@ export type Intent =
   | { type: 'take-mistress'; target: CharId }
   | { type: 'acknowledge'; target: CharId }
   | { type: 'betroth'; target: CharId; partner?: CharId; dowry?: number }
-  | { type: 'offer-blade'; target: CharId; secretId: SecretId };
+  | { type: 'offer-blade'; target: CharId; secretId: SecretId }
+  | { type: 'feast' };
 
 export type IntentType = Intent['type'];
 export type DirectiveSpec = Pick<Directive, 'kind' | 'plotId' | 'secretId' | 'target'>;
@@ -194,6 +197,7 @@ export const COST: Record<IntentType, number> = {
   acknowledge: 1,
   betroth: 1,
   'offer-blade': 1,
+  feast: 1,
 };
 
 export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
@@ -233,6 +237,10 @@ export const ACTION_INFO: Record<IntentType, { name: string; desc: string }> = {
   'offer-blade': {
     name: 'Offer to kill them for the King',
     desc: 'Go to the King with what you know of their treason, and offer your sword. If he believes you, he gives you his leave: the killing is no crime, and wins his favour.',
+  },
+  feast: {
+    name: 'Hold a feast',
+    desc: `Keep a table for the court: ${RENOWN.feast.cost} crowns, once every ${RENOWN.feast.every} months. Your guests warm to you, the King comes if he likes you, and your name rises.`,
   },
   betroth: { name: 'Arrange a match', desc: 'Find your son or daughter a husband or wife. Grown, they wed at once; young, they are promised, and wed when both are grown. Either way the two houses are bound.' },
   acknowledge: { name: 'Acknowledge as your own', desc: 'Own your natural child before the world: into your house, under your name. A son becomes your heir. No secret after that.' },
@@ -433,6 +441,8 @@ export function check(s: GameState, actor: CharId, it: Intent): string | null {
       if (Object.values(s.plots).some((p) => p.status === 'active' && p.owner === actor && p.targets.includes(it.target) && sanctioned(s, p))) return 'You have his leave already.';
       return null;
     }
+    case 'feast':
+      return feastProblem(s, actor);
     case 'betroth':
       if ((it.dowry ?? 0) < 0 || (it.dowry ?? 0) > a.gold) return 'You do not have the gold.';
       if (it.partner && !s.chars[it.partner]) return 'No such person.';
@@ -633,6 +643,8 @@ export function perform(s: GameState, actor: CharId, it: Intent, opts: { free?: 
       return betroth(s, actor, it.target, it.partner, it.dowry ?? 0);
     case 'offer-blade':
       return offerBlade(s, actor, it.target, it.secretId);
+    case 'feast':
+      return holdFeast(s, actor);
   }
 }
 

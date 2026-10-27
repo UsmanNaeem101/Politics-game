@@ -15,6 +15,8 @@ export * from './spies';
 export * from './love';
 export * from './tails';
 export * from './wives';
+export * from './renown';
+export { RENOWN } from './content/renown';
 export { SPY_HOOKS, SPY_HOOK_KINDS } from './content/spies';
 export { BUSINESSES, BUSINESS_KINDS, ESTATES, ESTATE_NAMES, MAX_BUSINESSES, type BusinessDef } from './content/businesses';
 export { seasonalFeast } from './tensions';

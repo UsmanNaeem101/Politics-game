@@ -68,6 +68,7 @@ export function intentPool(s: GameState, r: () => number): Intent[] {
     { type: 'track', target: t() },
     { type: 'night-kill', target: t() },
     { type: 'dine', target: t() },
+    { type: 'feast' },
     { type: 'try-child', target: t() },
     { type: 'take-mistress', target: t() },
     { type: 'acknowledge', target: t() },

@@ -9,6 +9,8 @@ import { chance, clamp, pick, roll, weighted } from './rng';
 import { makeSecret, publish } from './secrets';
 import { affairSpy } from './spies';
 import { loversOf } from './love';
+import { RENOWN } from './content/renown';
+import { raise } from './renown';
 import { first, his, names, nm } from './text';
 import { FAITHLESS_FADES, acquaintance, addMod, adjustTrust, ch, dateLabel, gone, hearOf, isChild, isFree, isServant, learn, livingSpouse, log, opinion, rename, uid } from './world';
 import type { Character, CharId, GameState, House, Traits } from './types';
@@ -442,9 +444,19 @@ export function honestWoman(s: GameState, man: CharId, woman: CharId): void {
 }
 
 /** A wedding. The bride joins her husband's house, unless she heads one and he does not. */
+/** A match into a house that stands higher lifts the lesser house's head: a share of the difference between the two. */
+function matchRaises(s: GameState, x: CharId | null | undefined, y: CharId | null | undefined): number {
+  if (!x || !y || x === y || gone(s, x) || gone(s, y)) return 0;
+  const [lo, hi] = ch(s, x).prestige <= ch(s, y).prestige ? [x, y] : [y, x];
+  const gain = raise(s, lo, Math.min(RENOWN.match.max, (ch(s, hi).prestige - ch(s, lo).prestige) * RENOWN.match.share));
+  if (gain && lo === s.player) log(s, `The match ties your house to ${nm(s, hi)}'s, and the court looks at you differently (+${gain} prestige).`, [lo], 'good', [hi]);
+  return gain;
+}
+
 export function wed(s: GameState, a: CharId, b: CharId): void {
   const man = ch(s, a).gender === 'm' ? ch(s, a) : ch(s, b);
   const woman = man.id === a ? ch(s, b) : ch(s, a);
+  matchRaises(s, s.houses[man.householdId]?.head, s.houses[woman.householdId]?.head);
   // The late husband or wife is no longer anyone's spouse.
   for (const c of [man, woman]) if (c.spouse && s.chars[c.spouse]?.spouse === c.id) s.chars[c.spouse].spouse = undefined;
   man.spouse = woman.id;

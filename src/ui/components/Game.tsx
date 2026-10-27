@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { calendar, canEndWeek, ch, incomeOf, knownThreats, opinion, opinionWord, styleOf, type Outcome } from '../../engine';
+import { calendar, canEndWeek, ch, incomeOf, knownThreats, opinion, opinionWord, renownNote, renownOutlook, styleOf, type Outcome } from '../../engine';
 import { useGame, type DeedSpec, type TabId } from '../context';
 import type { BackPoint } from '../store';
 import { GIcon, type GIName } from '../icons/GIcon';
@@ -118,6 +118,8 @@ function TopBar({
   const me = ch(s, s.player);
   const blocked = canEndWeek(s);
   const favour = s.king && s.king !== s.player ? opinion(s, s.king, s.player) : null;
+  const outlook = renownOutlook(s, s.player);
+  const rising = outlook.mending + outlook.favour;
   const d = calendar(s.turn);
   return (
     <header className="topbar">
@@ -141,11 +143,14 @@ function TopBar({
           </dt>
           <dd className="num">{me.gold}</dd>
         </div>
-        <div title="Prestige">
+        <div title={renownNote(s, me.id)}>
           <dt>
             <GIcon name="ambition" size={14} />
           </dt>
-          <dd className="num">{me.prestige}</dd>
+          <dd className="num">
+            {me.prestige}
+            {rising > 0 && <small className="good"> +{rising}</small>}
+          </dd>
         </div>
         {favour !== null && (
           <div title={`The King's favour: ${favour}`}>

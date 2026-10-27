@@ -71,6 +71,10 @@ before changing anything substantial; it is the plan we are building toward.
   so publish with `capabilities: {downloads: true}`; elsewhere an ordinary download) and `importGame()` in `store.ts`.
 - The King forgets: every negative opinion mod the reigning King holds fades `KINGS_GRUDGE_FADES` (7) a month (`decayMods()`).
   No more than `MAX_NEW_HOUSES` (15) houses arrive in a game (`newcomers()` in `turn.ts`).
+- Prestige: `renown.ts`, numbers in `content/renown.ts`. Losses to charges and disgrace go through `tarnish()` and mend
+  `RENOWN.mends` a month while free (`Character.tarnish`); `renownMonth()` (turn.ts) also lifts those the King holds dear;
+  the `feast` deed is `holdFeast()`; `raise()` pays upheld charges (`applyJudgments()`) and a match into a higher house (`wed()`).
+  A save from before this mends what was lost since the start, found by regenerating the court from its seed (`mendOldLosses()` in turn.ts).
 - Wives at table: `wives.ts` (the `dine` deed: a wife dines with another lady and brings home what was said).
 - Love and the night: `love.ts` (seduction odds and deed, `becomeLovers`, `discoverAffair`, killing someone under your own
   roof, a mistress brought into the household: `takeMistress`, `Character.mistressOf`). Having someone followed: `tails.ts`, places in `content/haunts.ts`.
